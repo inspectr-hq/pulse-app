@@ -21,6 +21,11 @@ struct SettingsView: View {
 
             Form {
                 Stepper("Max Menu Items: \(vm.settings.menuMaxItems)", value: $vm.settings.menuMaxItems, in: 1...200)
+                Picker("Colorize icon", selection: $vm.settings.menuBarIconColorMode) {
+                    Text("Always").tag(MenuBarIconColorMode.always)
+                    Text("Only failing").tag(MenuBarIconColorMode.onlyWhenFailing)
+                    Text("Never").tag(MenuBarIconColorMode.never)
+                }
                 Toggle("Show method", isOn: $vm.settings.showMethodInMenu)
                 Toggle("Show response time", isOn: $vm.settings.showResponseTimeInMenu)
                 Toggle("Show last checked", isOn: $vm.settings.showLastCheckedInMenu)

@@ -6,46 +6,120 @@ struct SiteManagerView: View {
     @State private var editing: WebsiteMonitor?
 
     var body: some View {
-        VStack {
+        VStack(spacing: 0) {
             HStack {
-                Text("Site Manager").font(.headline)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Site Manager")
+                        .font(.title3)
+                        .fontWeight(.semibold)
+                    Text(summaryLine)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
                 Spacer()
                 Button(action: { showAdd = true }) { Image(systemName: "plus") }
                 Button(action: { Task { await vm.checkAll(autoOnly: false) } }) { Image(systemName: "arrow.clockwise") }
             }
-            .padding()
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(Color(NSColor.windowBackgroundColor))
+            Divider()
 
             Table(vm.monitors) {
                 TableColumn("Active") { monitor in
                     Toggle("", isOn: Binding(get: { monitor.isEnabled }, set: { vm.setEnabled($0, for: monitor.id) }))
                 }
-                TableColumn("Name") { monitor in Text(monitor.nameOrHost) }
-                TableColumn("URL") { monitor in Text(monitor.url.absoluteString) }
-                TableColumn("Method") { monitor in Text(monitor.method.rawValue) }
-                TableColumn("Status") { monitor in Text(label(for: vm.statuses[monitor.id] ?? .unknown)) }
+                .width(min: 56, ideal: 56, max: 56)
+                TableColumn("Status") { monitor in
+                    Circle()
+                        .fill(statusColor(for: vm.statuses[monitor.id] ?? .unknown))
+                        .frame(width: 11, height: 11)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                }
+                .width(min: 42, ideal: 42, max: 42)
+                TableColumn("Time") { monitor in
+                    Text(timeLabel(for: vm.statuses[monitor.id] ?? .unknown))
+                        .foregroundStyle(.secondary)
+                }
+                .width(min: 86, ideal: 100, max: 120)
+                TableColumn("Name") { monitor in
+                    Text(monitor.nameOrHost)
+                        .lineLimit(1)
+                }
+                .width(min: 180, ideal: 220, max: 280)
+                TableColumn("URL") { monitor in
+                    Text(monitor.url.absoluteString)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                }
+                .width(min: 230, ideal: 320, max: 440)
+                TableColumn("Method") { monitor in
+                    Text(monitor.method.rawValue)
+                        .foregroundStyle(.secondary)
+                }
+                .width(min: 42, ideal: 42, max: 42)
                 TableColumn("Actions") { monitor in
-                    HStack {
+                    HStack(spacing: 10) {
                         Button("Edit") { editing = monitor }
                         Button("Remove") { vm.removeMonitor(id: monitor.id) }
+                            .foregroundStyle(.secondary)
                     }
+                    .buttonStyle(.plain)
                 }
+                .width(min: 130, ideal: 150, max: 170)
             }
+            .alternatingRowBackgrounds(.disabled)
+            .tableStyle(.inset(alternatesRowBackgrounds: false))
             .sheet(item: $editing) { item in
-                EditMonitorView(monitor: item) { vm.updateMonitor($0) }
+                MonitorFormView(mode: .edit, monitor: item) { draft, rawURL in
+                    guard let normalizedURL = URLInput.normalize(rawURL), normalizedURL.host != nil else {
+                        return "Please enter a valid URL."
+                    }
+                    var updated = draft
+                    updated.url = normalizedURL
+                    vm.updateMonitor(updated)
+                    return nil
+                }
             }
         }
         .sheet(isPresented: $showAdd) {
-            AddMonitorView { url, name in vm.addMonitor(rawURL: url, name: name) }
+            MonitorFormView(
+                mode: .add,
+                monitor: WebsiteMonitor(url: URL(string: "https://example.com")!, displayName: "", isEnabled: true, method: .head, body: "", headers: [], allowInsecureSSL: false, thresholdMs: 2000, keyword: "")
+            ) { draft, rawURL in
+                vm.addMonitor(draft, rawURL: rawURL)
+            }
         }
     }
 
-    private func label(for status: WebsiteStatus) -> String {
+    private var summaryLine: String {
+        let active = vm.monitors.filter { $0.isEnabled }.count
+        let total = vm.monitors.count
+        let upCount = vm.monitors.filter {
+            if case .up = vm.statuses[$0.id] ?? .unknown { return true }
+            return false
+        }.count
+        let upPercent = active == 0 ? 0 : Int((Double(upCount) / Double(active)) * 100.0)
+        return "\(total) Sites · \(active) Active · \(upPercent)% Up"
+    }
+
+    private func statusColor(for status: WebsiteStatus) -> Color {
         switch status {
-        case .unknown: return "Unknown"
-        case .checking: return "Checking..."
-        case .up(_, let ms, _): return "Up · \(ms) ms"
-        case .down(let reason, _, _, _): return "Down · \(reason)"
+        case .up: return .green
+        case .down: return .red
+        case .checking: return .yellow
+        case .paused: return .gray
+        case .unknown: return .gray.opacity(0.55)
+        }
+    }
+
+    private func timeLabel(for status: WebsiteStatus) -> String {
+        switch status {
+        case .up(_, let ms, _): return "\(ms) ms"
+        case .down(_, _, let ms, _): return ms.map { "\($0) ms" } ?? "--"
+        case .checking: return "Checking"
         case .paused: return "Paused"
+        case .unknown: return "--"
         }
     }
 }

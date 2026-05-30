@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 import SwiftUI
 
 @MainActor
@@ -14,6 +15,7 @@ final class AppViewModel: ObservableObject {
     private let historyStore: HistoryStoreProtocol
     private let scheduler = MonitorScheduler()
     private let launchAtLogin: LaunchAtLoginControlling
+    private let logger = Logger(subsystem: "dev.pulse.app", category: "AppViewModel")
 
     private var inFlight: Set<UUID> = []
     private(set) var previousStatuses: [UUID: WebsiteStatus] = [:]
@@ -37,11 +39,14 @@ final class AppViewModel: ObservableObject {
     }
 
     func start() {
+        logger.info("start() called; interval=\(self.settings.pingIntervalSeconds)")
         Task {
             await scheduler.start(intervalSeconds: settings.pingIntervalSeconds) { [weak self] in
+                self?.logger.info("scheduler tick (automatic)")
                 await self?.checkAll(autoOnly: true)
             }
         }
+        logger.info("trigger initial automatic checkAll")
         Task { await checkAll(autoOnly: true) }
     }
 
@@ -95,6 +100,19 @@ final class AppViewModel: ObservableObject {
         return nil
     }
 
+    func addMonitor(_ draft: WebsiteMonitor, rawURL: String) -> String? {
+        guard let url = URLInput.normalize(rawURL), url.host != nil else {
+            return "Please enter a valid URL."
+        }
+        var monitor = draft
+        monitor.url = url
+        monitors.append(monitor)
+        statuses[monitor.id] = monitor.isEnabled ? .unknown : .paused
+        persistMonitors()
+        Task { await check(monitorID: monitor.id, allowPaused: true, trigger: .manual) }
+        return nil
+    }
+
     func updateMonitor(_ updated: WebsiteMonitor) {
         guard let idx = monitors.firstIndex(where: { $0.id == updated.id }) else { return }
         monitors[idx] = updated
@@ -119,6 +137,7 @@ final class AppViewModel: ObservableObject {
     func checkAll(autoOnly: Bool = false) async {
         let targets = monitors.filter { autoOnly ? $0.isEnabled : true }
         let trigger: HistoryTrigger = autoOnly ? .automatic : .manual
+        logger.info("checkAll(autoOnly=\(autoOnly, privacy: .public)) targets=\(targets.count)")
         await withTaskGroup(of: Void.self) { group in
             for monitor in targets {
                 group.addTask { [weak self] in
@@ -129,11 +148,21 @@ final class AppViewModel: ObservableObject {
     }
 
     func check(monitorID: UUID, allowPaused: Bool = false, trigger: HistoryTrigger = .manual) async {
-        guard !inFlight.contains(monitorID) else { return }
-        guard let monitor = monitors.first(where: { $0.id == monitorID }) else { return }
-        if !monitor.isEnabled && !allowPaused { return }
+        guard !inFlight.contains(monitorID) else {
+            logger.info("check skipped monitor=\(monitorID.uuidString, privacy: .public) reason=inFlight")
+            return
+        }
+        guard let monitor = monitors.first(where: { $0.id == monitorID }) else {
+            logger.error("check skipped monitor=\(monitorID.uuidString, privacy: .public) reason=missingMonitor")
+            return
+        }
+        if !monitor.isEnabled && !allowPaused {
+            logger.info("check skipped monitor=\(monitor.id.uuidString, privacy: .public) reason=pausedAuto")
+            return
+        }
 
         inFlight.insert(monitorID)
+        logger.info("check start monitor=\(monitor.id.uuidString, privacy: .public) trigger=\(trigger.rawValue, privacy: .public)")
         let previousBeforeChecking = statuses[monitorID] ?? .unknown
         statuses[monitorID] = .checking
 
@@ -149,6 +178,7 @@ final class AppViewModel: ObservableObject {
 
         previousStatuses[monitorID] = previousBeforeChecking
         statuses[monitorID] = finalStatus
+        logger.info("check done monitor=\(monitor.id.uuidString, privacy: .public)")
 
         if case .up(let code, let duration, let checkedAt) = result.status {
             historyStore.append(

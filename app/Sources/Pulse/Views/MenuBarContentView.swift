@@ -1,46 +1,93 @@
 import SwiftUI
+import OSLog
 
 struct MenuBarContentView: View {
     @EnvironmentObject var vm: AppViewModel
-    @Environment(\.openWindow) private var openWindow
+    private let logger = Logger(subsystem: "dev.pulse.app", category: "MenuBar")
 
     var body: some View {
         VStack(spacing: 8) {
             ForEach(vm.monitors.prefix(vm.settings.menuMaxItems)) { monitor in
                 let status = vm.statuses[monitor.id] ?? .unknown
-                HStack {
-                    Circle().fill(color(for: status)).frame(width: 10, height: 10)
-                    if vm.settings.showMethodInMenu { Text(monitor.method.rawValue).font(.caption).foregroundStyle(.secondary) }
-                    Text(monitor.nameOrHost)
-                    Spacer()
-                    if vm.settings.showResponseTimeInMenu, case .up(_, let ms, _) = status { Text("\(ms) ms").foregroundStyle(.secondary) }
-                    if vm.settings.showStatusCodeInMenu {
-                        switch status {
-                        case .up(let code, _, _): Text("\(code)").foregroundStyle(.secondary)
-                        case .down(_, let code, _, _): Text(code.map(String.init) ?? "-").foregroundStyle(.secondary)
-                        default: EmptyView()
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(spacing: 8) {
+                        Circle().fill(color(for: status)).frame(width: 11, height: 11)
+                        if vm.settings.showMethodInMenu {
+                            Text(monitor.method.rawValue)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .frame(width: 30, alignment: .leading)
+                        }
+                        Text(monitor.nameOrHost)
+                            .lineLimit(1)
+                        Spacer()
+                        if vm.settings.showStatusCodeInMenu {
+                            if let code = statusCode(for: status) {
+                                Text("\(code)")
+                                    .font(.callout)
+                                    .foregroundStyle(.secondary)
+                            }
                         }
                     }
+
+                    HStack(spacing: 10) {
+                        if vm.settings.showResponseTimeInMenu {
+                            Text(responseTimeLabel(for: status))
+                                .font(.callout)
+                                .foregroundStyle(.secondary)
+                                .frame(width: 70, alignment: .leading)
+                        }
+                        if vm.settings.showLastCheckedInMenu, let checked = checkedAt(for: status) {
+                            Text(timeString(checked))
+                                .font(.callout)
+                                .foregroundStyle(.secondary)
+                                .frame(width: 72, alignment: .leading)
+                        } else if vm.settings.showLastCheckedInMenu {
+                            Text("--:--:--")
+                                .font(.callout)
+                                .foregroundStyle(.secondary.opacity(0.5))
+                                .frame(width: 72, alignment: .leading)
+                        }
+                        Spacer()
+                    }
                 }
+                .padding(.vertical, 2)
             }
             Divider()
-            Button("Ping now…") { Task { await vm.checkAll(autoOnly: false) } }
+            Button("Ping now…") {
+                logger.info("Menu click: Ping now")
+                Task { await vm.checkAll(autoOnly: false) }
+            }
                 .frame(maxWidth: .infinity, alignment: .leading)
-            Button("Site Manager") { openWindow(id: "site-manager") }
+            Button("Site Manager") {
+                logger.info("Menu click: Site Manager")
+                WindowManager.shared.showSiteManager(appVM: vm)
+            }
                 .frame(maxWidth: .infinity, alignment: .leading)
-            Button("History Logs") { openWindow(id: "history") }
+            Divider()
+            Button("History Logs") {
+                logger.info("Menu click: History Logs")
+                WindowManager.shared.showHistory(appVM: vm)
+            }
                 .frame(maxWidth: .infinity, alignment: .leading)
             Button("Settings…") {
-                NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+                logger.info("Menu click: Settings")
+                WindowManager.shared.showSettings(appVM: vm)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             Divider()
-            Button("Quit Pulse") { NSApp.terminate(nil) }
+            Button("Quit Pulse") {
+                logger.info("Menu click: Quit")
+                NSApp.terminate(nil)
+            }
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(10)
-        .frame(width: 280, alignment: .leading)
-        .onAppear { vm.start() }
+        .frame(width: 340, alignment: .leading)
+        .onAppear {
+            logger.info("MenuBarContentView appeared")
+            vm.start()
+        }
     }
 
     private func color(for status: WebsiteStatus) -> Color {
@@ -51,5 +98,48 @@ struct MenuBarContentView: View {
         case .paused: return .gray
         case .unknown: return .gray.opacity(0.7)
         }
+    }
+
+    private func responseTimeLabel(for status: WebsiteStatus) -> String {
+        switch status {
+        case .up(_, let ms, _):
+            return "\(ms) ms"
+        case .down(_, _, let ms, _):
+            return ms.map { "\($0) ms" } ?? "--"
+        case .checking:
+            return "Checking..."
+        case .paused:
+            return "Paused"
+        case .unknown:
+            return "Not checked"
+        }
+    }
+
+    private func statusCode(for status: WebsiteStatus) -> Int? {
+        switch status {
+        case .up(let code, _, _):
+            return code
+        case .down(_, let code, _, _):
+            return code
+        case .checking, .paused, .unknown:
+            return nil
+        }
+    }
+
+    private func checkedAt(for status: WebsiteStatus) -> Date? {
+        switch status {
+        case .up(_, _, let checked):
+            return checked
+        case .down(_, _, _, let checked):
+            return checked
+        case .checking, .paused, .unknown:
+            return nil
+        }
+    }
+
+    private func timeString(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm:ss"
+        return formatter.string(from: date)
     }
 }
