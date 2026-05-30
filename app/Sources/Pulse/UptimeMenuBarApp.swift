@@ -4,6 +4,14 @@ import AppKit
 @main
 struct UptimeMenuBarApp: App {
     @StateObject private var appVM = AppViewModel()
+    
+    init() {
+        DispatchQueue.main.async {
+            if let icon = NSImage(named: "AppIcon") {
+                NSApp.applicationIconImage = icon
+            }
+        }
+    }
 
     var body: some Scene {
         MenuBarExtra {

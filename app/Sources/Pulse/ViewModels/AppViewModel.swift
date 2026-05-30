@@ -19,6 +19,7 @@ final class AppViewModel: ObservableObject {
 
     private var inFlight: Set<UUID> = []
     private(set) var previousStatuses: [UUID: WebsiteStatus] = [:]
+    private var hasStarted = false
 
     init(
         checker: WebsiteChecking = WebsiteChecker(),
@@ -39,6 +40,11 @@ final class AppViewModel: ObservableObject {
     }
 
     func start() {
+        guard !hasStarted else {
+            logger.info("start() ignored; already started")
+            return
+        }
+        hasStarted = true
         logger.info("start() called; interval=\(self.settings.pingIntervalSeconds)")
         Task {
             await scheduler.start(intervalSeconds: settings.pingIntervalSeconds) { [weak self] in
