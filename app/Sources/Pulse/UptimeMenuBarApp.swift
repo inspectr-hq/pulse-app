@@ -7,7 +7,10 @@ struct UptimeMenuBarApp: App {
     
     init() {
         DispatchQueue.main.async {
-            if let icon = NSImage(named: "AppIcon") {
+            if let iconURL = Bundle.module.url(forResource: "AppDockIcon", withExtension: "png"),
+               let icon = NSImage(contentsOf: iconURL) {
+                NSApp.applicationIconImage = icon
+            } else if let icon = NSImage(named: "AppIcon") {
                 NSApp.applicationIconImage = icon
             }
         }
