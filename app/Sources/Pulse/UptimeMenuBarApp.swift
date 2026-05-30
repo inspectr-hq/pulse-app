@@ -12,6 +12,7 @@ struct UptimeMenuBarApp: App {
             Image(systemName: iconName(for: appVM.overallStatus))
                 .foregroundStyle(iconColor(for: appVM.overallStatus))
         }
+        .menuBarExtraStyle(.window)
     }
 
     private func iconName(for status: OverallStatus) -> String {

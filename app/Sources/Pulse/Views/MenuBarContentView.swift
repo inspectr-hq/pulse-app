@@ -6,7 +6,7 @@ struct MenuBarContentView: View {
     private let logger = Logger(subsystem: "dev.pulse.app", category: "MenuBar")
 
     var body: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 6) {
             ForEach(vm.monitors.prefix(vm.settings.menuMaxItems)) { monitor in
                 let status = vm.statuses[monitor.id] ?? .unknown
                 VStack(alignment: .leading, spacing: 3) {
@@ -51,43 +51,52 @@ struct MenuBarContentView: View {
                         Spacer()
                     }
                 }
-                .padding(.vertical, 2)
+                .padding(.vertical, 1)
             }
             Divider()
-            Button("Ping now…") {
+            menuAction("Ping now…") {
                 logger.info("Menu click: Ping now")
                 Task { await vm.checkAll(autoOnly: false) }
             }
-                .frame(maxWidth: .infinity, alignment: .leading)
-            Button("Site Manager") {
+            menuAction("Site Manager") {
                 logger.info("Menu click: Site Manager")
                 WindowManager.shared.showSiteManager(appVM: vm)
             }
-                .frame(maxWidth: .infinity, alignment: .leading)
             Divider()
-            Button("History Logs") {
+            menuAction("History Logs") {
                 logger.info("Menu click: History Logs")
                 WindowManager.shared.showHistory(appVM: vm)
             }
-                .frame(maxWidth: .infinity, alignment: .leading)
-            Button("Settings…") {
+            menuAction("Settings…") {
                 logger.info("Menu click: Settings")
                 WindowManager.shared.showSettings(appVM: vm)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
             Divider()
-            Button("Quit Pulse") {
+            menuAction("Quit Pulse") {
                 logger.info("Menu click: Quit")
                 NSApp.terminate(nil)
             }
-                .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(10)
-        .frame(width: 340, alignment: .leading)
+        .padding(8)
+        .frame(width: 280, alignment: .leading)
         .onAppear {
             logger.info("MenuBarContentView appeared")
             vm.start()
         }
+    }
+
+    @ViewBuilder
+    private func menuAction(_ title: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack {
+                Text(title)
+                Spacer()
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, 2)
     }
 
     private func color(for status: WebsiteStatus) -> Color {

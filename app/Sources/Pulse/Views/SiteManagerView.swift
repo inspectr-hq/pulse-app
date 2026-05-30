@@ -29,35 +29,35 @@ struct SiteManagerView: View {
                 TableColumn("Active") { monitor in
                     Toggle("", isOn: Binding(get: { monitor.isEnabled }, set: { vm.setEnabled($0, for: monitor.id) }))
                 }
-                .width(min: 56, ideal: 56, max: 56)
+                .width(min: 40, ideal: 44, max: 56)
                 TableColumn("Status") { monitor in
                     Circle()
                         .fill(statusColor(for: vm.statuses[monitor.id] ?? .unknown))
                         .frame(width: 11, height: 11)
                         .frame(maxWidth: .infinity, alignment: .center)
                 }
-                .width(min: 42, ideal: 42, max: 42)
+                .width(min: 40, ideal: 44, max: 44)
                 TableColumn("Time") { monitor in
                     Text(timeLabel(for: vm.statuses[monitor.id] ?? .unknown))
                         .foregroundStyle(.secondary)
                 }
-                .width(min: 86, ideal: 100, max: 120)
+                .width(min: 52, ideal: 64, max: 120)
                 TableColumn("Name") { monitor in
                     Text(monitor.nameOrHost)
                         .lineLimit(1)
                 }
-                .width(min: 180, ideal: 220, max: 280)
+                .width(min: 140, ideal: 180, max: 280)
                 TableColumn("URL") { monitor in
                     Text(monitor.url.absoluteString)
                         .lineLimit(1)
                         .truncationMode(.middle)
                 }
-                .width(min: 230, ideal: 320, max: 440)
+                .width(min: 200, ideal: 240, max: 400)
                 TableColumn("Method") { monitor in
                     Text(monitor.method.rawValue)
                         .foregroundStyle(.secondary)
                 }
-                .width(min: 42, ideal: 42, max: 42)
+                .width(min: 48, ideal: 52, max: 64)
                 TableColumn("Actions") { monitor in
                     HStack(spacing: 10) {
                         Button("Edit") { editing = monitor }
