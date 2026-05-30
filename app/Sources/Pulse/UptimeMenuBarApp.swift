@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 @main
 struct UptimeMenuBarApp: App {
@@ -9,8 +10,7 @@ struct UptimeMenuBarApp: App {
             MenuBarContentView()
                 .environmentObject(appVM)
         } label: {
-            Image(systemName: iconName(for: appVM.overallStatus))
-                .foregroundStyle(iconColor(for: appVM.overallStatus))
+            Image(nsImage: menuBarStatusImage(for: appVM.overallStatus))
         }
         .menuBarExtraStyle(.window)
     }
@@ -39,5 +39,18 @@ struct UptimeMenuBarApp: App {
             case .unknown, .neutral: return .gray
             }
         }
+    }
+
+    private func menuBarStatusImage(for status: OverallStatus) -> NSImage {
+        let symbolName = iconName(for: status)
+        let config = NSImage.SymbolConfiguration(pointSize: 14, weight: .semibold)
+        let base = NSImage(systemSymbolName: symbolName, accessibilityDescription: nil)?
+            .withSymbolConfiguration(config) ?? NSImage()
+
+        let nsColor = NSColor(iconColor(for: status))
+        let colorConfig = NSImage.SymbolConfiguration(hierarchicalColor: nsColor)
+        let colored = base.withSymbolConfiguration(colorConfig) ?? base
+        colored.isTemplate = false
+        return colored
     }
 }
