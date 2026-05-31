@@ -71,8 +71,7 @@ final class SiteCheckerDeterministicTests: XCTestCase {
         let transport = MockTransport(responses: [.success(statusCode: 200, data: body)])
         let checker = SiteChecker(transport: transport)
         var monitor = SiteMonitor(url: URL(string: "https://example.com")!, method: .get)
-        // Use a guaranteed failing threshold to avoid timing flakiness on fast machines.
-        monitor.thresholdMs = -1
+        monitor.thresholdMs = 0
 
         let result = await checker.check(monitor)
 

@@ -21,6 +21,7 @@ final class HistoryStoreTests: XCTestCase {
                     reason: nil,
                     trigger: .automatic
                 ),
+                retentionPolicy: .none,
                 maxEvents: 3
             )
         }
@@ -46,6 +47,7 @@ final class HistoryStoreTests: XCTestCase {
                 reason: nil,
                 trigger: .manual
             ),
+            retentionPolicy: .none,
             maxEvents: 10
         )
 

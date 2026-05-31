@@ -74,6 +74,7 @@ private final class FakeHistoryStore: HistoryStoreProtocol {
     func loadEvents() -> [HistoryEvent] { [] }
     func append(_ event: HistoryEvent, retentionPolicy: HistoryRetentionPolicy, maxEvents: Int) {}
     func clear() {}
+    func delete(eventID: UUID) {}
 }
 
 private struct FakeLaunchAtLogin: LaunchAtLoginControlling {

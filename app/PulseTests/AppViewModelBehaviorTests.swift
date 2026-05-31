@@ -113,10 +113,7 @@ final class AppViewModelBehaviorTests: XCTestCase {
         await vm.check(monitorID: monitor.id, allowPaused: true, trigger: .manual)
 
         XCTAssertEqual(historySpy.events.count, 1)
-        guard let event = historySpy.events.first else {
-            XCTFail("Expected history event")
-            return
-        }
+        let event = try XCTUnwrap(historySpy.events.first)
         XCTAssertEqual(event.method, "GET")
         XCTAssertEqual(event.status, "OK")
         XCTAssertEqual(event.statusCode, 200)
@@ -138,10 +135,7 @@ final class AppViewModelBehaviorTests: XCTestCase {
         await vm.check(monitorID: monitor.id, allowPaused: true, trigger: .automatic)
 
         XCTAssertEqual(historySpy.events.count, 1)
-        guard let event = historySpy.events.first else {
-            XCTFail("Expected history event")
-            return
-        }
+        let event = try XCTUnwrap(historySpy.events.first)
         XCTAssertEqual(event.status, "Down")
         XCTAssertEqual(event.statusCode, 500)
         XCTAssertEqual(event.trigger, .automatic)
@@ -248,6 +242,10 @@ private final class SpyHistoryStore: HistoryStoreProtocol {
     func clear() {
         events = []
     }
+
+    func delete(eventID: UUID) {
+        events.removeAll { $0.id == eventID }
+    }
 }
 
 private final class SpyLaunchAtLogin: LaunchAtLoginControlling {
@@ -260,7 +258,7 @@ private final class SpyLaunchAtLogin: LaunchAtLoginControlling {
 
 private final class SpyWebhookDispatcher: WebhookDispatching {
     private(set) var events: [WebhookTransitionEvent] = []
-    func sendTransition(event: WebhookTransitionEvent, settings: AppSettings) {
+    func sendTransition(event: WebhookTransitionEvent, config: WebhookConfig) {
         events.append(event)
     }
 }
