@@ -4,16 +4,6 @@ Pulse is a lightweight macOS menu bar uptime checker.
 
 It gives you a fast, always-available way to monitor APIs, MCP servers, websites, and health endpoints from your Mac menu bar.
 
-## Why Monitoring Matters
-
-Small outages, DNS/TLS issues, or degraded response times are easy to miss until users report them.
-
-Pulse helps you:
-- catch regressions quickly after deploys
-- verify service health during local development
-- see response-time trends
-- keep lightweight incident context in a local history log
-
 ## Pulse Features
 
 - Native macOS menu bar app (`SwiftUI`, `MenuBarExtra`, macOS 15+)
@@ -24,12 +14,23 @@ Pulse helps you:
 - History log persisted to Application Support JSON (atomic writes, ISO-8601 dates)
 - Optional webhook transitions (`up -> down`, `down -> up` when enabled), with multiple webhook rules and per-site filters
 
+
+## Why Monitoring Matters
+
+Small outages, DNS/TLS issues, or degraded response times are easy to miss until users report them.
+
+Pulse helps you:
+- catch regressions quickly after deploys
+- verify service health during local development
+- see response-time trends
+- keep lightweight incident context in a local history log
+
 ## Get Started
 
 ### 1. Download Pulse
 
 1. Open the [GitHub Releases](https://github.com/inspectr-hq/pulse/releases) page.
-2. Download the latest macOS release archive.
+2. Download the latest macOS release zip file.
 3. Extract it and move `Pulse.app` to your `Applications` folder.
 
 ### 2. First Launch on macOS
