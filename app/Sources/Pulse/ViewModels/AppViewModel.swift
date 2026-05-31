@@ -13,6 +13,7 @@ final class AppViewModel: ObservableObject {
     private let checker: WebsiteChecking
     private let monitorStore: MonitorStoreProtocol
     private let historyStore: HistoryStoreProtocol
+    private let webhookDispatcher: WebhookDispatching
     private let scheduler = MonitorScheduler()
     private let launchAtLogin: LaunchAtLoginControlling
     private let logger = Logger(subsystem: "dev.pulse.app", category: "AppViewModel")
@@ -25,11 +26,13 @@ final class AppViewModel: ObservableObject {
         checker: WebsiteChecking = WebsiteChecker(),
         monitorStore: MonitorStoreProtocol = MonitorStore(),
         historyStore: HistoryStoreProtocol = HistoryStore(),
+        webhookDispatcher: WebhookDispatching = WebhookEngine(),
         launchAtLogin: LaunchAtLoginControlling = LaunchAtLoginService()
     ) {
         self.checker = checker
         self.monitorStore = monitorStore
         self.historyStore = historyStore
+        self.webhookDispatcher = webhookDispatcher
         self.launchAtLogin = launchAtLogin
         self.monitors = monitorStore.loadMonitors()
         self.settings = monitorStore.loadSettings()
@@ -186,6 +189,13 @@ final class AppViewModel: ObservableObject {
         statuses[monitorID] = finalStatus
         logger.info("check done monitor=\(monitor.id.uuidString, privacy: .public)")
 
+        maybeSendWebhookTransition(
+            previous: previousBeforeChecking,
+            current: result.status,
+            monitor: monitor,
+            trigger: trigger
+        )
+
         if case .up(let code, let duration, let checkedAt) = result.status {
             historyStore.append(
                 HistoryEvent(timestamp: checkedAt, monitorID: monitor.id, monitorName: monitor.nameOrHost, url: monitor.url.absoluteString, method: result.methodUsed.rawValue, status: "OK", statusCode: code, durationMs: duration, reason: nil, trigger: trigger),
@@ -213,5 +223,78 @@ final class AppViewModel: ObservableObject {
 
     private func persistMonitors() {
         monitorStore.saveMonitors(monitors)
+    }
+
+    private func maybeSendWebhookTransition(previous: WebsiteStatus, current: WebsiteStatus, monitor: WebsiteMonitor, trigger: HistoryTrigger) {
+        guard monitor.isEnabled else { return }
+
+        let previousStable = stableStatus(previous)
+        let currentStable = stableStatus(current)
+        let event: WebhookTransitionEvent?
+
+        switch (previousStable, currentStable) {
+        case (.up, .down):
+            event = buildTransitionEvent(
+                message: "\(monitor.nameOrHost) is down",
+                status: "down",
+                current: current,
+                monitor: monitor,
+                trigger: trigger
+            )
+        case (.down, .up) where settings.webhookSendOn == .alertingAndRecovery:
+            event = buildTransitionEvent(
+                message: "\(monitor.nameOrHost) recovered",
+                status: "up",
+                current: current,
+                monitor: monitor,
+                trigger: trigger
+            )
+        default:
+            event = nil
+        }
+
+        guard let event else { return }
+        webhookDispatcher.sendTransition(event: event, settings: settings)
+    }
+
+    private func buildTransitionEvent(message: String, status: String, current: WebsiteStatus, monitor: WebsiteMonitor, trigger: HistoryTrigger) -> WebhookTransitionEvent {
+        let code: Int?
+        let ms: Int?
+        switch current {
+        case .up(let statusCode, let responseMs, _):
+            code = statusCode
+            ms = responseMs
+        case .down(_, let statusCode, let responseMs, _):
+            code = statusCode
+            ms = responseMs
+        case .unknown, .checking, .paused:
+            code = nil
+            ms = nil
+        }
+
+        return WebhookTransitionEvent(
+            message: message,
+            monitorName: monitor.nameOrHost,
+            monitorURL: monitor.url.absoluteString,
+            status: status,
+            trigger: trigger.rawValue,
+            statusCode: code,
+            responseMs: ms,
+            timestamp: Date()
+        )
+    }
+
+    private enum StableStatus {
+        case up
+        case down
+        case other
+    }
+
+    private func stableStatus(_ status: WebsiteStatus) -> StableStatus {
+        switch status {
+        case .up: return .up
+        case .down: return .down
+        case .unknown, .checking, .paused: return .other
+        }
     }
 }

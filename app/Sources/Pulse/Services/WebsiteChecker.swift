@@ -5,6 +5,12 @@ protocol WebsiteChecking {
 }
 
 final class WebsiteChecker: WebsiteChecking {
+    private let transport: HTTPTransport
+
+    init(transport: HTTPTransport = URLSession.shared) {
+        self.transport = transport
+    }
+
     static func isUpStatusCode(_ code: Int) -> Bool {
         (200...399).contains(code)
     }
@@ -34,7 +40,7 @@ final class WebsiteChecker: WebsiteChecking {
         }
 
         do {
-            let (data, response) = try await URLSession.shared.data(for: req)
+            let (data, response) = try await transport.data(for: req)
             let elapsed = Int(Date().timeIntervalSince(start) * 1000)
             guard let http = response as? HTTPURLResponse else {
                 return .init(status: .down(reason: "Invalid response", statusCode: nil, responseTimeMs: elapsed, checkedAt: Date()), methodUsed: method)

@@ -31,6 +31,8 @@
 		B00100010000000000000016 /* EditMonitorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100010000000000000016 /* EditMonitorView.swift */; };
 		B00100010000000000000017 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F00100010000000000000017 /* Assets.xcassets */; };
 		B00100010000000000000018 /* AppDockIcon.png in Resources */ = {isa = PBXBuildFile; fileRef = F00100010000000000000018 /* AppDockIcon.png */; };
+		B00100010000000000000019 /* HTTPTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100010000000000000019 /* HTTPTransport.swift */; };
+		B0010001000000000000001A /* WebhookEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0010001000000000000001A /* WebhookEngine.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -59,6 +61,8 @@
 		F00100010000000000000016 /* EditMonitorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditMonitorView.swift; sourceTree = "<group>"; };
 		F00100010000000000000017 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		F00100010000000000000018 /* AppDockIcon.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = AppDockIcon.png; sourceTree = "<group>"; };
+		F00100010000000000000019 /* HTTPTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTTPTransport.swift; sourceTree = "<group>"; };
+		F0010001000000000000001A /* WebhookEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebhookEngine.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -123,6 +127,8 @@
 				F0010001000000000000000A /* MonitorStore.swift */,
 				F0010001000000000000000B /* WebsiteChecker.swift */,
 				F0010001000000000000000C /* WindowManager.swift */,
+				F00100010000000000000019 /* HTTPTransport.swift */,
+				F0010001000000000000001A /* WebhookEngine.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -259,6 +265,8 @@
 				B00100010000000000000014 /* SiteManagerView.swift in Sources */,
 				B00100010000000000000015 /* AddMonitorView.swift in Sources */,
 				B00100010000000000000016 /* EditMonitorView.swift in Sources */,
+				B00100010000000000000019 /* HTTPTransport.swift in Sources */,
+				B0010001000000000000001A /* WebhookEngine.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
