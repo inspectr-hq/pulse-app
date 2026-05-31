@@ -23,8 +23,12 @@ final class WindowManager {
         NSApp.setActivationPolicy(.regular)
         if let window = siteManagerWindow {
             logger.info("showSiteManager reusing existing window")
+            if window.isMiniaturized {
+                window.deminiaturize(nil)
+            }
             window.orderFrontRegardless()
             window.makeKeyAndOrderFront(nil)
+            NSApp.unhide(nil)
             NSApp.activate(ignoringOtherApps: true)
             return
         }
@@ -58,8 +62,12 @@ final class WindowManager {
         NSApp.setActivationPolicy(.regular)
         if let window = historyWindow {
             logger.info("showHistory reusing existing window")
+            if window.isMiniaturized {
+                window.deminiaturize(nil)
+            }
             window.orderFrontRegardless()
             window.makeKeyAndOrderFront(nil)
+            NSApp.unhide(nil)
             NSApp.activate(ignoringOtherApps: true)
             return
         }
@@ -93,8 +101,12 @@ final class WindowManager {
         NSApp.setActivationPolicy(.regular)
         if let window = historyReportsWindow {
             logger.info("showHistoryReports reusing existing window")
+            if window.isMiniaturized {
+                window.deminiaturize(nil)
+            }
             window.orderFrontRegardless()
             window.makeKeyAndOrderFront(nil)
+            NSApp.unhide(nil)
             NSApp.activate(ignoringOtherApps: true)
             return
         }
@@ -128,8 +140,12 @@ final class WindowManager {
         NSApp.setActivationPolicy(.regular)
         if let window = settingsWindow {
             logger.info("showSettings reusing existing window")
+            if window.isMiniaturized {
+                window.deminiaturize(nil)
+            }
             window.orderFrontRegardless()
             window.makeKeyAndOrderFront(nil)
+            NSApp.unhide(nil)
             NSApp.activate(ignoringOtherApps: true)
             return
         }
