@@ -1,6 +1,7 @@
 import Foundation
 import OSLog
 import SwiftUI
+import AppKit
 
 @MainActor
 final class AppViewModel: ObservableObject {
@@ -40,6 +41,7 @@ final class AppViewModel: ObservableObject {
         for monitor in monitors {
             statuses[monitor.id] = monitor.isEnabled ? .unknown : .paused
         }
+        updateDockBadge()
     }
 
     func start() {
@@ -118,6 +120,7 @@ final class AppViewModel: ObservableObject {
         monitors.append(monitor)
         statuses[monitor.id] = monitor.isEnabled ? .unknown : .paused
         persistMonitors()
+        updateDockBadge()
         Task { await check(monitorID: monitor.id, allowPaused: true, trigger: .manual) }
         return nil
     }
@@ -127,6 +130,7 @@ final class AppViewModel: ObservableObject {
         monitors[idx] = updated
         statuses[updated.id] = updated.isEnabled ? (statuses[updated.id] == .paused ? .unknown : statuses[updated.id] ?? .unknown) : .paused
         persistMonitors()
+        updateDockBadge()
     }
 
     func removeMonitor(id: UUID) {
@@ -134,6 +138,7 @@ final class AppViewModel: ObservableObject {
         statuses.removeValue(forKey: id)
         previousStatuses.removeValue(forKey: id)
         persistMonitors()
+        updateDockBadge()
     }
 
     func setEnabled(_ enabled: Bool, for id: UUID) {
@@ -141,6 +146,7 @@ final class AppViewModel: ObservableObject {
         monitors[idx].isEnabled = enabled
         statuses[id] = enabled ? .unknown : .paused
         persistMonitors()
+        updateDockBadge()
     }
 
     func checkAll(autoOnly: Bool = false) async {
@@ -187,6 +193,7 @@ final class AppViewModel: ObservableObject {
 
         previousStatuses[monitorID] = previousBeforeChecking
         statuses[monitorID] = finalStatus
+        updateDockBadge()
         logger.info("check done monitor=\(monitor.id.uuidString, privacy: .public)")
 
         maybeSendWebhookTransition(
@@ -214,6 +221,7 @@ final class AppViewModel: ObservableObject {
     func saveSettings() {
         monitorStore.saveSettings(settings)
         launchAtLogin.setEnabled(settings.launchAtLogin)
+        updateDockBadge()
         Task {
             await scheduler.start(intervalSeconds: settings.pingIntervalSeconds) { [weak self] in
                 await self?.checkAll(autoOnly: true)
@@ -295,6 +303,34 @@ final class AppViewModel: ObservableObject {
         case .up: return .up
         case .down: return .down
         case .unknown, .checking, .paused: return .other
+        }
+    }
+
+    private func updateDockBadge() {
+        guard settings.showAlertBadgeOnDockIcon else {
+            NSApp.dockTile.badgeLabel = nil
+            return
+        }
+
+        let alertCount = monitors.reduce(into: 0) { count, monitor in
+            guard monitor.isEnabled else { return }
+            let status = statuses[monitor.id] ?? .unknown
+            if isAlertingStatus(status) {
+                count += 1
+            }
+        }
+
+        NSApp.dockTile.badgeLabel = alertCount > 0 ? "\(alertCount)" : nil
+    }
+
+    private func isAlertingStatus(_ status: WebsiteStatus) -> Bool {
+        switch status {
+        case .down:
+            return true
+        case .up(_, let responseMs, _):
+            return responseMs > settings.defaultThresholdMs
+        case .unknown, .checking, .paused:
+            return false
         }
     }
 }
