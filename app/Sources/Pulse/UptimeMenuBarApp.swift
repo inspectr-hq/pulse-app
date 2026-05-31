@@ -4,13 +4,26 @@ import AppKit
 @main
 struct UptimeMenuBarApp: App {
     @StateObject private var appVM = AppViewModel()
+    
+    init() {
+        DispatchQueue.main.async {
+            if let iconURL = Bundle.main.url(forResource: "AppDockIcon", withExtension: "png"),
+               let icon = NSImage(contentsOf: iconURL) {
+                NSApp.applicationIconImage = icon
+            } else if let icon = NSImage(named: "AppIcon") {
+                NSApp.applicationIconImage = icon
+            }
+        }
+    }
 
     var body: some Scene {
         MenuBarExtra {
             MenuBarContentView()
                 .environmentObject(appVM)
         } label: {
-            Image(nsImage: menuBarStatusImage(for: appVM.overallStatus))
+            Image(systemName: iconName(for: appVM.overallStatus))
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(iconColor(for: appVM.overallStatus))
         }
         .menuBarExtraStyle(.window)
     }
@@ -18,7 +31,7 @@ struct UptimeMenuBarApp: App {
     private func iconName(for status: OverallStatus) -> String {
         switch status {
         case .neutral: return "circle.dashed"
-        case .unknown: return "questionmark.circle"
+        case .unknown: return "circle.dashed"
         case .checking: return "arrow.triangle.2.circlepath"
         case .up: return "checkmark.circle.fill"
         case .down: return "xmark.circle.fill"
@@ -26,31 +39,24 @@ struct UptimeMenuBarApp: App {
     }
 
     private func iconColor(for status: OverallStatus) -> Color {
+        guard appVM.settings.showMenuIconStatusColor else {
+            return .primary
+        }
+
         switch appVM.settings.menuBarIconColorMode {
         case .never:
             return .primary
         case .onlyWhenFailing:
-            return status == .down ? .red : .primary
+            return status == .down ? appVM.settings.statusColorFailure.color : .primary
         case .always:
             switch status {
-            case .up: return .green
-            case .down: return .red
-            case .checking: return .yellow
-            case .unknown, .neutral: return .gray
+            case .up: return appVM.settings.statusColorUp.color
+            case .down: return appVM.settings.statusColorFailure.color
+            case .checking: return Color(red: 0.45, green: 0.72, blue: 1.0)
+            case .unknown: return Color(red: 0.28, green: 0.30, blue: 0.33)
+            case .neutral: return appVM.settings.statusColorOffline.color
             }
         }
     }
 
-    private func menuBarStatusImage(for status: OverallStatus) -> NSImage {
-        let symbolName = iconName(for: status)
-        let config = NSImage.SymbolConfiguration(pointSize: 14, weight: .semibold)
-        let base = NSImage(systemSymbolName: symbolName, accessibilityDescription: nil)?
-            .withSymbolConfiguration(config) ?? NSImage()
-
-        let nsColor = NSColor(iconColor(for: status))
-        let colorConfig = NSImage.SymbolConfiguration(hierarchicalColor: nsColor)
-        let colored = base.withSymbolConfiguration(colorConfig) ?? base
-        colored.isTemplate = false
-        return colored
-    }
 }

@@ -1,8 +1,8 @@
 import Foundation
 
 protocol MonitorStoreProtocol {
-    func loadMonitors() -> [WebsiteMonitor]
-    func saveMonitors(_ monitors: [WebsiteMonitor])
+    func loadMonitors() -> [SiteMonitor]
+    func saveMonitors(_ monitors: [SiteMonitor])
     func loadSettings() -> AppSettings
     func saveSettings(_ settings: AppSettings)
 }
@@ -16,12 +16,12 @@ final class MonitorStore: MonitorStoreProtocol {
         self.defaults = defaults
     }
 
-    func loadMonitors() -> [WebsiteMonitor] {
+    func loadMonitors() -> [SiteMonitor] {
         guard let data = defaults.data(forKey: monitorsKey) else { return [] }
-        return (try? JSONDecoder().decode([WebsiteMonitor].self, from: data)) ?? []
+        return (try? JSONDecoder().decode([SiteMonitor].self, from: data)) ?? []
     }
 
-    func saveMonitors(_ monitors: [WebsiteMonitor]) {
+    func saveMonitors(_ monitors: [SiteMonitor]) {
         if let data = try? JSONEncoder().encode(monitors) {
             defaults.set(data, forKey: monitorsKey)
         }

@@ -3,7 +3,7 @@ import SwiftUI
 struct SiteManagerView: View {
     @EnvironmentObject var vm: AppViewModel
     @State private var showAdd = false
-    @State private var editing: WebsiteMonitor?
+    @State private var editing: SiteMonitor?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -85,7 +85,17 @@ struct SiteManagerView: View {
         .sheet(isPresented: $showAdd) {
             MonitorFormView(
                 mode: .add,
-                monitor: WebsiteMonitor(url: URL(string: "https://example.com")!, displayName: "", isEnabled: true, method: .head, body: "", headers: [], allowInsecureSSL: false, thresholdMs: 2000, keyword: "")
+                monitor: SiteMonitor(
+                    url: URL(string: "https://example.com")!,
+                    displayName: "",
+                    isEnabled: true,
+                    method: vm.settings.defaultMethod,
+                    body: "",
+                    headers: [],
+                    allowInsecureSSL: false,
+                    thresholdMs: vm.settings.defaultThresholdMs,
+                    keyword: ""
+                )
             ) { draft, rawURL in
                 vm.addMonitor(draft, rawURL: rawURL)
             }
@@ -103,17 +113,17 @@ struct SiteManagerView: View {
         return "\(total) Sites · \(active) Active · \(upPercent)% Up"
     }
 
-    private func statusColor(for status: WebsiteStatus) -> Color {
+    private func statusColor(for status: SiteStatus) -> Color {
         switch status {
-        case .up: return .green
-        case .down: return .red
-        case .checking: return .yellow
-        case .paused: return .gray
-        case .unknown: return .gray.opacity(0.55)
+        case .up: return vm.settings.statusColorUp.color
+        case .down: return vm.settings.statusColorFailure.color
+        case .checking: return vm.settings.statusColorSlow.color
+        case .paused: return vm.settings.statusColorOffline.color
+        case .unknown: return vm.settings.statusColorOffline.color.opacity(0.55)
         }
     }
 
-    private func timeLabel(for status: WebsiteStatus) -> String {
+    private func timeLabel(for status: SiteStatus) -> String {
         switch status {
         case .up(_, let ms, _): return "\(ms) ms"
         case .down(_, _, let ms, _): return ms.map { "\($0) ms" } ?? "--"

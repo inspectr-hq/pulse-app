@@ -2,11 +2,11 @@ import SwiftUI
 
 struct EditMonitorView: View {
     @Environment(\.dismiss) private var dismiss
-    @State private var draft: WebsiteMonitor
+    @State private var draft: SiteMonitor
     @State private var rawURL: String
-    let onSubmit: (WebsiteMonitor) -> Void
+    let onSubmit: (SiteMonitor) -> Void
 
-    init(monitor: WebsiteMonitor, onSubmit: @escaping (WebsiteMonitor) -> Void) {
+    init(monitor: SiteMonitor, onSubmit: @escaping (SiteMonitor) -> Void) {
         _draft = State(initialValue: monitor)
         _rawURL = State(initialValue: monitor.url.absoluteString)
         self.onSubmit = onSubmit

@@ -9,64 +9,84 @@ struct MenuBarContentView: View {
         VStack(spacing: 6) {
             ForEach(vm.monitors.prefix(vm.settings.menuMaxItems)) { monitor in
                 let status = vm.statuses[monitor.id] ?? .unknown
-                VStack(alignment: .leading, spacing: 3) {
-                    HStack(spacing: 8) {
-                        Circle().fill(color(for: status)).frame(width: 11, height: 11)
-                        if vm.settings.showMethodInMenu {
-                            Text(monitor.method.rawValue)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .frame(width: 30, alignment: .leading)
+                Button {
+                    logger.info("Menu click: Monitor row \(monitor.id.uuidString, privacy: .public)")
+                    Task { await vm.check(monitorID: monitor.id, allowPaused: true, trigger: .manual) }
+                } label: {
+                    VStack(alignment: .leading, spacing: 3) {
+                        HStack(spacing: 8) {
+                            Circle().fill(color(for: status)).frame(width: 11, height: 11)
+                            if vm.settings.showMethodInMenu {
+                                Text(monitor.method.rawValue)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .frame(width: 30, alignment: .leading)
+                            }
+                            Text(monitor.nameOrHost)
+                                .lineLimit(1)
+                            Spacer()
                         }
-                        Text(monitor.nameOrHost)
-                            .lineLimit(1)
-                        Spacer()
-                        if vm.settings.showStatusCodeInMenu {
-                            if let code = statusCode(for: status) {
+
+                        HStack(spacing: 10) {
+                            if vm.settings.showResponseTimeInMenu {
+                                Text(responseTimeLabel(for: status))
+                                    .font(.callout)
+                                    .foregroundStyle(.secondary)
+                                    .frame(width: 70, alignment: .leading)
+                            }
+                            if vm.settings.showLastCheckedInMenu, let checked = checkedAt(for: status) {
+                                Text(timeString(checked))
+                                    .font(.callout)
+                                    .foregroundStyle(.secondary)
+                                    .frame(width: 72, alignment: .leading)
+                            } else if vm.settings.showLastCheckedInMenu {
+                                Text("--:--:--")
+                                    .font(.callout)
+                                    .foregroundStyle(.secondary.opacity(0.5))
+                                    .frame(width: 72, alignment: .leading)
+                            }
+                            Spacer()
+                            if vm.settings.showStatusCodeInMenu, let code = statusCode(for: status) {
                                 Text("\(code)")
                                     .font(.callout)
                                     .foregroundStyle(.secondary)
+                                    .frame(minWidth: 34, alignment: .trailing)
                             }
                         }
                     }
-
-                    HStack(spacing: 10) {
-                        if vm.settings.showResponseTimeInMenu {
-                            Text(responseTimeLabel(for: status))
-                                .font(.callout)
-                                .foregroundStyle(.secondary)
-                                .frame(width: 70, alignment: .leading)
-                        }
-                        if vm.settings.showLastCheckedInMenu, let checked = checkedAt(for: status) {
-                            Text(timeString(checked))
-                                .font(.callout)
-                                .foregroundStyle(.secondary)
-                                .frame(width: 72, alignment: .leading)
-                        } else if vm.settings.showLastCheckedInMenu {
-                            Text("--:--:--")
-                                .font(.callout)
-                                .foregroundStyle(.secondary.opacity(0.5))
-                                .frame(width: 72, alignment: .leading)
-                        }
-                        Spacer()
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .padding(.vertical, 1)
+                .onHover { isHovering in
+                    if isHovering {
+                        NSCursor.pointingHand.push()
+                    } else {
+                        NSCursor.pop()
                     }
                 }
-                .padding(.vertical, 1)
             }
             Divider()
-            menuAction("Ping now…") {
-                logger.info("Menu click: Ping now")
+            menuAction("Check Now…") {
+                logger.info("Menu click: Check now")
                 Task { await vm.checkAll(autoOnly: false) }
             }
+            Divider()
             menuAction("Site Manager") {
                 logger.info("Menu click: Site Manager")
                 WindowManager.shared.showSiteManager(appVM: vm)
             }
             Divider()
+            menuAction("Dashboard") {
+                logger.info("Menu click: Dashboard")
+                WindowManager.shared.showHistoryReports(appVM: vm)
+            }
             menuAction("History Logs") {
                 logger.info("Menu click: History Logs")
                 WindowManager.shared.showHistory(appVM: vm)
             }
+            Divider()
             menuAction("Settings…") {
                 logger.info("Menu click: Settings")
                 WindowManager.shared.showSettings(appVM: vm)
@@ -99,17 +119,17 @@ struct MenuBarContentView: View {
         .padding(.vertical, 2)
     }
 
-    private func color(for status: WebsiteStatus) -> Color {
+    private func color(for status: SiteStatus) -> Color {
         switch status {
-        case .up: return .green
-        case .down: return .red
-        case .checking: return .yellow
-        case .paused: return .gray
-        case .unknown: return .gray.opacity(0.7)
+        case .up: return vm.settings.statusColorUp.color
+        case .down: return vm.settings.statusColorFailure.color
+        case .checking: return vm.settings.statusColorSlow.color
+        case .paused: return vm.settings.statusColorOffline.color
+        case .unknown: return vm.settings.statusColorOffline.color.opacity(0.7)
         }
     }
 
-    private func responseTimeLabel(for status: WebsiteStatus) -> String {
+    private func responseTimeLabel(for status: SiteStatus) -> String {
         switch status {
         case .up(_, let ms, _):
             return "\(ms) ms"
@@ -124,7 +144,7 @@ struct MenuBarContentView: View {
         }
     }
 
-    private func statusCode(for status: WebsiteStatus) -> Int? {
+    private func statusCode(for status: SiteStatus) -> Int? {
         switch status {
         case .up(let code, _, _):
             return code
@@ -135,7 +155,7 @@ struct MenuBarContentView: View {
         }
     }
 
-    private func checkedAt(for status: WebsiteStatus) -> Date? {
+    private func checkedAt(for status: SiteStatus) -> Date? {
         switch status {
         case .up(_, _, let checked):
             return checked

@@ -1,44 +1,71 @@
 import Foundation
 import OSLog
 import SwiftUI
+import AppKit
+import Network
+import UserNotifications
 
 @MainActor
 final class AppViewModel: ObservableObject {
-    @Published var monitors: [WebsiteMonitor]
+    @Published var monitors: [SiteMonitor]
     @Published var settings: AppSettings
-    @Published var statuses: [UUID: WebsiteStatus] = [:]
+    @Published var statuses: [UUID: SiteStatus] = [:]
     @Published var showSiteManager = false
     @Published var showHistory = false
 
-    private let checker: WebsiteChecking
+    private let checker: SiteChecking
     private let monitorStore: MonitorStoreProtocol
     private let historyStore: HistoryStoreProtocol
+    private let webhookDispatcher: WebhookDispatching
     private let scheduler = MonitorScheduler()
     private let launchAtLogin: LaunchAtLoginControlling
+    private let notifications: NotificationDispatching
     private let logger = Logger(subsystem: "dev.pulse.app", category: "AppViewModel")
+    private let pathMonitor = NWPathMonitor()
+    private let pathQueue = DispatchQueue(label: "dev.pulse.app.path-monitor")
 
     private var inFlight: Set<UUID> = []
-    private(set) var previousStatuses: [UUID: WebsiteStatus] = [:]
+    private(set) var previousStatuses: [UUID: SiteStatus] = [:]
+    private var consecutiveFailures: [UUID: Int] = [:]
+    private var monitorsInAlertingState: Set<UUID> = []
+    private var hasStarted = false
+    private var isNetworkReachable = true
 
     init(
-        checker: WebsiteChecking = WebsiteChecker(),
+        checker: SiteChecking = SiteChecker(),
         monitorStore: MonitorStoreProtocol = MonitorStore(),
         historyStore: HistoryStoreProtocol = HistoryStore(),
-        launchAtLogin: LaunchAtLoginControlling = LaunchAtLoginService()
+        webhookDispatcher: WebhookDispatching = WebhookEngine(),
+        launchAtLogin: LaunchAtLoginControlling = LaunchAtLoginService(),
+        notifications: NotificationDispatching = NotificationCenterDispatcher()
     ) {
         self.checker = checker
         self.monitorStore = monitorStore
         self.historyStore = historyStore
+        self.webhookDispatcher = webhookDispatcher
         self.launchAtLogin = launchAtLogin
+        self.notifications = notifications
         self.monitors = monitorStore.loadMonitors()
         self.settings = monitorStore.loadSettings()
+        migrateLegacyWebhookSettingsIfNeeded()
 
         for monitor in monitors {
             statuses[monitor.id] = monitor.isEnabled ? .unknown : .paused
         }
+        updateDockBadge()
+        startPathMonitoring()
+    }
+
+    deinit {
+        pathMonitor.cancel()
     }
 
     func start() {
+        guard !hasStarted else {
+            logger.info("start() ignored; already started")
+            return
+        }
+        hasStarted = true
         logger.info("start() called; interval=\(self.settings.pingIntervalSeconds)")
         Task {
             await scheduler.start(intervalSeconds: settings.pingIntervalSeconds) { [weak self] in
@@ -92,7 +119,7 @@ final class AppViewModel: ObservableObject {
             return "Please enter a valid URL."
         }
 
-        let monitor = WebsiteMonitor(url: url, displayName: name)
+        let monitor = SiteMonitor(url: url, displayName: name)
         monitors.append(monitor)
         statuses[monitor.id] = .unknown
         persistMonitors()
@@ -100,7 +127,7 @@ final class AppViewModel: ObservableObject {
         return nil
     }
 
-    func addMonitor(_ draft: WebsiteMonitor, rawURL: String) -> String? {
+    func addMonitor(_ draft: SiteMonitor, rawURL: String) -> String? {
         guard let url = URLInput.normalize(rawURL), url.host != nil else {
             return "Please enter a valid URL."
         }
@@ -109,40 +136,66 @@ final class AppViewModel: ObservableObject {
         monitors.append(monitor)
         statuses[monitor.id] = monitor.isEnabled ? .unknown : .paused
         persistMonitors()
+        updateDockBadge()
         Task { await check(monitorID: monitor.id, allowPaused: true, trigger: .manual) }
         return nil
     }
 
-    func updateMonitor(_ updated: WebsiteMonitor) {
+    func updateMonitor(_ updated: SiteMonitor) {
         guard let idx = monitors.firstIndex(where: { $0.id == updated.id }) else { return }
         monitors[idx] = updated
         statuses[updated.id] = updated.isEnabled ? (statuses[updated.id] == .paused ? .unknown : statuses[updated.id] ?? .unknown) : .paused
         persistMonitors()
+        updateDockBadge()
     }
 
     func removeMonitor(id: UUID) {
         monitors.removeAll { $0.id == id }
         statuses.removeValue(forKey: id)
         previousStatuses.removeValue(forKey: id)
+        consecutiveFailures.removeValue(forKey: id)
+        monitorsInAlertingState.remove(id)
         persistMonitors()
+        updateDockBadge()
     }
 
     func setEnabled(_ enabled: Bool, for id: UUID) {
         guard let idx = monitors.firstIndex(where: { $0.id == id }) else { return }
         monitors[idx].isEnabled = enabled
         statuses[id] = enabled ? .unknown : .paused
+        if !enabled {
+            consecutiveFailures[id] = 0
+            monitorsInAlertingState.remove(id)
+        }
         persistMonitors()
+        updateDockBadge()
     }
 
     func checkAll(autoOnly: Bool = false) async {
+        if autoOnly && shouldPauseAutomaticChecks {
+            logger.info("checkAll(autoOnly=true) skipped; network unavailable")
+            return
+        }
         let targets = monitors.filter { autoOnly ? $0.isEnabled : true }
         let trigger: HistoryTrigger = autoOnly ? .automatic : .manual
         logger.info("checkAll(autoOnly=\(autoOnly, privacy: .public)) targets=\(targets.count)")
-        await withTaskGroup(of: Void.self) { group in
-            for monitor in targets {
-                group.addTask { [weak self] in
-                    await self?.check(monitorID: monitor.id, allowPaused: !autoOnly, trigger: trigger)
+
+        let delaySeconds = max(0, settings.staggerRequestsSeconds)
+        if delaySeconds == 0 {
+            await withTaskGroup(of: Void.self) { group in
+                for monitor in targets {
+                    group.addTask { [weak self] in
+                        await self?.check(monitorID: monitor.id, allowPaused: !autoOnly, trigger: trigger)
+                    }
                 }
+            }
+            return
+        }
+
+        for (index, monitor) in targets.enumerated() {
+            await check(monitorID: monitor.id, allowPaused: !autoOnly, trigger: trigger)
+            if index < (targets.count - 1) {
+                try? await Task.sleep(for: .seconds(delaySeconds))
             }
         }
     }
@@ -167,7 +220,7 @@ final class AppViewModel: ObservableObject {
         statuses[monitorID] = .checking
 
         let result = await checker.check(monitor)
-        let finalStatus: WebsiteStatus
+        let finalStatus: SiteStatus
         if monitor.isEnabled {
             finalStatus = result.status
         } else {
@@ -178,16 +231,25 @@ final class AppViewModel: ObservableObject {
 
         previousStatuses[monitorID] = previousBeforeChecking
         statuses[monitorID] = finalStatus
+        updateDockBadge()
         logger.info("check done monitor=\(monitor.id.uuidString, privacy: .public)")
+
+        handleAlertTransitions(
+            monitor: monitor,
+            current: result.status,
+            trigger: trigger
+        )
 
         if case .up(let code, let duration, let checkedAt) = result.status {
             historyStore.append(
                 HistoryEvent(timestamp: checkedAt, monitorID: monitor.id, monitorName: monitor.nameOrHost, url: monitor.url.absoluteString, method: result.methodUsed.rawValue, status: "OK", statusCode: code, durationMs: duration, reason: nil, trigger: trigger),
+                retentionPolicy: settings.historyRetentionPolicy,
                 maxEvents: settings.historyRetentionMaxEvents
             )
         } else if case .down(let reason, let code, let duration, let checkedAt) = result.status {
             historyStore.append(
                 HistoryEvent(timestamp: checkedAt, monitorID: monitor.id, monitorName: monitor.nameOrHost, url: monitor.url.absoluteString, method: result.methodUsed.rawValue, status: "Down", statusCode: code, durationMs: duration, reason: reason, trigger: trigger),
+                retentionPolicy: settings.historyRetentionPolicy,
                 maxEvents: settings.historyRetentionMaxEvents
             )
         }
@@ -196,8 +258,10 @@ final class AppViewModel: ObservableObject {
     }
 
     func saveSettings() {
+        migrateLegacyWebhookSettingsIfNeeded()
         monitorStore.saveSettings(settings)
         launchAtLogin.setEnabled(settings.launchAtLogin)
+        updateDockBadge()
         Task {
             await scheduler.start(intervalSeconds: settings.pingIntervalSeconds) { [weak self] in
                 await self?.checkAll(autoOnly: true)
@@ -207,5 +271,279 @@ final class AppViewModel: ObservableObject {
 
     private func persistMonitors() {
         monitorStore.saveMonitors(monitors)
+    }
+
+    private func maybeSendWebhookTransition(previous: SiteStatus, current: SiteStatus, monitor: SiteMonitor, trigger: HistoryTrigger) {
+        guard monitor.isEnabled else { return }
+        guard settings.webhookEnabled else { return }
+
+        let previousStable = stableStatus(previous)
+        let currentStable = stableStatus(current)
+        let event: WebhookTransitionEvent?
+        let eventStatus: String?
+
+        switch (previousStable, currentStable) {
+        case (.up, .down):
+            event = buildTransitionEvent(
+                message: "\(monitor.nameOrHost) is down",
+                status: "down",
+                current: current,
+                monitor: monitor,
+                trigger: trigger
+            )
+            eventStatus = "down"
+        case (.down, .up):
+            event = buildTransitionEvent(
+                message: "\(monitor.nameOrHost) recovered",
+                status: "up",
+                current: current,
+                monitor: monitor,
+                trigger: trigger
+            )
+            eventStatus = "up"
+        default:
+            event = nil
+            eventStatus = nil
+        }
+
+        guard let event, let eventStatus else { return }
+
+        for config in matchingWebhookConfigs(for: monitor.id, status: eventStatus) {
+            webhookDispatcher.sendTransition(event: event, config: config)
+        }
+    }
+
+    private func buildTransitionEvent(message: String, status: String, current: SiteStatus, monitor: SiteMonitor, trigger: HistoryTrigger) -> WebhookTransitionEvent {
+        let code: Int?
+        let ms: Int?
+        switch current {
+        case .up(let statusCode, let responseMs, _):
+            code = statusCode
+            ms = responseMs
+        case .down(_, let statusCode, let responseMs, _):
+            code = statusCode
+            ms = responseMs
+        case .unknown, .checking, .paused:
+            code = nil
+            ms = nil
+        }
+
+        return WebhookTransitionEvent(
+            message: message,
+            monitorName: monitor.nameOrHost,
+            monitorURL: monitor.url.absoluteString,
+            status: status,
+            trigger: trigger.rawValue,
+            statusCode: code,
+            responseMs: ms,
+            timestamp: Date()
+        )
+    }
+
+    private enum StableStatus {
+        case up
+        case down
+        case other
+    }
+
+    private func stableStatus(_ status: SiteStatus) -> StableStatus {
+        switch status {
+        case .up: return .up
+        case .down: return .down
+        case .unknown, .checking, .paused: return .other
+        }
+    }
+
+    private var shouldPauseAutomaticChecks: Bool {
+        settings.pausePingWhen == .offline && !isNetworkReachable
+    }
+
+    private func startPathMonitoring() {
+        pathMonitor.pathUpdateHandler = { [weak self] path in
+            Task { @MainActor [weak self] in
+                self?.isNetworkReachable = (path.status == .satisfied)
+            }
+        }
+        pathMonitor.start(queue: pathQueue)
+    }
+
+    private func handleAlertTransitions(monitor: SiteMonitor, current: SiteStatus, trigger: HistoryTrigger) {
+        guard monitor.isEnabled else { return }
+
+        let previousFailures = consecutiveFailures[monitor.id, default: 0]
+        let failureThreshold = max(1, settings.failuresToAlert)
+        let wasAlerting = monitorsInAlertingState.contains(monitor.id)
+
+        let currentFailures: Int
+        switch current {
+        case .down:
+            currentFailures = previousFailures + 1
+        case .up, .unknown, .checking, .paused:
+            currentFailures = 0
+        }
+        consecutiveFailures[monitor.id] = currentFailures
+        let isAlerting = currentFailures >= failureThreshold
+
+        if !wasAlerting && isAlerting {
+            maybeSendWebhookTransition(
+                previous: .up(statusCode: 200, responseTimeMs: 0, checkedAt: Date()),
+                current: current,
+                monitor: monitor,
+                trigger: trigger
+            )
+            if case .down(let reason, let code, _, _) = current {
+                let at = notificationTimestampText()
+                notifications.send(
+                    title: "\(monitor.nameOrHost) is down",
+                    body: (code.map { "\(reason) (\($0))" } ?? reason) + "\nAt: \(at)"
+                )
+            }
+            monitorsInAlertingState.insert(monitor.id)
+            return
+        }
+
+        if wasAlerting, case .up = current {
+            maybeSendWebhookTransition(
+                previous: .down(reason: "Failure threshold reached", statusCode: nil, responseTimeMs: nil, checkedAt: Date()),
+                current: current,
+                monitor: monitor,
+                trigger: trigger
+            )
+            let at = notificationTimestampText()
+            notifications.send(
+                title: "\(monitor.nameOrHost) recovered",
+                body: "Site is reachable again.\nAt: \(at)"
+            )
+            monitorsInAlertingState.remove(monitor.id)
+        }
+    }
+
+    private func notificationTimestampText() -> String {
+        Date.now.formatted(date: .abbreviated, time: .standard)
+    }
+
+    private func updateDockBadge() {
+        guard NSApp != nil else {
+            return
+        }
+        guard settings.showAlertBadgeOnDockIcon else {
+            NSApp.dockTile.badgeLabel = nil
+            return
+        }
+
+        let alertCount = monitors.reduce(into: 0) { count, monitor in
+            guard monitor.isEnabled else { return }
+            let status = statuses[monitor.id] ?? .unknown
+            if isAlertingStatus(status) {
+                count += 1
+            }
+        }
+
+        NSApp.dockTile.badgeLabel = alertCount > 0 ? "\(alertCount)" : nil
+    }
+
+    private func isAlertingStatus(_ status: SiteStatus) -> Bool {
+        switch status {
+        case .down:
+            return true
+        case .up(_, let responseMs, _):
+            return responseMs > settings.defaultThresholdMs
+        case .unknown, .checking, .paused:
+            return false
+        }
+    }
+
+    private func matchingWebhookConfigs(for monitorID: UUID, status: String) -> [WebhookConfig] {
+        settings.webhookConfigs.filter { config in
+            guard config.isEnabled else { return false }
+            guard !config.url.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return false }
+
+            let appliesToStatus: Bool = {
+                switch status {
+                case "down":
+                    return true
+                case "up":
+                    return config.sendOn == .alertingAndRecovery
+                default:
+                    return false
+                }
+            }()
+            guard appliesToStatus else { return false }
+
+            switch config.scope {
+            case .allSites:
+                return true
+            case .selectedSites:
+                return config.monitorIDs.contains(monitorID)
+            }
+        }
+    }
+
+    private func migrateLegacyWebhookSettingsIfNeeded() {
+        if !settings.webhookConfigs.isEmpty { return }
+        let hasLegacyData =
+            !settings.webhookURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
+            settings.webhookEnabled
+        guard hasLegacyData else { return }
+
+        let config = WebhookConfig(
+            name: "Primary Webhook",
+            isEnabled: settings.webhookEnabled,
+            url: settings.webhookURL,
+            method: settings.webhookMethod,
+            sendOn: settings.webhookSendOn,
+            payloadTemplate: settings.webhookPayloadTemplate,
+            maxRetries: settings.webhookMaxRetries,
+            initialBackoffSeconds: settings.webhookInitialBackoffSeconds,
+            scope: .allSites,
+            monitorIDs: []
+        )
+        settings.webhookConfigs = [config]
+    }
+}
+
+protocol NotificationDispatching {
+    func send(title: String, body: String)
+}
+
+final class NotificationCenterDispatcher: NotificationDispatching {
+    private let center: UNUserNotificationCenter
+
+    init(center: UNUserNotificationCenter = .current()) {
+        self.center = center
+    }
+
+    func send(title: String, body: String) {
+        center.getNotificationSettings { [weak center] settings in
+            guard let center else { return }
+
+            let schedule: () -> Void = {
+                let content = UNMutableNotificationContent()
+                content.title = title
+                content.body = body
+                content.sound = .default
+                let request = UNNotificationRequest(
+                    identifier: UUID().uuidString,
+                    content: content,
+                    trigger: nil
+                )
+                center.add(request)
+            }
+
+            switch settings.authorizationStatus {
+            case .authorized, .provisional, .ephemeral:
+                schedule()
+            case .notDetermined:
+                center.requestAuthorization(options: [.alert, .sound]) { granted, _ in
+                    if granted {
+                        schedule()
+                    }
+                }
+            case .denied:
+                break
+            @unknown default:
+                break
+            }
+        }
     }
 }
