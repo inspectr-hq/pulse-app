@@ -241,7 +241,7 @@ private final class SpyHistoryStore: HistoryStoreProtocol {
 
     func loadEvents() -> [HistoryEvent] { events }
 
-    func append(_ event: HistoryEvent, maxEvents: Int) {
+    func append(_ event: HistoryEvent, retentionPolicy: HistoryRetentionPolicy, maxEvents: Int) {
         events.append(event)
     }
 

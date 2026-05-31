@@ -37,11 +37,21 @@ enum WebhookSendOn: String, Codable, CaseIterable, Identifiable {
 enum HistoryRetentionPolicy: String, Codable, CaseIterable, Identifiable {
     case oneHour = "1h"
     case oneDay = "1d"
-    case oneWeek = "1w"
     case oneMonth = "1m"
-    case unlimited = "Unlimited"
+    case threeMonths = "3m"
+    case unlimited = "unlimited"
 
     var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .oneHour: return "1 hour"
+        case .oneDay: return "1 day"
+        case .oneMonth: return "1 month"
+        case .threeMonths: return "3 months"
+        case .unlimited: return "Unlimited"
+        }
+    }
 
     var cutoffDate: Date? {
         let now = Date()
@@ -50,10 +60,10 @@ enum HistoryRetentionPolicy: String, Codable, CaseIterable, Identifiable {
             return now.addingTimeInterval(-3600)
         case .oneDay:
             return now.addingTimeInterval(-86400)
-        case .oneWeek:
-            return now.addingTimeInterval(-604800)
         case .oneMonth:
             return now.addingTimeInterval(-30 * 86400)
+        case .threeMonths:
+            return now.addingTimeInterval(-90 * 86400)
         case .unlimited:
             return nil
         }

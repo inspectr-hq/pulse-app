@@ -78,7 +78,7 @@ struct SettingsView: View {
                 .frame(width: 427)
                 .frame(maxWidth: .infinity, alignment: .center)
             
-            alignedRow("Ping Interval:") {
+            alignedRow("Check Interval:") {
                 HStack(spacing: 8) {
                     TextField("900", value: $vm.settings.pingIntervalSeconds, format: .number)
                         .textFieldStyle(.roundedBorder)
@@ -120,7 +120,7 @@ struct SettingsView: View {
             alignedRow("History Retention:") {
                 Picker("", selection: $vm.settings.historyRetentionPolicy) {
                     ForEach(HistoryRetentionPolicy.allCases) { policy in
-                        Text(policy.rawValue).tag(policy)
+                        Text(policy.label).tag(policy)
                     }
                 }
                 .labelsHidden()
