@@ -16,7 +16,7 @@ Pulse helps you:
 
 ## What Pulse Does Today
 
-- Native macOS menu bar app (`SwiftUI`, `MenuBarExtra`, macOS 13+)
+- Native macOS menu bar app (`SwiftUI`, `MenuBarExtra`, macOS 15+)
 - Multi-site monitoring with per-site method/threshold/keyword
 - Automatic checks (default every `900` seconds)
 - Manual checks from menu and site manager
@@ -65,7 +65,7 @@ This section documents each setting and whether it currently has active runtime 
 
 ### General
 
-- `Start at login
+- `Start at login`
   - Behavior: Calls `SMAppService.mainApp.register()` / `unregister()` when settings are saved.
 
 - `Show alert badge`
@@ -163,7 +163,7 @@ This section documents each setting and whether it currently has active runtime 
 
 ### History
 
-- `History retention` (`1h`, `1d`, `1w`, `1m`, `Unlimited`)
+- `History retention` (`1h`, `1d`, `1m`, `3m`, `Unlimited`)
   - Status: Implemented
   - Behavior: Applies rolling time-window pruning when new history events are appended.
   - Default: `1m`
@@ -189,17 +189,13 @@ This section documents each setting and whether it currently has active runtime 
 
 ## Build & Test
 
-From project root:
+From repository root:
 
 ```bash
+cd app
 swift build
 swift test
 ```
-
-## First Launch & Security
-
-If you installed Pulse from source or an unsigned build, macOS may warn on first launch.
-Use the steps in `Get Started -> First Launch on macOS`.
 
 ## Relationship to Inspectr
 
