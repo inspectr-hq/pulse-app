@@ -25,13 +25,6 @@ struct MenuBarContentView: View {
                             Text(monitor.nameOrHost)
                                 .lineLimit(1)
                             Spacer()
-                            if vm.settings.showStatusCodeInMenu {
-                                if let code = statusCode(for: status) {
-                                    Text("\(code)")
-                                        .font(.callout)
-                                        .foregroundStyle(.secondary)
-                                }
-                            }
                         }
 
                         HStack(spacing: 10) {
@@ -53,6 +46,12 @@ struct MenuBarContentView: View {
                                     .frame(width: 72, alignment: .leading)
                             }
                             Spacer()
+                            if vm.settings.showStatusCodeInMenu, let code = statusCode(for: status) {
+                                Text("\(code)")
+                                    .font(.callout)
+                                    .foregroundStyle(.secondary)
+                                    .frame(minWidth: 34, alignment: .trailing)
+                            }
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)

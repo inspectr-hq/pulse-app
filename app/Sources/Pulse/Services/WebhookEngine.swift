@@ -12,7 +12,7 @@ struct WebhookTransitionEvent {
 }
 
 protocol WebhookDispatching {
-    func sendTransition(event: WebhookTransitionEvent, settings: AppSettings)
+    func sendTransition(event: WebhookTransitionEvent, config: WebhookConfig)
 }
 
 final class WebhookEngine: WebhookDispatching {
@@ -22,22 +22,22 @@ final class WebhookEngine: WebhookDispatching {
         self.transport = transport
     }
 
-    func sendTransition(event: WebhookTransitionEvent, settings: AppSettings) {
-        guard settings.webhookEnabled,
-              let url = URL(string: settings.webhookURL),
-              !settings.webhookURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+    func sendTransition(event: WebhookTransitionEvent, config: WebhookConfig) {
+        guard config.isEnabled,
+              let url = URL(string: config.url),
+              !config.url.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
 
-        let payload = buildPayload(template: settings.webhookPayloadTemplate, event: event)
-        let attempts = max(1, settings.webhookMaxRetries + 1)
-        let backoff = max(0.1, settings.webhookInitialBackoffSeconds)
+        let payload = buildPayload(template: config.payloadTemplate, event: event)
+        let attempts = max(1, config.maxRetries + 1)
+        let backoff = max(0.1, config.initialBackoffSeconds)
 
         Task.detached(priority: .utility) { [transport] in
             for attempt in 0..<attempts {
                 var request = URLRequest(url: url)
-                request.httpMethod = settings.webhookMethod.rawValue
+                request.httpMethod = config.method.rawValue
                 request.setValue("application/json", forHTTPHeaderField: "Content-Type")
                 request.timeoutInterval = 10
-                if settings.webhookMethod != .head {
+                if config.method != .head {
                     request.httpBody = payload.data(using: .utf8)
                 }
 

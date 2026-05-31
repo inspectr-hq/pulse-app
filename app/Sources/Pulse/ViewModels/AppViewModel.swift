@@ -47,6 +47,7 @@ final class AppViewModel: ObservableObject {
         self.notifications = notifications
         self.monitors = monitorStore.loadMonitors()
         self.settings = monitorStore.loadSettings()
+        migrateLegacyWebhookSettingsIfNeeded()
 
         for monitor in monitors {
             statuses[monitor.id] = monitor.isEnabled ? .unknown : .paused
@@ -257,6 +258,7 @@ final class AppViewModel: ObservableObject {
     }
 
     func saveSettings() {
+        migrateLegacyWebhookSettingsIfNeeded()
         monitorStore.saveSettings(settings)
         launchAtLogin.setEnabled(settings.launchAtLogin)
         updateDockBadge()
@@ -273,10 +275,12 @@ final class AppViewModel: ObservableObject {
 
     private func maybeSendWebhookTransition(previous: WebsiteStatus, current: WebsiteStatus, monitor: WebsiteMonitor, trigger: HistoryTrigger) {
         guard monitor.isEnabled else { return }
+        guard settings.webhookEnabled else { return }
 
         let previousStable = stableStatus(previous)
         let currentStable = stableStatus(current)
         let event: WebhookTransitionEvent?
+        let eventStatus: String?
 
         switch (previousStable, currentStable) {
         case (.up, .down):
@@ -287,7 +291,8 @@ final class AppViewModel: ObservableObject {
                 monitor: monitor,
                 trigger: trigger
             )
-        case (.down, .up) where settings.webhookSendOn == .alertingAndRecovery:
+            eventStatus = "down"
+        case (.down, .up):
             event = buildTransitionEvent(
                 message: "\(monitor.nameOrHost) recovered",
                 status: "up",
@@ -295,12 +300,17 @@ final class AppViewModel: ObservableObject {
                 monitor: monitor,
                 trigger: trigger
             )
+            eventStatus = "up"
         default:
             event = nil
+            eventStatus = nil
         }
 
-        guard let event else { return }
-        webhookDispatcher.sendTransition(event: event, settings: settings)
+        guard let event, let eventStatus else { return }
+
+        for config in matchingWebhookConfigs(for: monitor.id, status: eventStatus) {
+            webhookDispatcher.sendTransition(event: event, config: config)
+        }
     }
 
     private func buildTransitionEvent(message: String, status: String, current: WebsiteStatus, monitor: WebsiteMonitor, trigger: HistoryTrigger) -> WebhookTransitionEvent {
@@ -438,6 +448,54 @@ final class AppViewModel: ObservableObject {
         case .unknown, .checking, .paused:
             return false
         }
+    }
+
+    private func matchingWebhookConfigs(for monitorID: UUID, status: String) -> [WebhookConfig] {
+        settings.webhookConfigs.filter { config in
+            guard config.isEnabled else { return false }
+            guard !config.url.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return false }
+
+            let appliesToStatus: Bool = {
+                switch status {
+                case "down":
+                    return true
+                case "up":
+                    return config.sendOn == .alertingAndRecovery
+                default:
+                    return false
+                }
+            }()
+            guard appliesToStatus else { return false }
+
+            switch config.scope {
+            case .allSites:
+                return true
+            case .selectedSites:
+                return config.monitorIDs.contains(monitorID)
+            }
+        }
+    }
+
+    private func migrateLegacyWebhookSettingsIfNeeded() {
+        if !settings.webhookConfigs.isEmpty { return }
+        let hasLegacyData =
+            !settings.webhookURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
+            settings.webhookEnabled
+        guard hasLegacyData else { return }
+
+        let config = WebhookConfig(
+            name: "Primary Webhook",
+            isEnabled: settings.webhookEnabled,
+            url: settings.webhookURL,
+            method: settings.webhookMethod,
+            sendOn: settings.webhookSendOn,
+            payloadTemplate: settings.webhookPayloadTemplate,
+            maxRetries: settings.webhookMaxRetries,
+            initialBackoffSeconds: settings.webhookInitialBackoffSeconds,
+            scope: .allSites,
+            monitorIDs: []
+        )
+        settings.webhookConfigs = [config]
     }
 }
 

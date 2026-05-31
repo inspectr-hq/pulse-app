@@ -34,6 +34,38 @@ enum WebhookSendOn: String, Codable, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
+enum WebhookScope: String, Codable, CaseIterable, Identifiable {
+    case allSites = "All sites"
+    case selectedSites = "Selected sites"
+
+    var id: String { rawValue }
+}
+
+struct WebhookConfig: Identifiable, Codable, Equatable {
+    var id: UUID = UUID()
+    var name: String = "Webhook"
+    var isEnabled: Bool = true
+    var url: String = ""
+    var method: HTTPMethod = .post
+    var sendOn: WebhookSendOn = .alerting
+    var payloadTemplate: String = """
+    {
+      "message": "$MESSAGE",
+      "monitor": "$MONITOR",
+      "status": "$STATUS",
+      "url": "$URL",
+      "trigger": "$TRIGGER",
+      "statusCode": "$STATUS_CODE",
+      "responseMs": "$RESPONSE_MS",
+      "timestamp": "$TIMESTAMP"
+    }
+    """
+    var maxRetries: Int = 3
+    var initialBackoffSeconds: Double = 1.0
+    var scope: WebhookScope = .allSites
+    var monitorIDs: [UUID] = []
+}
+
 enum HistoryRetentionPolicy: String, Codable, CaseIterable, Identifiable {
     case oneHour = "1h"
     case oneDay = "1d"
@@ -94,9 +126,21 @@ struct AppSettings: Codable, Equatable {
     var webhookURL: String = ""
     var webhookMethod: HTTPMethod = .post
     var webhookSendOn: WebhookSendOn = .alerting
-    var webhookPayloadTemplate: String = "{\"message\":\"$MESSAGE\",\"monitor\":\"$MONITOR\",\"status\":\"$STATUS\",\"url\":\"$URL\",\"trigger\":\"$TRIGGER\"}"
+    var webhookPayloadTemplate: String = """
+    {
+      "message": "$MESSAGE",
+      "monitor": "$MONITOR",
+      "status": "$STATUS",
+      "url": "$URL",
+      "trigger": "$TRIGGER",
+      "statusCode": "$STATUS_CODE",
+      "responseMs": "$RESPONSE_MS",
+      "timestamp": "$TIMESTAMP"
+    }
+    """
     var webhookMaxRetries: Int = 3
     var webhookInitialBackoffSeconds: Double = 1.0
+    var webhookConfigs: [WebhookConfig] = []
     var historyRetentionPolicy: HistoryRetentionPolicy = .oneMonth
     // Legacy fallback cap retained for compatibility with old persisted settings.
     var historyRetentionMaxEvents: Int = 5000
