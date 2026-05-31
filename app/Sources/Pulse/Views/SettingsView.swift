@@ -88,25 +88,26 @@ struct SettingsView: View {
                 }
             }
             
-            alignedRow("Pause Ping when:") {
+            alignedRow("Auto Checks:") {
                 Picker("", selection: $vm.settings.pausePingWhen) {
-                    ForEach(PausePingMode.allCases) { mode in
-                        Text(mode.rawValue).tag(mode)
-                    }
+                    Text("Pause when offline").tag(PausePingMode.offline)
+                    Text("Always run").tag(PausePingMode.never)
                 }
                 .labelsHidden()
                 .pickerStyle(.menu)
-                .frame(width: 140, alignment: .leading)
+                .frame(width: 180, alignment: .leading)
+                .help("Controls whether automatic scheduler checks are paused when your Mac is offline. Manual checks always run.")
             }
             
-            alignedRow("Stagger Requests:") {
+            alignedRow("Delay Checks:") {
                 HStack(spacing: 8) {
                     TextField("0", value: $vm.settings.staggerRequestsSeconds, format: .number)
                         .textFieldStyle(.roundedBorder)
                         .frame(width: 80)
-                    Text("seconds between")
+                    Text("seconds between sites")
                         .foregroundStyle(.secondary)
                 }
+                .help("Adds delay between checks during batch runs to reduce burst traffic and rate-limit pressure.")
             }
             
             alignedRow("Failures to Alert:") {

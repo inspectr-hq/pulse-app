@@ -2,6 +2,7 @@ import Foundation
 import OSLog
 import SwiftUI
 import AppKit
+import Network
 
 @MainActor
 final class AppViewModel: ObservableObject {
@@ -17,24 +18,31 @@ final class AppViewModel: ObservableObject {
     private let webhookDispatcher: WebhookDispatching
     private let scheduler = MonitorScheduler()
     private let launchAtLogin: LaunchAtLoginControlling
+    private let notifications: NotificationDispatching
     private let logger = Logger(subsystem: "dev.pulse.app", category: "AppViewModel")
+    private let pathMonitor = NWPathMonitor()
+    private let pathQueue = DispatchQueue(label: "dev.pulse.app.path-monitor")
 
     private var inFlight: Set<UUID> = []
     private(set) var previousStatuses: [UUID: WebsiteStatus] = [:]
+    private var consecutiveFailures: [UUID: Int] = [:]
     private var hasStarted = false
+    private var isNetworkReachable = true
 
     init(
         checker: WebsiteChecking = WebsiteChecker(),
         monitorStore: MonitorStoreProtocol = MonitorStore(),
         historyStore: HistoryStoreProtocol = HistoryStore(),
         webhookDispatcher: WebhookDispatching = WebhookEngine(),
-        launchAtLogin: LaunchAtLoginControlling = LaunchAtLoginService()
+        launchAtLogin: LaunchAtLoginControlling = LaunchAtLoginService(),
+        notifications: NotificationDispatching = NotificationCenterDispatcher()
     ) {
         self.checker = checker
         self.monitorStore = monitorStore
         self.historyStore = historyStore
         self.webhookDispatcher = webhookDispatcher
         self.launchAtLogin = launchAtLogin
+        self.notifications = notifications
         self.monitors = monitorStore.loadMonitors()
         self.settings = monitorStore.loadSettings()
 
@@ -42,6 +50,11 @@ final class AppViewModel: ObservableObject {
             statuses[monitor.id] = monitor.isEnabled ? .unknown : .paused
         }
         updateDockBadge()
+        startPathMonitoring()
+    }
+
+    deinit {
+        pathMonitor.cancel()
     }
 
     func start() {
@@ -137,6 +150,7 @@ final class AppViewModel: ObservableObject {
         monitors.removeAll { $0.id == id }
         statuses.removeValue(forKey: id)
         previousStatuses.removeValue(forKey: id)
+        consecutiveFailures.removeValue(forKey: id)
         persistMonitors()
         updateDockBadge()
     }
@@ -145,19 +159,38 @@ final class AppViewModel: ObservableObject {
         guard let idx = monitors.firstIndex(where: { $0.id == id }) else { return }
         monitors[idx].isEnabled = enabled
         statuses[id] = enabled ? .unknown : .paused
+        if !enabled {
+            consecutiveFailures[id] = 0
+        }
         persistMonitors()
         updateDockBadge()
     }
 
     func checkAll(autoOnly: Bool = false) async {
+        if autoOnly && shouldPauseAutomaticChecks {
+            logger.info("checkAll(autoOnly=true) skipped; network unavailable")
+            return
+        }
         let targets = monitors.filter { autoOnly ? $0.isEnabled : true }
         let trigger: HistoryTrigger = autoOnly ? .automatic : .manual
         logger.info("checkAll(autoOnly=\(autoOnly, privacy: .public)) targets=\(targets.count)")
-        await withTaskGroup(of: Void.self) { group in
-            for monitor in targets {
-                group.addTask { [weak self] in
-                    await self?.check(monitorID: monitor.id, allowPaused: !autoOnly, trigger: trigger)
+
+        let delaySeconds = max(0, settings.staggerRequestsSeconds)
+        if delaySeconds == 0 {
+            await withTaskGroup(of: Void.self) { group in
+                for monitor in targets {
+                    group.addTask { [weak self] in
+                        await self?.check(monitorID: monitor.id, allowPaused: !autoOnly, trigger: trigger)
+                    }
                 }
+            }
+            return
+        }
+
+        for (index, monitor) in targets.enumerated() {
+            await check(monitorID: monitor.id, allowPaused: !autoOnly, trigger: trigger)
+            if index < (targets.count - 1) {
+                try? await Task.sleep(for: .seconds(delaySeconds))
             }
         }
     }
@@ -196,10 +229,9 @@ final class AppViewModel: ObservableObject {
         updateDockBadge()
         logger.info("check done monitor=\(monitor.id.uuidString, privacy: .public)")
 
-        maybeSendWebhookTransition(
-            previous: previousBeforeChecking,
-            current: result.status,
+        handleAlertTransitions(
             monitor: monitor,
+            current: result.status,
             trigger: trigger
         )
 
@@ -303,6 +335,68 @@ final class AppViewModel: ObservableObject {
         case .up: return .up
         case .down: return .down
         case .unknown, .checking, .paused: return .other
+        }
+    }
+
+    private var shouldPauseAutomaticChecks: Bool {
+        settings.pausePingWhen == .offline && !isNetworkReachable
+    }
+
+    private func startPathMonitoring() {
+        pathMonitor.pathUpdateHandler = { [weak self] path in
+            Task { @MainActor [weak self] in
+                self?.isNetworkReachable = (path.status == .satisfied)
+            }
+        }
+        pathMonitor.start(queue: pathQueue)
+    }
+
+    private func handleAlertTransitions(monitor: WebsiteMonitor, current: WebsiteStatus, trigger: HistoryTrigger) {
+        guard monitor.isEnabled else { return }
+
+        let previousFailures = consecutiveFailures[monitor.id, default: 0]
+        let failureThreshold = max(1, settings.failuresToAlert)
+        let wasAlerting = previousFailures >= failureThreshold
+
+        let currentFailures: Int
+        switch current {
+        case .down:
+            currentFailures = previousFailures + 1
+        case .up, .unknown, .checking, .paused:
+            currentFailures = 0
+        }
+        consecutiveFailures[monitor.id] = currentFailures
+        let isAlerting = currentFailures >= failureThreshold
+
+        if !wasAlerting && isAlerting {
+            maybeSendWebhookTransition(
+                previous: .up(statusCode: 200, responseTimeMs: 0, checkedAt: Date()),
+                current: current,
+                monitor: monitor,
+                trigger: trigger
+            )
+            if case .down(let reason, let code, _, _) = current {
+                notifications.send(
+                    title: "\(monitor.nameOrHost) is down",
+                    body: code.map { "\(reason) (\($0))" } ?? reason
+                )
+            }
+            return
+        }
+
+        if wasAlerting, case .up = current {
+            maybeSendWebhookTransition(
+                previous: .down(reason: "Failure threshold reached", statusCode: nil, responseTimeMs: nil, checkedAt: Date()),
+                current: current,
+                monitor: monitor,
+                trigger: trigger
+            )
+            if settings.webhookSendOn == .alertingAndRecovery {
+                notifications.send(
+                    title: "\(monitor.nameOrHost) recovered",
+                    body: "Website is reachable again."
+                )
+            }
         }
     }
 
