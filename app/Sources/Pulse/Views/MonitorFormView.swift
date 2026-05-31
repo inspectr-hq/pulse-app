@@ -16,14 +16,14 @@ struct MonitorFormView: View {
     @Environment(\.dismiss) private var dismiss
 
     let mode: Mode
-    let initialMonitor: WebsiteMonitor
-    let onSubmit: (WebsiteMonitor, String) -> String?
+    let initialMonitor: SiteMonitor
+    let onSubmit: (SiteMonitor, String) -> String?
 
-    @State private var draft: WebsiteMonitor
+    @State private var draft: SiteMonitor
     @State private var rawURL: String
     @State private var errorMessage: String?
 
-    init(mode: Mode, monitor: WebsiteMonitor, onSubmit: @escaping (WebsiteMonitor, String) -> String?) {
+    init(mode: Mode, monitor: SiteMonitor, onSubmit: @escaping (SiteMonitor, String) -> String?) {
         self.mode = mode
         self.initialMonitor = monitor
         self.onSubmit = onSubmit

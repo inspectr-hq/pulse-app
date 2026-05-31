@@ -106,7 +106,7 @@ final class WindowManager {
             backing: .buffered,
             defer: false
         )
-        window.title = "History Reports"
+        window.title = "Dashboard"
         window.contentView = NSHostingView(rootView: view)
         window.isReleasedWhenClosed = false
         let delegate = WindowCloseDelegate { [weak self] in

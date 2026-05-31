@@ -41,7 +41,7 @@ final class AppViewModelBehaviorTests: XCTestCase {
     }
 
     func testUpdateMonitorPersistsChanges() {
-        let monitor = WebsiteMonitor(url: URL(string: "https://a.com")!, displayName: "A")
+        let monitor = SiteMonitor(url: URL(string: "https://a.com")!, displayName: "A")
         let store = SpyMonitorStore(monitors: [monitor])
         let vm = AppViewModel(
             checker: StaticChecker(.up(statusCode: 200, responseTimeMs: 10, checkedAt: Date())),
@@ -62,7 +62,7 @@ final class AppViewModelBehaviorTests: XCTestCase {
     }
 
     func testRemoveMonitorDeletesStateAndPersists() {
-        let monitor = WebsiteMonitor(url: URL(string: "https://a.com")!, displayName: "A")
+        let monitor = SiteMonitor(url: URL(string: "https://a.com")!, displayName: "A")
         let store = SpyMonitorStore(monitors: [monitor])
         let vm = AppViewModel(
             checker: StaticChecker(.up(statusCode: 200, responseTimeMs: 10, checkedAt: Date())),
@@ -100,7 +100,7 @@ final class AppViewModelBehaviorTests: XCTestCase {
     }
 
     func testCheckWritesHistoryEventForUpResult() async {
-        let monitor = WebsiteMonitor(url: URL(string: "https://a.com")!, displayName: "A", isEnabled: true, method: .get)
+        let monitor = SiteMonitor(url: URL(string: "https://a.com")!, displayName: "A", isEnabled: true, method: .get)
         let historySpy = SpyHistoryStore()
         let vm = AppViewModel(
             checker: StaticChecker(.up(statusCode: 200, responseTimeMs: 88, checkedAt: Date(timeIntervalSince1970: 1_700_000_010))),
@@ -125,7 +125,7 @@ final class AppViewModelBehaviorTests: XCTestCase {
     }
 
     func testCheckWritesHistoryEventForDownResult() async {
-        let monitor = WebsiteMonitor(url: URL(string: "https://a.com")!, displayName: "A", isEnabled: true, method: .head)
+        let monitor = SiteMonitor(url: URL(string: "https://a.com")!, displayName: "A", isEnabled: true, method: .head)
         let historySpy = SpyHistoryStore()
         let vm = AppViewModel(
             checker: StaticChecker(.down(reason: "HTTP 500", statusCode: 500, responseTimeMs: 55, checkedAt: Date())),
@@ -148,7 +148,7 @@ final class AppViewModelBehaviorTests: XCTestCase {
     }
 
     func testPausedSiteManualCheckStaysPausedButStillLogsRealResult() async {
-        let paused = WebsiteMonitor(url: URL(string: "https://a.com")!, displayName: "A", isEnabled: false, method: .get)
+        let paused = SiteMonitor(url: URL(string: "https://a.com")!, displayName: "A", isEnabled: false, method: .get)
         let historySpy = SpyHistoryStore()
         let vm = AppViewModel(
             checker: StaticChecker(.up(statusCode: 200, responseTimeMs: 44, checkedAt: Date())),
@@ -167,7 +167,7 @@ final class AppViewModelBehaviorTests: XCTestCase {
     }
 
     func testWebhookTriggeredOnUpToDownTransition() async {
-        let monitor = WebsiteMonitor(url: URL(string: "https://a.com")!, displayName: "A", isEnabled: true, method: .get)
+        let monitor = SiteMonitor(url: URL(string: "https://a.com")!, displayName: "A", isEnabled: true, method: .get)
         let webhookSpy = SpyWebhookDispatcher()
         let vm = AppViewModel(
             checker: StaticChecker(.down(reason: "HTTP 500", statusCode: 500, responseTimeMs: 99, checkedAt: Date())),
@@ -187,7 +187,7 @@ final class AppViewModelBehaviorTests: XCTestCase {
     }
 
     func testWebhookRecoveryTriggeredWhenConfigured() async {
-        let monitor = WebsiteMonitor(url: URL(string: "https://a.com")!, displayName: "A", isEnabled: true, method: .get)
+        let monitor = SiteMonitor(url: URL(string: "https://a.com")!, displayName: "A", isEnabled: true, method: .get)
         let webhookSpy = SpyWebhookDispatcher()
         let vm = AppViewModel(
             checker: StaticChecker(.up(statusCode: 200, responseTimeMs: 22, checkedAt: Date())),
@@ -209,20 +209,20 @@ final class AppViewModelBehaviorTests: XCTestCase {
 }
 
 private final class SpyMonitorStore: MonitorStoreProtocol {
-    private(set) var monitors: [WebsiteMonitor]
+    private(set) var monitors: [SiteMonitor]
     private(set) var settings = AppSettings()
 
     private(set) var savedMonitorsCalls = 0
     private(set) var savedSettingsCalls = 0
     private(set) var lastSavedSettings: AppSettings?
 
-    init(monitors: [WebsiteMonitor]) {
+    init(monitors: [SiteMonitor]) {
         self.monitors = monitors
     }
 
-    func loadMonitors() -> [WebsiteMonitor] { monitors }
+    func loadMonitors() -> [SiteMonitor] { monitors }
 
-    func saveMonitors(_ monitors: [WebsiteMonitor]) {
+    func saveMonitors(_ monitors: [SiteMonitor]) {
         savedMonitorsCalls += 1
         self.monitors = monitors
     }
@@ -265,14 +265,14 @@ private final class SpyWebhookDispatcher: WebhookDispatching {
     }
 }
 
-private struct StaticChecker: WebsiteChecking {
-    let status: WebsiteStatus
+private struct StaticChecker: SiteChecking {
+    let status: SiteStatus
 
-    init(_ status: WebsiteStatus) {
+    init(_ status: SiteStatus) {
         self.status = status
     }
 
-    func check(_ monitor: WebsiteMonitor) async -> WebsiteCheckResult {
-        WebsiteCheckResult(status: status, methodUsed: monitor.method)
+    func check(_ monitor: SiteMonitor) async -> SiteCheckResult {
+        SiteCheckResult(status: status, methodUsed: monitor.method)
     }
 }

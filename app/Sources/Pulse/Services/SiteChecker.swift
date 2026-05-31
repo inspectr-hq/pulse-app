@@ -1,10 +1,10 @@
 import Foundation
 
-protocol WebsiteChecking {
-    func check(_ monitor: WebsiteMonitor) async -> WebsiteCheckResult
+protocol SiteChecking {
+    func check(_ monitor: SiteMonitor) async -> SiteCheckResult
 }
 
-final class WebsiteChecker: WebsiteChecking {
+final class SiteChecker: SiteChecking {
     private let transport: HTTPTransport
 
     init(transport: HTTPTransport = URLSession.shared) {
@@ -15,7 +15,7 @@ final class WebsiteChecker: WebsiteChecking {
         (200...399).contains(code)
     }
 
-    func check(_ monitor: WebsiteMonitor) async -> WebsiteCheckResult {
+    func check(_ monitor: SiteMonitor) async -> SiteCheckResult {
         let start = Date()
         let headFirst = monitor.method == .head
 
@@ -30,7 +30,7 @@ final class WebsiteChecker: WebsiteChecking {
         return await performRequest(monitor: monitor, method: monitor.method, start: start)
     }
 
-    private func performRequest(monitor: WebsiteMonitor, method: HTTPMethod, start: Date) async -> WebsiteCheckResult {
+    private func performRequest(monitor: SiteMonitor, method: HTTPMethod, start: Date) async -> SiteCheckResult {
         var req = URLRequest(url: monitor.url)
         req.httpMethod = method.rawValue
         req.timeoutInterval = 10

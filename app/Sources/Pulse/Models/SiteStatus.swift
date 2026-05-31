@@ -1,6 +1,6 @@
 import Foundation
 
-enum WebsiteStatus: Equatable {
+enum SiteStatus: Equatable {
     case unknown
     case checking
     case up(statusCode: Int, responseTimeMs: Int, checkedAt: Date)

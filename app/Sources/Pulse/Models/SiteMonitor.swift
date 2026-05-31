@@ -14,7 +14,7 @@ struct HeaderEntry: Codable, Equatable, Identifiable {
     var value: String
 }
 
-struct WebsiteMonitor: Identifiable, Codable, Equatable {
+struct SiteMonitor: Identifiable, Codable, Equatable {
     let id: UUID
     var url: URL
     var displayName: String

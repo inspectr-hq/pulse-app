@@ -10,14 +10,14 @@
 		B00100010000000000000001 /* UptimeMenuBarApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100010000000000000001 /* UptimeMenuBarApp.swift */; };
 		B00100010000000000000002 /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100010000000000000002 /* AppSettings.swift */; };
 		B00100010000000000000003 /* HistoryEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100010000000000000003 /* HistoryEvent.swift */; };
-		B00100010000000000000004 /* WebsiteCheckResult.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100010000000000000004 /* WebsiteCheckResult.swift */; };
-		B00100010000000000000005 /* WebsiteMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100010000000000000005 /* WebsiteMonitor.swift */; };
-		B00100010000000000000006 /* WebsiteStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100010000000000000006 /* WebsiteStatus.swift */; };
+		B00100010000000000000004 /* SiteCheckResult.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100010000000000000004 /* SiteCheckResult.swift */; };
+		B00100010000000000000005 /* SiteMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100010000000000000005 /* SiteMonitor.swift */; };
+		B00100010000000000000006 /* SiteStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100010000000000000006 /* SiteStatus.swift */; };
 		B00100010000000000000007 /* HistoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100010000000000000007 /* HistoryStore.swift */; };
 		B00100010000000000000008 /* LaunchAtLoginService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100010000000000000008 /* LaunchAtLoginService.swift */; };
 		B00100010000000000000009 /* MonitorScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100010000000000000009 /* MonitorScheduler.swift */; };
 		B0010001000000000000000A /* MonitorStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0010001000000000000000A /* MonitorStore.swift */; };
-		B0010001000000000000000B /* WebsiteChecker.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0010001000000000000000B /* WebsiteChecker.swift */; };
+		B0010001000000000000000B /* SiteChecker.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0010001000000000000000B /* SiteChecker.swift */; };
 		B0010001000000000000000C /* WindowManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0010001000000000000000C /* WindowManager.swift */; };
 		B0010001000000000000000D /* URLInput.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0010001000000000000000D /* URLInput.swift */; };
 		B0010001000000000000000E /* AppViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0010001000000000000000E /* AppViewModel.swift */; };
@@ -52,14 +52,14 @@
 		F00100010000000000000001 /* UptimeMenuBarApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UptimeMenuBarApp.swift; sourceTree = "<group>"; };
 		F00100010000000000000002 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
 		F00100010000000000000003 /* HistoryEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryEvent.swift; sourceTree = "<group>"; };
-		F00100010000000000000004 /* WebsiteCheckResult.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebsiteCheckResult.swift; sourceTree = "<group>"; };
-		F00100010000000000000005 /* WebsiteMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebsiteMonitor.swift; sourceTree = "<group>"; };
-		F00100010000000000000006 /* WebsiteStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebsiteStatus.swift; sourceTree = "<group>"; };
+		F00100010000000000000004 /* SiteCheckResult.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiteCheckResult.swift; sourceTree = "<group>"; };
+		F00100010000000000000005 /* SiteMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiteMonitor.swift; sourceTree = "<group>"; };
+		F00100010000000000000006 /* SiteStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiteStatus.swift; sourceTree = "<group>"; };
 		F00100010000000000000007 /* HistoryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryStore.swift; sourceTree = "<group>"; };
 		F00100010000000000000008 /* LaunchAtLoginService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchAtLoginService.swift; sourceTree = "<group>"; };
 		F00100010000000000000009 /* MonitorScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonitorScheduler.swift; sourceTree = "<group>"; };
 		F0010001000000000000000A /* MonitorStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonitorStore.swift; sourceTree = "<group>"; };
-		F0010001000000000000000B /* WebsiteChecker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebsiteChecker.swift; sourceTree = "<group>"; };
+		F0010001000000000000000B /* SiteChecker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiteChecker.swift; sourceTree = "<group>"; };
 		F0010001000000000000000C /* WindowManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowManager.swift; sourceTree = "<group>"; };
 		F0010001000000000000000D /* URLInput.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = URLInput.swift; sourceTree = "<group>"; };
 		F0010001000000000000000E /* AppViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppViewModel.swift; sourceTree = "<group>"; };
@@ -137,9 +137,9 @@
 			children = (
 				F00100010000000000000002 /* AppSettings.swift */,
 				F00100010000000000000003 /* HistoryEvent.swift */,
-				F00100010000000000000004 /* WebsiteCheckResult.swift */,
-				F00100010000000000000005 /* WebsiteMonitor.swift */,
-				F00100010000000000000006 /* WebsiteStatus.swift */,
+				F00100010000000000000004 /* SiteCheckResult.swift */,
+				F00100010000000000000005 /* SiteMonitor.swift */,
+				F00100010000000000000006 /* SiteStatus.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -151,7 +151,7 @@
 				F00100010000000000000008 /* LaunchAtLoginService.swift */,
 				F00100010000000000000009 /* MonitorScheduler.swift */,
 				F0010001000000000000000A /* MonitorStore.swift */,
-				F0010001000000000000000B /* WebsiteChecker.swift */,
+				F0010001000000000000000B /* SiteChecker.swift */,
 				F0010001000000000000000C /* WindowManager.swift */,
 				F00100010000000000000019 /* HTTPTransport.swift */,
 				F0010001000000000000001A /* WebhookEngine.swift */,
@@ -315,14 +315,14 @@
 				B00100010000000000000001 /* UptimeMenuBarApp.swift in Sources */,
 				B00100010000000000000002 /* AppSettings.swift in Sources */,
 				B00100010000000000000003 /* HistoryEvent.swift in Sources */,
-				B00100010000000000000004 /* WebsiteCheckResult.swift in Sources */,
-				B00100010000000000000005 /* WebsiteMonitor.swift in Sources */,
-				B00100010000000000000006 /* WebsiteStatus.swift in Sources */,
+				B00100010000000000000004 /* SiteCheckResult.swift in Sources */,
+				B00100010000000000000005 /* SiteMonitor.swift in Sources */,
+				B00100010000000000000006 /* SiteStatus.swift in Sources */,
 				B00100010000000000000007 /* HistoryStore.swift in Sources */,
 				B00100010000000000000008 /* LaunchAtLoginService.swift in Sources */,
 				B00100010000000000000009 /* MonitorScheduler.swift in Sources */,
 				B0010001000000000000000A /* MonitorStore.swift in Sources */,
-				B0010001000000000000000B /* WebsiteChecker.swift in Sources */,
+				B0010001000000000000000B /* SiteChecker.swift in Sources */,
 				B0010001000000000000000C /* WindowManager.swift in Sources */,
 				B0010001000000000000000D /* URLInput.swift in Sources */,
 				B0010001000000000000000E /* AppViewModel.swift in Sources */,

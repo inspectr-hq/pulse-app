@@ -4,18 +4,18 @@ import XCTest
 @MainActor
 final class OverallStatusTests: XCTestCase {
     func testNoEnabledSitesIsNeutral() {
-        let vm = makeVM(monitors: [WebsiteMonitor(url: URL(string: "https://a.com")!, isEnabled: false)])
+        let vm = makeVM(monitors: [SiteMonitor(url: URL(string: "https://a.com")!, isEnabled: false)])
         XCTAssertEqual(vm.overallStatus, .neutral)
     }
 
     func testEnabledUnknownSitesYieldUnknownOverall() {
-        let vm = makeVM(monitors: [WebsiteMonitor(url: URL(string: "https://a.com")!, isEnabled: true)])
+        let vm = makeVM(monitors: [SiteMonitor(url: URL(string: "https://a.com")!, isEnabled: true)])
         XCTAssertEqual(vm.overallStatus, .unknown)
     }
 
     func testDownDominatesOverallStatus() {
-        let up = WebsiteMonitor(url: URL(string: "https://a.com")!, isEnabled: true)
-        let down = WebsiteMonitor(url: URL(string: "https://b.com")!, isEnabled: true)
+        let up = SiteMonitor(url: URL(string: "https://a.com")!, isEnabled: true)
+        let down = SiteMonitor(url: URL(string: "https://b.com")!, isEnabled: true)
         let vm = makeVM(monitors: [up, down])
 
         vm.statuses[up.id] = .up(statusCode: 200, responseTimeMs: 100, checkedAt: Date())
@@ -25,8 +25,8 @@ final class OverallStatusTests: XCTestCase {
     }
 
     func testCheckingBeatsUpWhenNoDown() {
-        let a = WebsiteMonitor(url: URL(string: "https://a.com")!, isEnabled: true)
-        let b = WebsiteMonitor(url: URL(string: "https://b.com")!, isEnabled: true)
+        let a = SiteMonitor(url: URL(string: "https://a.com")!, isEnabled: true)
+        let b = SiteMonitor(url: URL(string: "https://b.com")!, isEnabled: true)
         let vm = makeVM(monitors: [a, b])
 
         vm.statuses[a.id] = .up(statusCode: 200, responseTimeMs: 100, checkedAt: Date())
@@ -36,8 +36,8 @@ final class OverallStatusTests: XCTestCase {
     }
 
     func testPausedSitesDoNotCountAsUpOrDown() {
-        let enabled = WebsiteMonitor(url: URL(string: "https://a.com")!, isEnabled: true)
-        let paused = WebsiteMonitor(url: URL(string: "https://b.com")!, isEnabled: false)
+        let enabled = SiteMonitor(url: URL(string: "https://a.com")!, isEnabled: true)
+        let paused = SiteMonitor(url: URL(string: "https://b.com")!, isEnabled: false)
         let vm = makeVM(monitors: [enabled, paused])
 
         vm.statuses[enabled.id] = .unknown
@@ -46,7 +46,7 @@ final class OverallStatusTests: XCTestCase {
         XCTAssertEqual(vm.overallStatus, .unknown)
     }
 
-    private func makeVM(monitors: [WebsiteMonitor]) -> AppViewModel {
+    private func makeVM(monitors: [SiteMonitor]) -> AppViewModel {
         AppViewModel(
             checker: FakeChecker(),
             monitorStore: FakeMonitorStore(monitors: monitors),
@@ -57,15 +57,15 @@ final class OverallStatusTests: XCTestCase {
 }
 
 private final class FakeMonitorStore: MonitorStoreProtocol {
-    private var storedMonitors: [WebsiteMonitor]
+    private var storedMonitors: [SiteMonitor]
     private var storedSettings = AppSettings()
 
-    init(monitors: [WebsiteMonitor]) {
+    init(monitors: [SiteMonitor]) {
         self.storedMonitors = monitors
     }
 
-    func loadMonitors() -> [WebsiteMonitor] { storedMonitors }
-    func saveMonitors(_ monitors: [WebsiteMonitor]) { storedMonitors = monitors }
+    func loadMonitors() -> [SiteMonitor] { storedMonitors }
+    func saveMonitors(_ monitors: [SiteMonitor]) { storedMonitors = monitors }
     func loadSettings() -> AppSettings { storedSettings }
     func saveSettings(_ settings: AppSettings) { storedSettings = settings }
 }
@@ -80,8 +80,8 @@ private struct FakeLaunchAtLogin: LaunchAtLoginControlling {
     func setEnabled(_ enabled: Bool) {}
 }
 
-private struct FakeChecker: WebsiteChecking {
-    func check(_ monitor: WebsiteMonitor) async -> WebsiteCheckResult {
-        WebsiteCheckResult(status: .up(statusCode: 200, responseTimeMs: 1, checkedAt: Date()), methodUsed: monitor.method)
+private struct FakeChecker: SiteChecking {
+    func check(_ monitor: SiteMonitor) async -> SiteCheckResult {
+        SiteCheckResult(status: .up(statusCode: 200, responseTimeMs: 1, checkedAt: Date()), methodUsed: monitor.method)
     }
 }

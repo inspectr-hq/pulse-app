@@ -119,7 +119,7 @@ struct MenuBarContentView: View {
         .padding(.vertical, 2)
     }
 
-    private func color(for status: WebsiteStatus) -> Color {
+    private func color(for status: SiteStatus) -> Color {
         switch status {
         case .up: return vm.settings.statusColorUp.color
         case .down: return vm.settings.statusColorFailure.color
@@ -129,7 +129,7 @@ struct MenuBarContentView: View {
         }
     }
 
-    private func responseTimeLabel(for status: WebsiteStatus) -> String {
+    private func responseTimeLabel(for status: SiteStatus) -> String {
         switch status {
         case .up(_, let ms, _):
             return "\(ms) ms"
@@ -144,7 +144,7 @@ struct MenuBarContentView: View {
         }
     }
 
-    private func statusCode(for status: WebsiteStatus) -> Int? {
+    private func statusCode(for status: SiteStatus) -> Int? {
         switch status {
         case .up(let code, _, _):
             return code
@@ -155,7 +155,7 @@ struct MenuBarContentView: View {
         }
     }
 
-    private func checkedAt(for status: WebsiteStatus) -> Date? {
+    private func checkedAt(for status: SiteStatus) -> Date? {
         switch status {
         case .up(_, _, let checked):
             return checked

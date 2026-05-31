@@ -6,28 +6,31 @@ struct HistoryReportsView: View {
     @EnvironmentObject var appVM: AppViewModel
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    Text("Dashboard")
-                        .font(.title3)
-                        .fontWeight(.semibold)
-                    Spacer()
-                    Picker("Site", selection: $historyVM.graphSite) {
-                        ForEach(historyVM.availableGraphSites, id: \.self) { site in
-                            Text(site).tag(site)
-                        }
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Dashboard")
+                    .font(.title3)
+                    .fontWeight(.semibold)
+                Spacer()
+                Picker("Site", selection: $historyVM.graphSite) {
+                    ForEach(historyVM.availableGraphSites, id: \.self) { site in
+                        Text(site).tag(site)
                     }
-                    .frame(width: 190)
-                    Picker("Range", selection: $historyVM.graphRange) {
-                        ForEach(HistoryViewModel.GraphRange.allCases) { range in
-                            Text(range.rawValue).tag(range)
-                        }
-                    }
-                    .frame(width: 100)
-                    Button("Refresh") { historyVM.reload() }
                 }
+                .frame(width: 190)
+                Picker("Range", selection: $historyVM.graphRange) {
+                    ForEach(HistoryViewModel.GraphRange.allCases) { range in
+                        Text(range.rawValue).tag(range)
+                    }
+                }
+                .frame(width: 100)
+                Button("Refresh") { historyVM.reload() }
+            }
+            .padding(.horizontal, 14)
+            .padding(.top, 14)
 
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) {
                 HStack(spacing: 10) {
                     metricCard(title: "Uptime", value: String(format: "%.1f%%", historyVM.uptimePercentage), tint: appVM.settings.statusColorUp.color)
                     metricCard(title: "Avg Latency", value: historyVM.averageLatencyMs > 0 ? "\(historyVM.averageLatencyMs) ms" : "-", tint: .secondary)
@@ -102,8 +105,11 @@ struct HistoryReportsView: View {
                 GroupBox("Uptime Timeline") {
                     VStack(alignment: .leading, spacing: 8) {
                         ForEach(historyVM.uptimeTimelines(thresholdMs: appVM.settings.defaultThresholdMs)) { timeline in
+                            let siteStatus = latestStatus(for: timeline.siteName)
                             UptimeTimelineRow(
                                 siteName: timeline.siteName,
+                                statusIconName: iconName(for: siteStatus),
+                                statusIconColor: iconColor(for: siteStatus),
                                 uptimePercentage: timeline.uptimePercentage,
                                 blocks: timeline.blocks,
                                 rangeStartLabel: rangeStartLabel,
@@ -117,10 +123,52 @@ struct HistoryReportsView: View {
                 }
 
                 Spacer(minLength: 0)
+                }
+                .padding(.horizontal, 14)
+                .padding(.bottom, 14)
             }
-            .padding(14)
         }
         .onAppear { historyVM.reload() }
+    }
+
+    private func latestStatus(for siteName: String) -> SiteStatus {
+        guard let monitor = appVM.monitors.first(where: { $0.nameOrHost == siteName }) else {
+            return .unknown
+        }
+        if !monitor.isEnabled {
+            return .paused
+        }
+        return appVM.statuses[monitor.id] ?? .unknown
+    }
+
+    private func iconName(for status: SiteStatus) -> String {
+        switch status {
+        case .up:
+            return "checkmark.circle.fill"
+        case .down:
+            return "xmark.octagon.fill"
+        case .checking:
+            return "clock.fill"
+        case .paused:
+            return "pause.circle.fill"
+        case .unknown:
+            return "questionmark.circle.fill"
+        }
+    }
+
+    private func iconColor(for status: SiteStatus) -> Color {
+        switch status {
+        case .up:
+            return appVM.settings.statusColorUp.color
+        case .down:
+            return appVM.settings.statusColorFailure.color
+        case .checking:
+            return appVM.settings.statusColorSlow.color
+        case .paused:
+            return appVM.settings.statusColorOffline.color
+        case .unknown:
+            return appVM.settings.statusColorOffline.color.opacity(0.7)
+        }
     }
 
     private func metricCard(title: String, value: String, tint: Color) -> some View {
@@ -177,6 +225,8 @@ private struct UptimeTimelineRow: View {
     }
 
     let siteName: String
+    let statusIconName: String
+    let statusIconColor: Color
     let uptimePercentage: Double
     let blocks: [HistoryViewModel.UptimeBlockStatus]
     let rangeStartLabel: String
@@ -194,8 +244,8 @@ private struct UptimeTimelineRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .center) {
-                Image(systemName: "checkmark.circle.fill")
-                    .foregroundStyle(upColor)
+                Image(systemName: statusIconName)
+                    .foregroundStyle(statusIconColor)
                 Text(siteName)
                     .font(.headline)
                 Spacer()

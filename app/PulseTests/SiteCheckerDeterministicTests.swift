@@ -1,11 +1,11 @@
 import XCTest
 @testable import Pulse
 
-final class WebsiteCheckerDeterministicTests: XCTestCase {
+final class SiteCheckerDeterministicTests: XCTestCase {
     func testHeadSuccessReturnsUpUsingHead() async {
         let transport = MockTransport(responses: [.success(statusCode: 200, data: Data())])
-        let checker = WebsiteChecker(transport: transport)
-        let monitor = WebsiteMonitor(url: URL(string: "https://example.com")!, method: .head)
+        let checker = SiteChecker(transport: transport)
+        let monitor = SiteMonitor(url: URL(string: "https://example.com")!, method: .head)
 
         let result = await checker.check(monitor)
 
@@ -24,8 +24,8 @@ final class WebsiteCheckerDeterministicTests: XCTestCase {
             .success(statusCode: 405, data: Data()),
             .success(statusCode: 200, data: Data())
         ])
-        let checker = WebsiteChecker(transport: transport)
-        let monitor = WebsiteMonitor(url: URL(string: "https://example.com")!, method: .head)
+        let checker = SiteChecker(transport: transport)
+        let monitor = SiteMonitor(url: URL(string: "https://example.com")!, method: .head)
 
         let result = await checker.check(monitor)
 
@@ -37,8 +37,8 @@ final class WebsiteCheckerDeterministicTests: XCTestCase {
 
     func testNetworkErrorReturnsDown() async {
         let transport = MockTransport(responses: [.failure(URLError(.timedOut))])
-        let checker = WebsiteChecker(transport: transport)
-        let monitor = WebsiteMonitor(url: URL(string: "https://example.com")!, method: .get)
+        let checker = SiteChecker(transport: transport)
+        let monitor = SiteMonitor(url: URL(string: "https://example.com")!, method: .get)
 
         let result = await checker.check(monitor)
 
@@ -52,8 +52,8 @@ final class WebsiteCheckerDeterministicTests: XCTestCase {
     func testKeywordMissingReturnsDown() async {
         let body = Data("hello world".utf8)
         let transport = MockTransport(responses: [.success(statusCode: 200, data: body)])
-        let checker = WebsiteChecker(transport: transport)
-        var monitor = WebsiteMonitor(url: URL(string: "https://example.com")!, method: .get)
+        let checker = SiteChecker(transport: transport)
+        var monitor = SiteMonitor(url: URL(string: "https://example.com")!, method: .get)
         monitor.keyword = "needle"
 
         let result = await checker.check(monitor)
@@ -69,8 +69,8 @@ final class WebsiteCheckerDeterministicTests: XCTestCase {
     func testThresholdExceededReturnsDown() async {
         let body = Data("ok".utf8)
         let transport = MockTransport(responses: [.success(statusCode: 200, data: body)])
-        let checker = WebsiteChecker(transport: transport)
-        var monitor = WebsiteMonitor(url: URL(string: "https://example.com")!, method: .get)
+        let checker = SiteChecker(transport: transport)
+        var monitor = SiteMonitor(url: URL(string: "https://example.com")!, method: .get)
         // Use a guaranteed failing threshold to avoid timing flakiness on fast machines.
         monitor.thresholdMs = -1
 

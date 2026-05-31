@@ -3,7 +3,7 @@ import SwiftUI
 struct SiteManagerView: View {
     @EnvironmentObject var vm: AppViewModel
     @State private var showAdd = false
-    @State private var editing: WebsiteMonitor?
+    @State private var editing: SiteMonitor?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -85,7 +85,7 @@ struct SiteManagerView: View {
         .sheet(isPresented: $showAdd) {
             MonitorFormView(
                 mode: .add,
-                monitor: WebsiteMonitor(
+                monitor: SiteMonitor(
                     url: URL(string: "https://example.com")!,
                     displayName: "",
                     isEnabled: true,
@@ -113,7 +113,7 @@ struct SiteManagerView: View {
         return "\(total) Sites · \(active) Active · \(upPercent)% Up"
     }
 
-    private func statusColor(for status: WebsiteStatus) -> Color {
+    private func statusColor(for status: SiteStatus) -> Color {
         switch status {
         case .up: return vm.settings.statusColorUp.color
         case .down: return vm.settings.statusColorFailure.color
@@ -123,7 +123,7 @@ struct SiteManagerView: View {
         }
     }
 
-    private func timeLabel(for status: WebsiteStatus) -> String {
+    private func timeLabel(for status: SiteStatus) -> String {
         switch status {
         case .up(_, let ms, _): return "\(ms) ms"
         case .down(_, _, let ms, _): return ms.map { "\($0) ms" } ?? "--"

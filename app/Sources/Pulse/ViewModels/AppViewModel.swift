@@ -7,13 +7,13 @@ import UserNotifications
 
 @MainActor
 final class AppViewModel: ObservableObject {
-    @Published var monitors: [WebsiteMonitor]
+    @Published var monitors: [SiteMonitor]
     @Published var settings: AppSettings
-    @Published var statuses: [UUID: WebsiteStatus] = [:]
+    @Published var statuses: [UUID: SiteStatus] = [:]
     @Published var showSiteManager = false
     @Published var showHistory = false
 
-    private let checker: WebsiteChecking
+    private let checker: SiteChecking
     private let monitorStore: MonitorStoreProtocol
     private let historyStore: HistoryStoreProtocol
     private let webhookDispatcher: WebhookDispatching
@@ -25,14 +25,14 @@ final class AppViewModel: ObservableObject {
     private let pathQueue = DispatchQueue(label: "dev.pulse.app.path-monitor")
 
     private var inFlight: Set<UUID> = []
-    private(set) var previousStatuses: [UUID: WebsiteStatus] = [:]
+    private(set) var previousStatuses: [UUID: SiteStatus] = [:]
     private var consecutiveFailures: [UUID: Int] = [:]
     private var monitorsInAlertingState: Set<UUID> = []
     private var hasStarted = false
     private var isNetworkReachable = true
 
     init(
-        checker: WebsiteChecking = WebsiteChecker(),
+        checker: SiteChecking = SiteChecker(),
         monitorStore: MonitorStoreProtocol = MonitorStore(),
         historyStore: HistoryStoreProtocol = HistoryStore(),
         webhookDispatcher: WebhookDispatching = WebhookEngine(),
@@ -119,7 +119,7 @@ final class AppViewModel: ObservableObject {
             return "Please enter a valid URL."
         }
 
-        let monitor = WebsiteMonitor(url: url, displayName: name)
+        let monitor = SiteMonitor(url: url, displayName: name)
         monitors.append(monitor)
         statuses[monitor.id] = .unknown
         persistMonitors()
@@ -127,7 +127,7 @@ final class AppViewModel: ObservableObject {
         return nil
     }
 
-    func addMonitor(_ draft: WebsiteMonitor, rawURL: String) -> String? {
+    func addMonitor(_ draft: SiteMonitor, rawURL: String) -> String? {
         guard let url = URLInput.normalize(rawURL), url.host != nil else {
             return "Please enter a valid URL."
         }
@@ -141,7 +141,7 @@ final class AppViewModel: ObservableObject {
         return nil
     }
 
-    func updateMonitor(_ updated: WebsiteMonitor) {
+    func updateMonitor(_ updated: SiteMonitor) {
         guard let idx = monitors.firstIndex(where: { $0.id == updated.id }) else { return }
         monitors[idx] = updated
         statuses[updated.id] = updated.isEnabled ? (statuses[updated.id] == .paused ? .unknown : statuses[updated.id] ?? .unknown) : .paused
@@ -220,7 +220,7 @@ final class AppViewModel: ObservableObject {
         statuses[monitorID] = .checking
 
         let result = await checker.check(monitor)
-        let finalStatus: WebsiteStatus
+        let finalStatus: SiteStatus
         if monitor.isEnabled {
             finalStatus = result.status
         } else {
@@ -273,7 +273,7 @@ final class AppViewModel: ObservableObject {
         monitorStore.saveMonitors(monitors)
     }
 
-    private func maybeSendWebhookTransition(previous: WebsiteStatus, current: WebsiteStatus, monitor: WebsiteMonitor, trigger: HistoryTrigger) {
+    private func maybeSendWebhookTransition(previous: SiteStatus, current: SiteStatus, monitor: SiteMonitor, trigger: HistoryTrigger) {
         guard monitor.isEnabled else { return }
         guard settings.webhookEnabled else { return }
 
@@ -313,7 +313,7 @@ final class AppViewModel: ObservableObject {
         }
     }
 
-    private func buildTransitionEvent(message: String, status: String, current: WebsiteStatus, monitor: WebsiteMonitor, trigger: HistoryTrigger) -> WebhookTransitionEvent {
+    private func buildTransitionEvent(message: String, status: String, current: SiteStatus, monitor: SiteMonitor, trigger: HistoryTrigger) -> WebhookTransitionEvent {
         let code: Int?
         let ms: Int?
         switch current {
@@ -346,7 +346,7 @@ final class AppViewModel: ObservableObject {
         case other
     }
 
-    private func stableStatus(_ status: WebsiteStatus) -> StableStatus {
+    private func stableStatus(_ status: SiteStatus) -> StableStatus {
         switch status {
         case .up: return .up
         case .down: return .down
@@ -367,7 +367,7 @@ final class AppViewModel: ObservableObject {
         pathMonitor.start(queue: pathQueue)
     }
 
-    private func handleAlertTransitions(monitor: WebsiteMonitor, current: WebsiteStatus, trigger: HistoryTrigger) {
+    private func handleAlertTransitions(monitor: SiteMonitor, current: SiteStatus, trigger: HistoryTrigger) {
         guard monitor.isEnabled else { return }
 
         let previousFailures = consecutiveFailures[monitor.id, default: 0]
@@ -412,7 +412,7 @@ final class AppViewModel: ObservableObject {
             let at = notificationTimestampText()
             notifications.send(
                 title: "\(monitor.nameOrHost) recovered",
-                body: "Website is reachable again.\nAt: \(at)"
+                body: "Site is reachable again.\nAt: \(at)"
             )
             monitorsInAlertingState.remove(monitor.id)
         }
@@ -439,7 +439,7 @@ final class AppViewModel: ObservableObject {
         NSApp.dockTile.badgeLabel = alertCount > 0 ? "\(alertCount)" : nil
     }
 
-    private func isAlertingStatus(_ status: WebsiteStatus) -> Bool {
+    private func isAlertingStatus(_ status: SiteStatus) -> Bool {
         switch status {
         case .down:
             return true
