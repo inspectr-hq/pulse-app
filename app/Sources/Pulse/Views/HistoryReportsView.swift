@@ -6,52 +6,53 @@ struct HistoryReportsView: View {
     @EnvironmentObject var appVM: AppViewModel
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("History Reports")
-                    .font(.title3)
-                    .fontWeight(.semibold)
-                Spacer()
-                Picker("Site", selection: $historyVM.graphSite) {
-                    ForEach(historyVM.availableGraphSites, id: \.self) { site in
-                        Text(site).tag(site)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Text("History Reports")
+                        .font(.title3)
+                        .fontWeight(.semibold)
+                    Spacer()
+                    Picker("Site", selection: $historyVM.graphSite) {
+                        ForEach(historyVM.availableGraphSites, id: \.self) { site in
+                            Text(site).tag(site)
+                        }
                     }
+                    .frame(width: 190)
+                    Picker("Range", selection: $historyVM.graphRange) {
+                        ForEach(HistoryViewModel.GraphRange.allCases) { range in
+                            Text(range.rawValue).tag(range)
+                        }
+                    }
+                    .frame(width: 100)
+                    Button("Refresh") { historyVM.reload() }
                 }
-                .frame(width: 190)
-                Picker("Range", selection: $historyVM.graphRange) {
-                    ForEach(HistoryViewModel.GraphRange.allCases) { range in
-                        Text(range.rawValue).tag(range)
-                    }
+
+                HStack(spacing: 10) {
+                    metricCard(title: "Uptime", value: String(format: "%.1f%%", historyVM.uptimePercentage), tint: appVM.settings.statusColorUp.color)
+                    metricCard(title: "Avg Latency", value: historyVM.averageLatencyMs > 0 ? "\(historyVM.averageLatencyMs) ms" : "-", tint: appVM.settings.statusColorSlow.color)
+                    metricCard(title: "P95 Latency", value: historyVM.p95LatencyMs > 0 ? "\(historyVM.p95LatencyMs) ms" : "-", tint: appVM.settings.statusColorFailure.color)
+                    metricCard(title: "Samples", value: "\(historyVM.graphEvents.count)", tint: .secondary)
                 }
-                .frame(width: 100)
-                Button("Refresh") { historyVM.reload() }
-            }
 
-            HStack(spacing: 10) {
-                metricCard(title: "Uptime", value: String(format: "%.1f%%", historyVM.uptimePercentage), tint: appVM.settings.statusColorUp.color)
-                metricCard(title: "Avg Latency", value: historyVM.averageLatencyMs > 0 ? "\(historyVM.averageLatencyMs) ms" : "-", tint: appVM.settings.statusColorSlow.color)
-                metricCard(title: "P95 Latency", value: historyVM.p95LatencyMs > 0 ? "\(historyVM.p95LatencyMs) ms" : "-", tint: appVM.settings.statusColorFailure.color)
-                metricCard(title: "Samples", value: "\(historyVM.graphEvents.count)", tint: .secondary)
-            }
-
-            GroupBox("Performance Trend (ms)") {
-                VStack(alignment: .leading, spacing: 10) {
-                    HStack(spacing: 0) {
-                        compactMetric(title: "HIGHEST", value: historyVM.peakLatencyMs, tint: Color.blue)
-                        compactMetric(title: "LOWEST", value: historyVM.performanceSamples.map(\.minMs).min() ?? 0, tint: Color.green)
-                        compactMetric(title: "AVERAGE", value: historyVM.averageLatencyMs, tint: Color.purple)
-                    }
-                    .background(
-                        RoundedRectangle(cornerRadius: 10)
-                            .fill(Color.secondary.opacity(0.08))
-                    )
-
-                    Chart(historyVM.performanceSamples) { sample in
-                        AreaMark(
-                            x: .value("Time", sample.timestamp),
-                            y: .value("Highest ms", sample.maxMs)
+                GroupBox("Performance Trend (ms)") {
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack(spacing: 0) {
+                            compactMetric(title: "HIGHEST", value: historyVM.peakLatencyMs, tint: Color.blue)
+                            compactMetric(title: "LOWEST", value: historyVM.performanceSamples.map(\.minMs).min() ?? 0, tint: Color.green)
+                            compactMetric(title: "AVERAGE", value: historyVM.averageLatencyMs, tint: Color.purple)
+                        }
+                        .background(
+                            RoundedRectangle(cornerRadius: 10)
+                                .fill(Color.secondary.opacity(0.08))
                         )
-                        .foregroundStyle(Color.blue.opacity(0.22))
+
+                        Chart(historyVM.performanceSamples) { sample in
+                            AreaMark(
+                                x: .value("Time", sample.timestamp),
+                                y: .value("Highest ms", sample.maxMs)
+                            )
+                            .foregroundStyle(Color.blue.opacity(0.22))
 
                         LineMark(
                             x: .value("Time", sample.timestamp),
@@ -79,50 +80,51 @@ struct HistoryReportsView: View {
                         )
                         .interpolationMethod(.catmullRom)
                         .foregroundStyle(Color.green.opacity(0.65))
-                    }
-                    .chartYAxis {
-                        AxisMarks(position: .leading) { value in
-                            AxisGridLine(stroke: StrokeStyle(lineWidth: 1))
-                                .foregroundStyle(.quaternary)
-                            AxisValueLabel {
-                                if let ms = value.as(Int.self) {
-                                    Text("\(ms)ms")
+                        }
+                        .chartYAxis {
+                            AxisMarks(position: .leading) { value in
+                                AxisGridLine(stroke: StrokeStyle(lineWidth: 1))
+                                    .foregroundStyle(.quaternary)
+                                AxisValueLabel {
+                                    if let ms = value.as(Int.self) {
+                                        Text("\(ms)ms")
+                                    }
                                 }
                             }
                         }
+                        .chartXAxis {
+                            AxisMarks(values: .automatic(desiredCount: 6)) { value in
+                                AxisGridLine(stroke: StrokeStyle(lineWidth: 1))
+                                    .foregroundStyle(.quaternary)
+                                AxisValueLabel(format: .dateTime.hour().minute())
+                            }
+                        }
+                        .chartLegend(.hidden)
+                        .frame(height: 260)
                     }
-                    .chartXAxis {
-                        AxisMarks(values: .automatic(desiredCount: 6)) { value in
-                            AxisGridLine(stroke: StrokeStyle(lineWidth: 1))
-                                .foregroundStyle(.quaternary)
-                            AxisValueLabel(format: .dateTime.hour().minute())
+                }
+
+                GroupBox("Uptime Timeline") {
+                    VStack(alignment: .leading, spacing: 8) {
+                        ForEach(historyVM.uptimeTimelines(thresholdMs: appVM.settings.defaultThresholdMs)) { timeline in
+                            UptimeTimelineRow(
+                                siteName: timeline.siteName,
+                                uptimePercentage: timeline.uptimePercentage,
+                                blocks: timeline.blocks,
+                                rangeStartLabel: rangeStartLabel,
+                                upColor: appVM.settings.statusColorUp.color,
+                                downColor: appVM.settings.statusColorFailure.color,
+                                degradedColor: appVM.settings.statusColorSlow.color,
+                                noDataColor: appVM.settings.statusColorOffline.color.opacity(0.35)
+                            )
                         }
                     }
-                    .chartLegend(.hidden)
-                    .frame(height: 260)
                 }
-            }
 
-            GroupBox("Uptime Timeline") {
-                VStack(alignment: .leading, spacing: 8) {
-                    ForEach(historyVM.uptimeTimelines(thresholdMs: appVM.settings.defaultThresholdMs)) { timeline in
-                        UptimeTimelineRow(
-                            siteName: timeline.siteName,
-                            uptimePercentage: timeline.uptimePercentage,
-                            blocks: timeline.blocks,
-                            rangeStartLabel: rangeStartLabel,
-                            upColor: appVM.settings.statusColorUp.color,
-                            downColor: appVM.settings.statusColorFailure.color,
-                            degradedColor: appVM.settings.statusColorSlow.color,
-                            noDataColor: appVM.settings.statusColorOffline.color.opacity(0.35)
-                        )
-                    }
-                }
+                Spacer(minLength: 0)
             }
-
-            Spacer(minLength: 0)
+            .padding(14)
         }
-        .padding(14)
         .onAppear { historyVM.reload() }
     }
 

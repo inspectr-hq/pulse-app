@@ -33,6 +33,7 @@
 		B00100010000000000000018 /* AppDockIcon.png in Resources */ = {isa = PBXBuildFile; fileRef = F00100010000000000000018 /* AppDockIcon.png */; };
 		B00100010000000000000019 /* HTTPTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100010000000000000019 /* HTTPTransport.swift */; };
 		B0010001000000000000001A /* WebhookEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0010001000000000000001A /* WebhookEngine.swift */; };
+		B0010001000000000000001B /* HistoryReportsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0010001000000000000001B /* HistoryReportsView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -74,6 +75,7 @@
 		F00100010000000000000018 /* AppDockIcon.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = AppDockIcon.png; sourceTree = "<group>"; };
 		F00100010000000000000019 /* HTTPTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTTPTransport.swift; sourceTree = "<group>"; };
 		F0010001000000000000001A /* WebhookEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebhookEngine.swift; sourceTree = "<group>"; };
+		F0010001000000000000001B /* HistoryReportsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryReportsView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -184,6 +186,7 @@
 				F00100010000000000000014 /* SiteManagerView.swift */,
 				F00100010000000000000015 /* AddMonitorView.swift */,
 				F00100010000000000000016 /* EditMonitorView.swift */,
+				F0010001000000000000001B /* HistoryReportsView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -333,6 +336,7 @@
 				B00100010000000000000016 /* EditMonitorView.swift in Sources */,
 				B00100010000000000000019 /* HTTPTransport.swift in Sources */,
 				B0010001000000000000001A /* WebhookEngine.swift in Sources */,
+				B0010001000000000000001B /* HistoryReportsView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

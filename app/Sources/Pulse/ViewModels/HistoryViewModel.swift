@@ -241,12 +241,16 @@ final class HistoryViewModel: ObservableObject {
                 continue
             }
 
-            if bucketEvents.contains(where: { $0.status != "OK" }) {
+            let failures = bucketEvents.filter { $0.status != "OK" }.count
+            let successes = bucketEvents.count - failures
+
+            // Downtime means the bucket had no successful checks at all.
+            if successes == 0 {
                 blocks.append(.down)
                 continue
             }
 
-            let degraded = bucketEvents.contains { ($0.durationMs ?? 0) > thresholdMs }
+            let degraded = failures > 0
             blocks.append(degraded ? .degraded : .up)
         }
 
