@@ -258,9 +258,9 @@ final class HistoryViewModel: ObservableObject {
     }
 
     func exportCSV() -> String {
-        let header = "timestamp,trigger,method,url,status,status_code,duration_ms,reason"
+        let header = "timestamp,monitor_name,trigger,method,url,status,status_code,duration_ms,reason"
         let rows = filteredEvents.map {
-            "\($0.timestamp.ISO8601Format()),\($0.trigger.rawValue),\($0.method),\($0.url),\($0.status),\($0.statusCode.map(String.init) ?? ""),\($0.durationMs.map(String.init) ?? ""),\($0.reason ?? "")"
+            "\($0.timestamp.ISO8601Format()),\($0.monitorName),\($0.trigger.rawValue),\($0.method),\($0.url),\($0.status),\($0.statusCode.map(String.init) ?? ""),\($0.durationMs.map(String.init) ?? ""),\($0.reason ?? "")"
         }
         return ([header] + rows).joined(separator: "\n")
     }
