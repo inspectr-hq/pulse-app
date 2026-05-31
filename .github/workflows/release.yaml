@@ -11,6 +11,9 @@ permissions:
 jobs:
   build-release:
     runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: app
 
     steps:
       - name: Checkout
@@ -44,5 +47,5 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/Pulse-${{ github.ref_name }}.zip
+          files: app/dist/Pulse-${{ github.ref_name }}.zip
           generate_release_notes: true
