@@ -10,15 +10,13 @@ xcuserdata/
 build/
 DerivedData/
 
-# Swift Package Manager
+# Swift Package Manager local/build state
 .build/
 .swiftpm/
 
 # Keep SwiftPM lock files tracked
 !Package.resolved
 !**/Package.resolved
-
-# Xcode SwiftPM resolved dependencies
 !*.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
 !*.xcworkspace/xcshareddata/swiftpm/Package.resolved
 
@@ -28,7 +26,7 @@ Package.pins
 
 # CocoaPods, if used
 Pods/
-# Usually commit Podfile.lock for apps
+# For app projects, usually commit Podfile.lock if you use CocoaPods:
 # !Podfile.lock
 
 # Carthage, if used

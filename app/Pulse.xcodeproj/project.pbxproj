@@ -1,0 +1,379 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		B00100010000000000000001 /* UptimeMenuBarApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100010000000000000001 /* UptimeMenuBarApp.swift */; };
+		B00100010000000000000002 /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100010000000000000002 /* AppSettings.swift */; };
+		B00100010000000000000003 /* HistoryEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100010000000000000003 /* HistoryEvent.swift */; };
+		B00100010000000000000004 /* WebsiteCheckResult.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100010000000000000004 /* WebsiteCheckResult.swift */; };
+		B00100010000000000000005 /* WebsiteMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100010000000000000005 /* WebsiteMonitor.swift */; };
+		B00100010000000000000006 /* WebsiteStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100010000000000000006 /* WebsiteStatus.swift */; };
+		B00100010000000000000007 /* HistoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100010000000000000007 /* HistoryStore.swift */; };
+		B00100010000000000000008 /* LaunchAtLoginService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100010000000000000008 /* LaunchAtLoginService.swift */; };
+		B00100010000000000000009 /* MonitorScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100010000000000000009 /* MonitorScheduler.swift */; };
+		B0010001000000000000000A /* MonitorStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0010001000000000000000A /* MonitorStore.swift */; };
+		B0010001000000000000000B /* WebsiteChecker.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0010001000000000000000B /* WebsiteChecker.swift */; };
+		B0010001000000000000000C /* WindowManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0010001000000000000000C /* WindowManager.swift */; };
+		B0010001000000000000000D /* URLInput.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0010001000000000000000D /* URLInput.swift */; };
+		B0010001000000000000000E /* AppViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0010001000000000000000E /* AppViewModel.swift */; };
+		B0010001000000000000000F /* HistoryViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0010001000000000000000F /* HistoryViewModel.swift */; };
+		B00100010000000000000010 /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100010000000000000010 /* HistoryView.swift */; };
+		B00100010000000000000011 /* MenuBarContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100010000000000000011 /* MenuBarContentView.swift */; };
+		B00100010000000000000012 /* MonitorFormView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100010000000000000012 /* MonitorFormView.swift */; };
+		B00100010000000000000013 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100010000000000000013 /* SettingsView.swift */; };
+		B00100010000000000000014 /* SiteManagerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100010000000000000014 /* SiteManagerView.swift */; };
+		B00100010000000000000015 /* AddMonitorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100010000000000000015 /* AddMonitorView.swift */; };
+		B00100010000000000000016 /* EditMonitorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100010000000000000016 /* EditMonitorView.swift */; };
+		B00100010000000000000017 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F00100010000000000000017 /* Assets.xcassets */; };
+		B00100010000000000000018 /* AppDockIcon.png in Resources */ = {isa = PBXBuildFile; fileRef = F00100010000000000000018 /* AppDockIcon.png */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		F00100010000000000000000 /* Pulse.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Pulse.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		F00100010000000000000001 /* UptimeMenuBarApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UptimeMenuBarApp.swift; sourceTree = "<group>"; };
+		F00100010000000000000002 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
+		F00100010000000000000003 /* HistoryEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryEvent.swift; sourceTree = "<group>"; };
+		F00100010000000000000004 /* WebsiteCheckResult.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebsiteCheckResult.swift; sourceTree = "<group>"; };
+		F00100010000000000000005 /* WebsiteMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebsiteMonitor.swift; sourceTree = "<group>"; };
+		F00100010000000000000006 /* WebsiteStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebsiteStatus.swift; sourceTree = "<group>"; };
+		F00100010000000000000007 /* HistoryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryStore.swift; sourceTree = "<group>"; };
+		F00100010000000000000008 /* LaunchAtLoginService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchAtLoginService.swift; sourceTree = "<group>"; };
+		F00100010000000000000009 /* MonitorScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonitorScheduler.swift; sourceTree = "<group>"; };
+		F0010001000000000000000A /* MonitorStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonitorStore.swift; sourceTree = "<group>"; };
+		F0010001000000000000000B /* WebsiteChecker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebsiteChecker.swift; sourceTree = "<group>"; };
+		F0010001000000000000000C /* WindowManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowManager.swift; sourceTree = "<group>"; };
+		F0010001000000000000000D /* URLInput.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = URLInput.swift; sourceTree = "<group>"; };
+		F0010001000000000000000E /* AppViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppViewModel.swift; sourceTree = "<group>"; };
+		F0010001000000000000000F /* HistoryViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryViewModel.swift; sourceTree = "<group>"; };
+		F00100010000000000000010 /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryView.swift; sourceTree = "<group>"; };
+		F00100010000000000000011 /* MenuBarContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarContentView.swift; sourceTree = "<group>"; };
+		F00100010000000000000012 /* MonitorFormView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonitorFormView.swift; sourceTree = "<group>"; };
+		F00100010000000000000013 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		F00100010000000000000014 /* SiteManagerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiteManagerView.swift; sourceTree = "<group>"; };
+		F00100010000000000000015 /* AddMonitorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddMonitorView.swift; sourceTree = "<group>"; };
+		F00100010000000000000016 /* EditMonitorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditMonitorView.swift; sourceTree = "<group>"; };
+		F00100010000000000000017 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		F00100010000000000000018 /* AppDockIcon.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = AppDockIcon.png; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		P00100010000000000000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		G00100010000000000000001 = {
+			isa = PBXGroup;
+			children = (
+				G00100010000000000000002 /* Sources/Pulse */,
+				G00100010000000000000003 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		G00100010000000000000002 /* Sources/Pulse */ = {
+			isa = PBXGroup;
+			children = (
+				F00100010000000000000001 /* UptimeMenuBarApp.swift */,
+				G00100010000000000000004 /* Models */,
+				G00100010000000000000005 /* Services */,
+				G00100010000000000000006 /* Utilities */,
+				G00100010000000000000007 /* ViewModels */,
+				G00100010000000000000008 /* Views */,
+				G00100010000000000000009 /* Resources */,
+			);
+			path = Sources/Pulse;
+			sourceTree = SOURCE_ROOT;
+		};
+		G00100010000000000000003 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				F00100010000000000000000 /* Pulse.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		G00100010000000000000004 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				F00100010000000000000002 /* AppSettings.swift */,
+				F00100010000000000000003 /* HistoryEvent.swift */,
+				F00100010000000000000004 /* WebsiteCheckResult.swift */,
+				F00100010000000000000005 /* WebsiteMonitor.swift */,
+				F00100010000000000000006 /* WebsiteStatus.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		G00100010000000000000005 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				F00100010000000000000007 /* HistoryStore.swift */,
+				F00100010000000000000008 /* LaunchAtLoginService.swift */,
+				F00100010000000000000009 /* MonitorScheduler.swift */,
+				F0010001000000000000000A /* MonitorStore.swift */,
+				F0010001000000000000000B /* WebsiteChecker.swift */,
+				F0010001000000000000000C /* WindowManager.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		G00100010000000000000006 /* Utilities */ = {
+			isa = PBXGroup;
+			children = (
+				F0010001000000000000000D /* URLInput.swift */,
+			);
+			path = Utilities;
+			sourceTree = "<group>";
+		};
+		G00100010000000000000007 /* ViewModels */ = {
+			isa = PBXGroup;
+			children = (
+				F0010001000000000000000E /* AppViewModel.swift */,
+				F0010001000000000000000F /* HistoryViewModel.swift */,
+			);
+			path = ViewModels;
+			sourceTree = "<group>";
+		};
+		G00100010000000000000008 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				F00100010000000000000010 /* HistoryView.swift */,
+				F00100010000000000000011 /* MenuBarContentView.swift */,
+				F00100010000000000000012 /* MonitorFormView.swift */,
+				F00100010000000000000013 /* SettingsView.swift */,
+				F00100010000000000000014 /* SiteManagerView.swift */,
+				F00100010000000000000015 /* AddMonitorView.swift */,
+				F00100010000000000000016 /* EditMonitorView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		G00100010000000000000009 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				F00100010000000000000017 /* Assets.xcassets */,
+				F00100010000000000000018 /* AppDockIcon.png */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		T00100010000000000000001 /* Pulse */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C00100010000000000000003 /* Build configuration list for PBXNativeTarget "Pulse" */;
+			buildPhases = (
+				P00100010000000000000002 /* Sources */,
+				P00100010000000000000001 /* Frameworks */,
+				P00100010000000000000003 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Pulse;
+			productName = Pulse;
+			productReference = F00100010000000000000000 /* Pulse.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		P00100010000000000000000 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1600;
+				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+					T00100010000000000000001 = {
+						CreatedOnToolsVersion = 16.0;
+					};
+				};
+			};
+			buildConfigurationList = C00100010000000000000001 /* Build configuration list for PBXProject "Pulse" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = G00100010000000000000001;
+			productRefGroup = G00100010000000000000003 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				T00100010000000000000001 /* Pulse */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		P00100010000000000000003 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B00100010000000000000017 /* Assets.xcassets in Resources */,
+				B00100010000000000000018 /* AppDockIcon.png in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		P00100010000000000000002 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B00100010000000000000001 /* UptimeMenuBarApp.swift in Sources */,
+				B00100010000000000000002 /* AppSettings.swift in Sources */,
+				B00100010000000000000003 /* HistoryEvent.swift in Sources */,
+				B00100010000000000000004 /* WebsiteCheckResult.swift in Sources */,
+				B00100010000000000000005 /* WebsiteMonitor.swift in Sources */,
+				B00100010000000000000006 /* WebsiteStatus.swift in Sources */,
+				B00100010000000000000007 /* HistoryStore.swift in Sources */,
+				B00100010000000000000008 /* LaunchAtLoginService.swift in Sources */,
+				B00100010000000000000009 /* MonitorScheduler.swift in Sources */,
+				B0010001000000000000000A /* MonitorStore.swift in Sources */,
+				B0010001000000000000000B /* WebsiteChecker.swift in Sources */,
+				B0010001000000000000000C /* WindowManager.swift in Sources */,
+				B0010001000000000000000D /* URLInput.swift in Sources */,
+				B0010001000000000000000E /* AppViewModel.swift in Sources */,
+				B0010001000000000000000F /* HistoryViewModel.swift in Sources */,
+				B00100010000000000000010 /* HistoryView.swift in Sources */,
+				B00100010000000000000011 /* MenuBarContentView.swift in Sources */,
+				B00100010000000000000012 /* MonitorFormView.swift in Sources */,
+				B00100010000000000000013 /* SettingsView.swift in Sources */,
+				B00100010000000000000014 /* SiteManagerView.swift in Sources */,
+				B00100010000000000000015 /* AddMonitorView.swift in Sources */,
+				B00100010000000000000016 /* EditMonitorView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		C00100010000000000000004 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		C00100010000000000000005 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+			};
+			name = Release;
+		};
+		C00100010000000000000006 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Pulse;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
+				INFOPLIST_KEY_LSUIElement = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.inspectr.pulse;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		C00100010000000000000007 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Pulse;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
+				INFOPLIST_KEY_LSUIElement = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.inspectr.pulse;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		C00100010000000000000001 /* Build configuration list for PBXProject "Pulse" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C00100010000000000000004 /* Debug */,
+				C00100010000000000000005 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		C00100010000000000000003 /* Build configuration list for PBXNativeTarget "Pulse" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C00100010000000000000006 /* Debug */,
+				C00100010000000000000007 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = P00100010000000000000000 /* Project object */;
+}

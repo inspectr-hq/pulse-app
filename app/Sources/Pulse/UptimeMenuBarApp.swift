@@ -7,7 +7,7 @@ struct UptimeMenuBarApp: App {
     
     init() {
         DispatchQueue.main.async {
-            if let iconURL = Bundle.module.url(forResource: "AppDockIcon", withExtension: "png"),
+            if let iconURL = Bundle.main.url(forResource: "AppDockIcon", withExtension: "png"),
                let icon = NSImage(contentsOf: iconURL) {
                 NSApp.applicationIconImage = icon
             } else if let icon = NSImage(named: "AppIcon") {
@@ -21,7 +21,9 @@ struct UptimeMenuBarApp: App {
             MenuBarContentView()
                 .environmentObject(appVM)
         } label: {
-            Image(nsImage: menuBarStatusImage(for: appVM.overallStatus))
+            Image(systemName: iconName(for: appVM.overallStatus))
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(iconColor(for: appVM.overallStatus))
         }
         .menuBarExtraStyle(.window)
     }
@@ -52,16 +54,4 @@ struct UptimeMenuBarApp: App {
         }
     }
 
-    private func menuBarStatusImage(for status: OverallStatus) -> NSImage {
-        let symbolName = iconName(for: status)
-        let config = NSImage.SymbolConfiguration(pointSize: 14, weight: .semibold)
-        let base = NSImage(systemSymbolName: symbolName, accessibilityDescription: nil)?
-            .withSymbolConfiguration(config) ?? NSImage()
-
-        let nsColor = NSColor(iconColor(for: status))
-        let colorConfig = NSImage.SymbolConfiguration(hierarchicalColor: nsColor)
-        let colored = base.withSymbolConfiguration(colorConfig) ?? base
-        colored.isTemplate = false
-        return colored
-    }
 }
