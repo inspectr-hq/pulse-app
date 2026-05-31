@@ -1,6 +1,6 @@
 # Pulse
 
-Pulse is a lightweight macOS menu bar uptime checker, built as a subproject of [Inspectr](https://inspectr.dev/).
+Pulse is a lightweight macOS menu bar uptime checker.
 
 It gives you a fast, always-available way to monitor APIs, MCP servers, websites, and health endpoints from your Mac menu bar.
 
@@ -11,10 +11,10 @@ Small outages, DNS/TLS issues, or degraded response times are easy to miss until
 Pulse helps you:
 - catch regressions quickly after deploys
 - verify service health during local development
-- see response-time trends at a glance
+- see response-time trends
 - keep lightweight incident context in a local history log
 
-## What Pulse Does Today
+## Pulse Features
 
 - Native macOS menu bar app (`SwiftUI`, `MenuBarExtra`, macOS 15+)
 - Multi-site monitoring with per-site method/threshold/keyword
@@ -59,7 +59,7 @@ open /path/to/Pulse.app
 2. Open `Site Manager` from the menu bar.
 3. Add a site and run a manual check.
 
-## Settings Reference
+## Setting Options
 
 This section documents each setting and whether it currently has active runtime behavior.
 
