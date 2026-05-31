@@ -22,7 +22,7 @@ Pulse helps you:
 - Manual checks from menu and site manager
 - Per-site pause/unpause
 - History log persisted to Application Support JSON (atomic writes, ISO-8601 dates)
-- Optional webhook transitions (`up -> down`, `down -> up` when enabled)
+- Optional webhook transitions (`up -> down`, `down -> up` when enabled), with multiple webhook rules and per-site filters
 
 ## Settings Reference
 
@@ -35,28 +35,24 @@ This section documents each setting and whether it currently has active runtime 
   - Behavior: Calls `SMAppService.mainApp.register()` / `unregister()` when settings are saved.
 
 - `Show alert badge`
-  - Status: Not wired yet
-  - Behavior: Stored in settings, but no Dock badge logic is currently applied.
-
-- `Enable logs`
-  - Status: Not wired yet
-  - Behavior: Stored in settings, but does not currently gate `OSLog` output.
+  - Status: Implemented
+  - Behavior: Shows a Dock badge count for enabled monitors that are down, or up but slower than `Default Threshold`.
 
 - `Ping Interval (seconds)`
   - Status: Implemented
   - Behavior: Reschedules periodic automatic checks using `MonitorScheduler`.
 
-- `Pause Ping when`
-  - Status: Not wired yet
-  - Behavior: Stored, but no online/offline network-path pause behavior is implemented yet.
+- `Auto Checks`
+  - Status: Implemented
+  - Behavior: `Pause when offline` skips automatic scheduler checks while macOS reports no active internet path. Manual checks always run.
 
-- `Stagger Requests (seconds between)`
-  - Status: Not wired yet
-  - Behavior: Stored, but checks are still started concurrently per run.
+- `Delay Checks (seconds between sites)`
+  - Status: Implemented
+  - Behavior: Adds delay between each monitor check in batch runs (`checkAll`) to reduce burst traffic and rate-limit pressure.
 
 - `Failures to Alert (consecutive)`
-  - Status: Not wired yet
-  - Behavior: Stored, but not yet used in alerting/webhook decision logic.
+  - Status: Implemented
+  - Behavior: Alerting is gated until the same monitor fails N consecutive checks. Recovery can alert once the monitor returns up.
 
 - `Default Threshold (ms)`
   - Status: Implemented
@@ -65,10 +61,6 @@ This section documents each setting and whether it currently has active runtime 
 - `Default Method`
   - Status: Implemented
   - Behavior: Used as the initial HTTP method for newly added monitors.
-
-- `Status Colors` (`Up`, `Slow`, `Failure`, `Offline`)
-  - Status: Implemented
-  - Behavior: Applied to status dots in menu/site manager/history and to menu bar icon coloring when icon color mode allows it.
 
 ### Menu Bar
 
@@ -103,11 +95,23 @@ This section documents each setting and whether it currently has active runtime 
   - Status: Implemented
   - Behavior: Shows/hides HTTP status code in dropdown rows.
 
+- `Status Colors` (`Up`, `Slow`, `Failure`, `Offline`)
+  - Status: Implemented
+  - Behavior: Applied to status dots in menu/site manager/history and to menu bar icon coloring when icon color mode allows it.
+
 ### Webhooks
 
 - `Enable Webhooks`
   - Status: Implemented
-  - Behavior: Enables webhook engine for status transitions.
+  - Behavior: Enables webhook engine for alerting/recovery transitions (also gated by `Failures to Alert`).
+
+- `Webhook Rules (multiple)`
+  - Status: Implemented
+  - Behavior: Configure multiple webhook endpoints, each with its own method/payload/retry policy.
+
+- `Site Filter`
+  - Status: Implemented
+  - Behavior: Each webhook rule can target `All sites` or only selected monitors.
 
 - `Send On` (`Alerting`, `Alerting and Recovery`)
   - Status: Implemented
@@ -140,10 +144,10 @@ This section documents each setting and whether it currently has active runtime 
 
 ### History
 
-- `History retention max events`
-  - Status: Implemented (stored in settings)
-  - Behavior: Caps retained events; oldest events are trimmed on append.
-  - Default: `5000`
+- `History retention` (`1h`, `1d`, `1w`, `1m`, `Unlimited`)
+  - Status: Implemented
+  - Behavior: Applies rolling time-window pruning when new history events are appended.
+  - Default: `1m`
 
 ## Runtime Rules (Current)
 
@@ -151,8 +155,11 @@ This section documents each setting and whether it currently has active runtime 
 - Up status code range: `200...399`.
 - Down status code range: `400...599` (and network/TLS/DNS/timeouts).
 - Automatic scheduler checks only enabled monitors.
+- Automatic scheduler checks can be paused when offline if `Auto Checks` is set to `Pause when offline`.
 - Paused monitors are skipped by automatic checks.
 - Manual checks can check paused monitors; UI status remains `Paused`, but real result is stored in history as a `manual` event.
+- Batch checks can be delayed between sites using `Delay Checks`.
+- Alert transitions are threshold-gated by `Failures to Alert`.
 - Overall status logic:
   - `down` if any enabled monitor is down
   - `checking` if any enabled monitor is checking and none are down
