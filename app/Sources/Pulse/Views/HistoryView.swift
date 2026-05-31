@@ -31,6 +31,8 @@ struct HistoryView: View {
 
             Table(historyVM.filteredEvents) {
                 TableColumn("Timestamp") { Text($0.timestamp.formatted()) }
+                TableColumn("Site") { Text($0.monitorName) }
+                    .width(min: 150, ideal: 190)
                 TableColumn("Trigger") { Text($0.trigger.rawValue.capitalized) }
                     .width(110)
                 TableColumn("Method") { Text($0.method) }
@@ -42,6 +44,16 @@ struct HistoryView: View {
                 }
                 .width(130)
                 TableColumn("Duration") { Text($0.durationMs.map { "\($0) ms" } ?? "-") }
+                TableColumn("") { event in
+                    Button {
+                        historyVM.delete(eventID: event.id)
+                    } label: {
+                        Image(systemName: "trash")
+                    }
+                    .buttonStyle(.plain)
+                    .help("Delete this history item")
+                }
+                .width(32)
             }
         }
         .onAppear { historyVM.reload() }

@@ -86,6 +86,11 @@ final class HistoryViewModel: ObservableObject {
         reload()
     }
 
+    func delete(eventID: UUID) {
+        store.delete(eventID: eventID)
+        reload()
+    }
+
     var filteredEvents: [HistoryEvent] {
         let now = Date()
         return events.filter { event in
@@ -219,14 +224,15 @@ final class HistoryViewModel: ObservableObject {
         case .last90d: blockCount = 90
         }
 
-        let end = Date()
-        let start = end.addingTimeInterval(-graphRange.duration)
-        let bucketSpan = graphRange.duration / Double(blockCount)
         let timeline = events.sorted(by: { $0.timestamp < $1.timestamp })
 
         guard !timeline.isEmpty else {
             return Array(repeating: .noData, count: blockCount)
         }
+
+        let end = Date()
+        let start = end.addingTimeInterval(-graphRange.duration)
+        let bucketSpan = graphRange.duration / Double(blockCount)
 
         var blocks: [UptimeBlockStatus] = []
         blocks.reserveCapacity(blockCount)

@@ -211,8 +211,8 @@ private struct UptimeTimelineRow: View {
 
             Chart(samples) { sample in
                 RectangleMark(
-                    xStart: .value("Start", sample.index),
-                    xEnd: .value("End", sample.index + 1),
+                    xStart: .value("Start", Double(sample.index) + 0.08),
+                    xEnd: .value("End", Double(sample.index) + 0.92),
                     yStart: .value("Bottom", 0),
                     yEnd: .value("Top", 1)
                 )
