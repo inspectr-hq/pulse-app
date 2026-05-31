@@ -20,7 +20,7 @@ struct HistoryView: View {
                 TextField("Search", text: $historyVM.search)
                 Button("Export CSV") {
                     let panel = NSSavePanel()
-                    panel.nameFieldStringValue = "pulse-history.csv"
+                    panel.nameFieldStringValue = defaultCSVFileName()
                     if panel.runModal() == .OK, let url = panel.url {
                         try? historyVM.exportCSV().write(to: url, atomically: true, encoding: .utf8)
                     }
@@ -32,12 +32,15 @@ struct HistoryView: View {
             Table(historyVM.filteredEvents) {
                 TableColumn("Timestamp") { Text($0.timestamp.formatted()) }
                 TableColumn("Trigger") { Text($0.trigger.rawValue.capitalized) }
+                    .width(110)
                 TableColumn("Method") { Text($0.method) }
+                    .width(90)
                 TableColumn("URL") { Text($0.url) }
                 TableColumn("Status") { event in
                     Text(event.statusCode.map { "\(event.status) (\($0))" } ?? event.status)
                         .foregroundStyle(statusColor(for: event))
                 }
+                .width(130)
                 TableColumn("Duration") { Text($0.durationMs.map { "\($0) ms" } ?? "-") }
             }
         }
@@ -49,5 +52,14 @@ struct HistoryView: View {
             return appVM.settings.statusColorUp.color
         }
         return appVM.settings.statusColorFailure.color
+    }
+
+    private func defaultCSVFileName() -> String {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = .current
+        formatter.dateFormat = "yyyy-MM-dd"
+        return "pulse-history-\(formatter.string(from: Date())).csv"
     }
 }
