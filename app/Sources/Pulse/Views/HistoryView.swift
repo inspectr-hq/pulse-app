@@ -31,18 +31,19 @@ struct HistoryView: View {
 
             Table(historyVM.filteredEvents) {
                 TableColumn("Timestamp") { Text($0.timestamp.formatted()) }
+                    .width(120)
                 TableColumn("Site") { Text($0.monitorName) }
-                    .width(min: 150, ideal: 190)
+                    .width(min: 120, ideal: 180)
                 TableColumn("Trigger") { Text($0.trigger.rawValue.capitalized) }
-                    .width(110)
+                    .width(70)
                 TableColumn("Method") { Text($0.method) }
-                    .width(90)
+                    .width(50)
                 TableColumn("URL") { Text($0.url) }
                 TableColumn("Status") { event in
                     Text(event.statusCode.map { "\(event.status) (\($0))" } ?? event.status)
                         .foregroundStyle(statusColor(for: event))
                 }
-                .width(130)
+                .width(80)
                 TableColumn("Duration") { Text($0.durationMs.map { "\($0) ms" } ?? "-") }
                 TableColumn("") { event in
                     Button {

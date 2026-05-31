@@ -6,6 +6,8 @@ final class HistoryViewModel: ObservableObject {
         case allTime = "All Time"
         case last24h = "Last 24h"
         case last7d = "Last 7d"
+        case last30d = "Last 30d"
+        case last90d = "Last 90d"
 
         var id: String { rawValue }
     }
@@ -102,6 +104,8 @@ final class HistoryViewModel: ObservableObject {
             case .allTime: byTime = true
             case .last24h: byTime = event.timestamp >= now.addingTimeInterval(-86400)
             case .last7d: byTime = event.timestamp >= now.addingTimeInterval(-604800)
+            case .last30d: byTime = event.timestamp >= now.addingTimeInterval(-2592000)
+            case .last90d: byTime = event.timestamp >= now.addingTimeInterval(-7776000)
             }
             return bySearch && byMonitor && byName && byTime
         }
