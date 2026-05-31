@@ -72,7 +72,6 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: 12) {
             settingsToggleRow("Startup:", title: "Start at login", isOn: $vm.settings.launchAtLogin)
             settingsToggleRow("Dock:", title: "Show alert badge", isOn: $vm.settings.showAlertBadgeOnDockIcon)
-            settingsToggleRow("Logs:", title: "Enable logs", isOn: $vm.settings.enableLogs)
             
             Divider()
                 .frame(width: 427)

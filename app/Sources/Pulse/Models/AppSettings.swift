@@ -74,7 +74,6 @@ struct AppSettings: Codable, Equatable {
     var pingIntervalSeconds: Int = 900
     var launchAtLogin: Bool = false
     var showAlertBadgeOnDockIcon: Bool = true
-    var enableLogs: Bool = true
     var pausePingWhen: PausePingMode = .offline
     var staggerRequestsSeconds: Int = 0
     var failuresToAlert: Int = 1

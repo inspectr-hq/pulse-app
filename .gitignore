@@ -44,3 +44,5 @@ fastlane/test_output/
 .env.*
 *.xcconfig.local
 .inspectr
+.agents
+skills-lock.json
