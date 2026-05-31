@@ -27,6 +27,7 @@ final class AppViewModel: ObservableObject {
     private var inFlight: Set<UUID> = []
     private(set) var previousStatuses: [UUID: WebsiteStatus] = [:]
     private var consecutiveFailures: [UUID: Int] = [:]
+    private var monitorsInAlertingState: Set<UUID> = []
     private var hasStarted = false
     private var isNetworkReachable = true
 
@@ -152,6 +153,7 @@ final class AppViewModel: ObservableObject {
         statuses.removeValue(forKey: id)
         previousStatuses.removeValue(forKey: id)
         consecutiveFailures.removeValue(forKey: id)
+        monitorsInAlertingState.remove(id)
         persistMonitors()
         updateDockBadge()
     }
@@ -162,6 +164,7 @@ final class AppViewModel: ObservableObject {
         statuses[id] = enabled ? .unknown : .paused
         if !enabled {
             consecutiveFailures[id] = 0
+            monitorsInAlertingState.remove(id)
         }
         persistMonitors()
         updateDockBadge()
@@ -357,7 +360,7 @@ final class AppViewModel: ObservableObject {
 
         let previousFailures = consecutiveFailures[monitor.id, default: 0]
         let failureThreshold = max(1, settings.failuresToAlert)
-        let wasAlerting = previousFailures >= failureThreshold
+        let wasAlerting = monitorsInAlertingState.contains(monitor.id)
 
         let currentFailures: Int
         switch current {
@@ -383,6 +386,7 @@ final class AppViewModel: ObservableObject {
                     body: (code.map { "\(reason) (\($0))" } ?? reason) + "\nAt: \(at)"
                 )
             }
+            monitorsInAlertingState.insert(monitor.id)
             return
         }
 
@@ -398,6 +402,7 @@ final class AppViewModel: ObservableObject {
                 title: "\(monitor.nameOrHost) recovered",
                 body: "Website is reachable again.\nAt: \(at)"
             )
+            monitorsInAlertingState.remove(monitor.id)
         }
     }
 
