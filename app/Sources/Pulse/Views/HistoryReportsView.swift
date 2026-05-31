@@ -50,36 +50,31 @@ struct HistoryReportsView: View {
                         Chart(historyVM.performanceSamples) { sample in
                             AreaMark(
                                 x: .value("Time", sample.timestamp),
-                                y: .value("Highest ms", sample.maxMs)
+                                y: .value("Average ms", sample.avgMs)
                             )
-                            .foregroundStyle(Color.blue.opacity(0.22))
+                            .interpolationMethod(.monotone)
+                            .foregroundStyle(
+                                LinearGradient(
+                                    colors: [Color.blue.opacity(0.28), Color.blue.opacity(0.06)],
+                                    startPoint: .top,
+                                    endPoint: .bottom
+                                )
+                            )
 
-                        LineMark(
-                            x: .value("Time", sample.timestamp),
-                            y: .value("Highest ms", sample.maxMs)
-                        )
-                        .interpolationMethod(.catmullRom)
-                        .foregroundStyle(Color.blue.opacity(0.6))
+                            LineMark(
+                                x: .value("Time", sample.timestamp),
+                                y: .value("Average ms", sample.avgMs)
+                            )
+                            .lineStyle(StrokeStyle(lineWidth: 2.2))
+                            .interpolationMethod(.monotone)
+                            .foregroundStyle(Color.blue.opacity(0.9))
 
-                        AreaMark(
-                            x: .value("Time", sample.timestamp),
-                            y: .value("Average ms", sample.avgMs)
-                        )
-                        .foregroundStyle(Color.purple.opacity(0.18))
-
-                        LineMark(
-                            x: .value("Time", sample.timestamp),
-                            y: .value("Average ms", sample.avgMs)
-                        )
-                        .interpolationMethod(.catmullRom)
-                        .foregroundStyle(Color.purple.opacity(0.55))
-
-                        LineMark(
-                            x: .value("Time", sample.timestamp),
-                            y: .value("Lowest ms", sample.minMs)
-                        )
-                        .interpolationMethod(.catmullRom)
-                        .foregroundStyle(Color.green.opacity(0.65))
+                            PointMark(
+                                x: .value("Time", sample.timestamp),
+                                y: .value("Average ms", sample.avgMs)
+                            )
+                            .symbolSize(14)
+                            .foregroundStyle(Color.blue.opacity(0.85))
                         }
                         .chartYAxis {
                             AxisMarks(position: .leading) { value in
