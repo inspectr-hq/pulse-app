@@ -75,6 +75,8 @@ struct SettingsView: View {
             settingsToggleRow("Logs:", title: "Enable logs", isOn: $vm.settings.enableLogs)
             
             Divider()
+                .frame(width: 427)
+                .frame(maxWidth: .infinity, alignment: .center)
             
             alignedRow("Ping Interval:") {
                 HStack(spacing: 8) {
@@ -264,8 +266,9 @@ struct SettingsView: View {
                 .frame(width: 155, alignment: .trailing)
             Toggle(title, isOn: isOn)
                 .toggleStyle(.checkbox)
-                .frame(width: 220, alignment: .leading)
+                .frame(width: 260, alignment: .leading)
         }
+        .frame(width: 427, alignment: .leading)
         .frame(maxWidth: .infinity, alignment: .center)
     }
     
@@ -276,7 +279,9 @@ struct SettingsView: View {
                 .frame(width: 155, alignment: .trailing)
                 .foregroundStyle(.secondary)
             content()
+                .frame(width: 260, alignment: .leading)
         }
+        .frame(width: 427, alignment: .leading)
         .frame(maxWidth: .infinity, alignment: .center)
     }
     
