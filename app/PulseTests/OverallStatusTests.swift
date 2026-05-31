@@ -51,7 +51,8 @@ final class OverallStatusTests: XCTestCase {
             checker: FakeChecker(),
             monitorStore: FakeMonitorStore(monitors: monitors),
             historyStore: FakeHistoryStore(),
-            launchAtLogin: FakeLaunchAtLogin()
+            launchAtLogin: FakeLaunchAtLogin(),
+            notifications: FakeNotifications()
         )
     }
 }
@@ -79,6 +80,10 @@ private final class FakeHistoryStore: HistoryStoreProtocol {
 
 private struct FakeLaunchAtLogin: LaunchAtLoginControlling {
     func setEnabled(_ enabled: Bool) {}
+}
+
+private struct FakeNotifications: NotificationDispatching {
+    func send(title: String, body: String) {}
 }
 
 private struct FakeChecker: SiteChecking {
