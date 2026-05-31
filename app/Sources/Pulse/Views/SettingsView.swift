@@ -162,21 +162,39 @@ struct SettingsView: View {
     
     private var menuBarTab: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Stepper("Max Menu Items: \(vm.settings.menuMaxItems)", value: $vm.settings.menuMaxItems, in: 1...200)
-            Toggle("Menu icon: Show status color", isOn: $vm.settings.showMenuIconStatusColor)
-            Picker("Colorize icon", selection: $vm.settings.menuBarIconColorMode) {
-                Text("Always").tag(MenuBarIconColorMode.always)
-                Text("Only failing").tag(MenuBarIconColorMode.onlyWhenFailing)
-                Text("Never").tag(MenuBarIconColorMode.never)
+            alignedRow("Menu Items:") {
+                Stepper(value: $vm.settings.menuMaxItems, in: 1...200) {
+                    Text("Max \(vm.settings.menuMaxItems)")
+                }
+                .frame(width: 220, alignment: .leading)
             }
-            .disabled(!vm.settings.showMenuIconStatusColor)
+            
+            settingsToggleRow("Menu Icon:", title: "Show status color", isOn: $vm.settings.showMenuIconStatusColor)
+            
+            alignedRow("Colorize Icon:") {
+                Picker("", selection: $vm.settings.menuBarIconColorMode) {
+                    Text("Always").tag(MenuBarIconColorMode.always)
+                    Text("Only failing").tag(MenuBarIconColorMode.onlyWhenFailing)
+                    Text("Never").tag(MenuBarIconColorMode.never)
+                }
+                .labelsHidden()
+                .pickerStyle(.menu)
+                .frame(width: 220, alignment: .leading)
+                .disabled(!vm.settings.showMenuIconStatusColor)
+            }
+            
             Divider()
-            Toggle("Show method", isOn: $vm.settings.showMethodInMenu)
-            Toggle("Show response time", isOn: $vm.settings.showResponseTimeInMenu)
-            Toggle("Show last checked", isOn: $vm.settings.showLastCheckedInMenu)
-            Toggle("Show status code", isOn: $vm.settings.showStatusCodeInMenu)
+                .frame(width: 400)
+                .padding(.leading, 80)
+            
+            settingsToggleRow("Method:", title: "Show method", isOn: $vm.settings.showMethodInMenu)
+            settingsToggleRow("Response Time:", title: "Show response time", isOn: $vm.settings.showResponseTimeInMenu)
+            settingsToggleRow("Last Checked:", title: "Show last checked", isOn: $vm.settings.showLastCheckedInMenu)
+            settingsToggleRow("Status Code:", title: "Show status code", isOn: $vm.settings.showStatusCodeInMenu)
+            
             Spacer()
         }
+        .frame(maxWidth: .infinity, alignment: .center)
         .padding(.top, 6)
     }
     
@@ -241,13 +259,14 @@ struct SettingsView: View {
     private func settingsToggleRow(_ label: String, title: String, isOn: Binding<Bool>) -> some View {
         HStack(alignment: .center, spacing: 12) {
             Text(label)
-                .fontWeight(.semibold)
+                .fontWeight(.none)
+                .foregroundStyle(.secondary)
                 .frame(width: 155, alignment: .trailing)
             Toggle(title, isOn: isOn)
                 .toggleStyle(.checkbox)
                 .frame(width: 220, alignment: .leading)
-            Spacer()
         }
+        .frame(maxWidth: .infinity, alignment: .center)
     }
     
     @ViewBuilder
@@ -257,8 +276,8 @@ struct SettingsView: View {
                 .frame(width: 155, alignment: .trailing)
                 .foregroundStyle(.secondary)
             content()
-            Spacer()
         }
+        .frame(maxWidth: .infinity, alignment: .center)
     }
     
     @ViewBuilder
