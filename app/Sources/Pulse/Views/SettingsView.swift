@@ -116,6 +116,22 @@ struct SettingsView: View {
                 }
                 .frame(width: 220, alignment: .leading)
             }
+
+            alignedRow("History Retention:") {
+                Picker("", selection: $vm.settings.historyRetentionPolicy) {
+                    ForEach(HistoryRetentionPolicy.allCases) { policy in
+                        Text(policy.rawValue).tag(policy)
+                    }
+                }
+                .labelsHidden()
+                .pickerStyle(.menu)
+                .frame(width: 180, alignment: .leading)
+                .help("Automatically removes older history events using a rolling time window.")
+            }
+
+            Divider()
+                .frame(width: 427)
+                .frame(maxWidth: .infinity, alignment: .center)
             
             alignedRow("Default Threshold:") {
                 HStack(spacing: 8) {
@@ -138,26 +154,6 @@ struct SettingsView: View {
                 .frame(width: 120, alignment: .leading)
             }
             
-            alignedRow("Status Colors:") {
-                VStack(alignment: .leading, spacing: 10) {
-                    statusColorPickerRow("Up", color: Binding(
-                        get: { vm.settings.statusColorUp.color },
-                        set: { vm.settings.statusColorUp = codableColor(from: $0, fallback: vm.settings.statusColorUp) }
-                    ))
-                    statusColorPickerRow("Slow", color: Binding(
-                        get: { vm.settings.statusColorSlow.color },
-                        set: { vm.settings.statusColorSlow = codableColor(from: $0, fallback: vm.settings.statusColorSlow) }
-                    ))
-                    statusColorPickerRow("Failure", color: Binding(
-                        get: { vm.settings.statusColorFailure.color },
-                        set: { vm.settings.statusColorFailure = codableColor(from: $0, fallback: vm.settings.statusColorFailure) }
-                    ))
-                    statusColorPickerRow("Offline", color: Binding(
-                        get: { vm.settings.statusColorOffline.color },
-                        set: { vm.settings.statusColorOffline = codableColor(from: $0, fallback: vm.settings.statusColorOffline) }
-                    ))
-                }
-            }
             Spacer()
         }
         .padding(.top, 6)
@@ -194,6 +190,31 @@ struct SettingsView: View {
             settingsToggleRow("Response Time:", title: "Show response time", isOn: $vm.settings.showResponseTimeInMenu)
             settingsToggleRow("Last Checked:", title: "Show last checked", isOn: $vm.settings.showLastCheckedInMenu)
             settingsToggleRow("Status Code:", title: "Show status code", isOn: $vm.settings.showStatusCodeInMenu)
+
+            Divider()
+                .frame(width: 400)
+                .padding(.leading, 80)
+
+            alignedRow("Status Colors:") {
+                VStack(alignment: .leading, spacing: 10) {
+                    statusColorPickerRow("Up", color: Binding(
+                        get: { vm.settings.statusColorUp.color },
+                        set: { vm.settings.statusColorUp = codableColor(from: $0, fallback: vm.settings.statusColorUp) }
+                    ))
+                    statusColorPickerRow("Slow", color: Binding(
+                        get: { vm.settings.statusColorSlow.color },
+                        set: { vm.settings.statusColorSlow = codableColor(from: $0, fallback: vm.settings.statusColorSlow) }
+                    ))
+                    statusColorPickerRow("Failure", color: Binding(
+                        get: { vm.settings.statusColorFailure.color },
+                        set: { vm.settings.statusColorFailure = codableColor(from: $0, fallback: vm.settings.statusColorFailure) }
+                    ))
+                    statusColorPickerRow("Offline", color: Binding(
+                        get: { vm.settings.statusColorOffline.color },
+                        set: { vm.settings.statusColorOffline = codableColor(from: $0, fallback: vm.settings.statusColorOffline) }
+                    ))
+                }
+            }
             
             Spacer()
         }

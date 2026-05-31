@@ -34,6 +34,32 @@ enum WebhookSendOn: String, Codable, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
+enum HistoryRetentionPolicy: String, Codable, CaseIterable, Identifiable {
+    case oneHour = "1h"
+    case oneDay = "1d"
+    case oneWeek = "1w"
+    case oneMonth = "1m"
+    case unlimited = "Unlimited"
+
+    var id: String { rawValue }
+
+    var cutoffDate: Date? {
+        let now = Date()
+        switch self {
+        case .oneHour:
+            return now.addingTimeInterval(-3600)
+        case .oneDay:
+            return now.addingTimeInterval(-86400)
+        case .oneWeek:
+            return now.addingTimeInterval(-604800)
+        case .oneMonth:
+            return now.addingTimeInterval(-30 * 86400)
+        case .unlimited:
+            return nil
+        }
+    }
+}
+
 struct AppSettings: Codable, Equatable {
     var pingIntervalSeconds: Int = 900
     var launchAtLogin: Bool = false
@@ -62,5 +88,7 @@ struct AppSettings: Codable, Equatable {
     var webhookPayloadTemplate: String = "{\"message\":\"$MESSAGE\",\"monitor\":\"$MONITOR\",\"status\":\"$STATUS\",\"url\":\"$URL\",\"trigger\":\"$TRIGGER\"}"
     var webhookMaxRetries: Int = 3
     var webhookInitialBackoffSeconds: Double = 1.0
+    var historyRetentionPolicy: HistoryRetentionPolicy = .oneMonth
+    // Legacy fallback cap retained for compatibility with old persisted settings.
     var historyRetentionMaxEvents: Int = 5000
 }

@@ -2,7 +2,7 @@ import Foundation
 
 protocol HistoryStoreProtocol {
     func loadEvents() -> [HistoryEvent]
-    func append(_ event: HistoryEvent, maxEvents: Int)
+    func append(_ event: HistoryEvent, retentionPolicy: HistoryRetentionPolicy, maxEvents: Int)
     func clear()
 }
 
@@ -39,9 +39,12 @@ final class HistoryStore: HistoryStoreProtocol {
         return (try? decoder.decode([HistoryEvent].self, from: data)) ?? []
     }
 
-    func append(_ event: HistoryEvent, maxEvents: Int) {
+    func append(_ event: HistoryEvent, retentionPolicy: HistoryRetentionPolicy, maxEvents: Int) {
         var events = loadEvents()
         events.append(event)
+        if let cutoff = retentionPolicy.cutoffDate {
+            events = events.filter { $0.timestamp >= cutoff }
+        }
         if events.count > maxEvents {
             events = Array(events.suffix(maxEvents))
         }
