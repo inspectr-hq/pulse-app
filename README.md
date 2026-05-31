@@ -24,79 +24,98 @@ Pulse helps you:
 - History log persisted to Application Support JSON (atomic writes, ISO-8601 dates)
 - Optional webhook transitions (`up -> down`, `down -> up` when enabled), with multiple webhook rules and per-site filters
 
+## Get Started
+
+### 1. Download Pulse
+
+1. Open the [GitHub Releases](https://github.com/inspectr-hq/pulse/releases) page.
+2. Download the latest macOS release archive.
+3. Extract it and move `Pulse.app` to your `Applications` folder.
+
+### 2. First Launch on macOS
+
+Pulse is an open-source project and release builds are distributed unsigned.
+On first launch, macOS may show:
+- `"Pulse" cannot be opened because Apple cannot check it for malicious software.`
+
+To run it anyway:
+1. In Finder, right-click `Pulse.app` and choose `Open`.
+2. Click `Open` again in the warning dialog.
+
+If Finder still blocks it, use:
+
+- `System Settings -> Privacy & Security` and click `Open Anyway` for Pulse.
+
+Alternative Terminal path:
+
+```bash
+xattr -dr com.apple.quarantine /path/to/Pulse.app
+open /path/to/Pulse.app
+```
+
+### 3. Add Your First Site
+
+1. Launch Pulse.
+2. Open `Site Manager` from the menu bar.
+3. Add a site and run a manual check.
+
 ## Settings Reference
 
 This section documents each setting and whether it currently has active runtime behavior.
 
 ### General
 
-- `Start at login`
-  - Status: Implemented
+- `Start at login
   - Behavior: Calls `SMAppService.mainApp.register()` / `unregister()` when settings are saved.
 
 - `Show alert badge`
-  - Status: Implemented
   - Behavior: Shows a Dock badge count for enabled monitors that are down, or up but slower than `Default Threshold`.
 
 - `Ping Interval (seconds)`
-  - Status: Implemented
   - Behavior: Reschedules periodic automatic checks using `MonitorScheduler`.
 
 - `Auto Checks`
-  - Status: Implemented
   - Behavior: `Pause when offline` skips automatic scheduler checks while macOS reports no active internet path. Manual checks always run.
 
 - `Delay Checks (seconds between sites)`
-  - Status: Implemented
   - Behavior: Adds delay between each monitor check in batch runs (`checkAll`) to reduce burst traffic and rate-limit pressure.
 
 - `Failures to Alert (consecutive)`
-  - Status: Implemented
   - Behavior: Alerting is gated until the same monitor fails N consecutive checks. Recovery can alert once the monitor returns up.
 
 - `Default Threshold (ms)`
-  - Status: Implemented
   - Behavior: Used as the initial threshold value for newly added monitors.
 
 - `Default Method`
-  - Status: Implemented
   - Behavior: Used as the initial HTTP method for newly added monitors.
 
 ### Menu Bar
 
 - `Menu Items: Max N`
-  - Status: Implemented
   - Behavior: Limits number of monitor rows rendered in dropdown (`prefix(maxItems)`).
 
 - `Menu Icon: Show status color`
-  - Status: Implemented
   - Behavior: If disabled, menu bar icon is rendered monochrome.
 
 - `Colorize Icon` (`Always`, `Only failing`, `Never`)
-  - Status: Implemented
   - Behavior:
     - `Always`: icon reflects current overall status color.
     - `Only failing`: icon is colored only for `down` state.
     - `Never`: icon is monochrome.
 
 - `Show method`
-  - Status: Implemented
   - Behavior: Shows/hides HTTP method in each dropdown row.
 
 - `Show response time`
-  - Status: Implemented
   - Behavior: Shows/hides response-time line in dropdown rows.
 
 - `Show last checked`
-  - Status: Implemented
   - Behavior: Shows/hides last checked time line in dropdown rows.
 
 - `Show status code`
-  - Status: Implemented
   - Behavior: Shows/hides HTTP status code in dropdown rows.
 
 - `Status Colors` (`Up`, `Slow`, `Failure`, `Offline`)
-  - Status: Implemented
   - Behavior: Applied to status dots in menu/site manager/history and to menu bar icon coloring when icon color mode allows it.
 
 ### Webhooks
@@ -167,23 +186,20 @@ This section documents each setting and whether it currently has active runtime 
   - `unknown` if enabled monitors exist and none has a completed check yet
   - `neutral` if no enabled monitors
 
-## Persistence
-
-- Monitors + app settings: `UserDefaults` JSON
-- History events: `~/Library/Application Support/Pulse/history.json`
-  - ISO-8601 date encoding
-  - Atomic writes
-  - Corruption fallback to empty history
 
 ## Build & Test
 
 From project root:
 
 ```bash
-cd /Users/tim.haselaars/Sites/apps/pulse/app
 swift build
 swift test
 ```
+
+## First Launch & Security
+
+If you installed Pulse from source or an unsigned build, macOS may warn on first launch.
+Use the steps in `Get Started -> First Launch on macOS`.
 
 ## Relationship to Inspectr
 
