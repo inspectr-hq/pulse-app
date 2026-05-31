@@ -11,6 +11,12 @@ struct HistoryView: View {
                     ForEach(HistoryViewModel.TimeFilter.allCases) { Text($0.rawValue).tag($0) }
                 }
                 .frame(width: 140)
+                Picker("Name", selection: $historyVM.selectedName) {
+                    ForEach(historyVM.availableNames, id: \.self) { name in
+                        Text(name).tag(name)
+                    }
+                }
+                .frame(width: 170)
                 TextField("Search", text: $historyVM.search)
                 Button("Export CSV") {
                     let panel = NSSavePanel()

@@ -13,6 +13,7 @@ final class HistoryViewModel: ObservableObject {
     @Published var events: [HistoryEvent] = []
     @Published var search = ""
     @Published var selectedMonitor: UUID?
+    @Published var selectedName: String = "All Names"
     @Published var timeFilter: TimeFilter = .allTime
 
     private let store: HistoryStoreProtocol
@@ -36,14 +37,20 @@ final class HistoryViewModel: ObservableObject {
         return events.filter { event in
             let bySearch = search.isEmpty || event.url.localizedCaseInsensitiveContains(search) || event.monitorName.localizedCaseInsensitiveContains(search)
             let byMonitor = selectedMonitor == nil || event.monitorID == selectedMonitor
+            let byName = selectedName == "All Names" || event.monitorName == selectedName
             let byTime: Bool
             switch timeFilter {
             case .allTime: byTime = true
             case .last24h: byTime = event.timestamp >= now.addingTimeInterval(-86400)
             case .last7d: byTime = event.timestamp >= now.addingTimeInterval(-604800)
             }
-            return bySearch && byMonitor && byTime
+            return bySearch && byMonitor && byName && byTime
         }
+    }
+
+    var availableNames: [String] {
+        let names = Set(events.map(\.monitorName))
+        return ["All Names"] + names.sorted()
     }
 
     func exportCSV() -> String {
