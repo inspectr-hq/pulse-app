@@ -9,9 +9,11 @@ final class WindowManager {
 
     private var siteManagerWindow: NSWindow?
     private var historyWindow: NSWindow?
+    private var historyReportsWindow: NSWindow?
     private var settingsWindow: NSWindow?
     private var siteManagerDelegate: NSWindowDelegate?
     private var historyDelegate: NSWindowDelegate?
+    private var historyReportsDelegate: NSWindowDelegate?
     private var settingsDelegate: NSWindowDelegate?
 
     private init() {}
@@ -84,6 +86,41 @@ final class WindowManager {
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
         logger.info("showHistory created and opened window")
+    }
+
+    func showHistoryReports(appVM: AppViewModel) {
+        logger.info("showHistoryReports called")
+        NSApp.setActivationPolicy(.regular)
+        if let window = historyReportsWindow {
+            logger.info("showHistoryReports reusing existing window")
+            window.orderFrontRegardless()
+            window.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            return
+        }
+
+        let view = HistoryReportsView().environmentObject(appVM)
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 1040, height: 640),
+            styleMask: [.titled, .closable, .miniaturizable, .resizable],
+            backing: .buffered,
+            defer: false
+        )
+        window.title = "History Reports"
+        window.contentView = NSHostingView(rootView: view)
+        window.isReleasedWhenClosed = false
+        let delegate = WindowCloseDelegate { [weak self] in
+            self?.historyReportsWindow = nil
+            self?.historyReportsDelegate = nil
+        }
+        historyReportsDelegate = delegate
+        window.delegate = delegate
+        historyReportsWindow = window
+        window.center()
+        window.orderFrontRegardless()
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+        logger.info("showHistoryReports created and opened window")
     }
 
     func showSettings(appVM: AppViewModel) {

@@ -77,6 +77,10 @@ struct MenuBarContentView: View {
                 WindowManager.shared.showSiteManager(appVM: vm)
             }
             Divider()
+            menuAction("History Reports") {
+                logger.info("Menu click: History Reports")
+                WindowManager.shared.showHistoryReports(appVM: vm)
+            }
             menuAction("History Logs") {
                 logger.info("Menu click: History Logs")
                 WindowManager.shared.showHistory(appVM: vm)

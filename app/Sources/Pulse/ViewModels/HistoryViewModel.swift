@@ -10,11 +10,65 @@ final class HistoryViewModel: ObservableObject {
         var id: String { rawValue }
     }
 
+    enum GraphRange: String, CaseIterable, Identifiable {
+        case last24h = "24h"
+        case last7d = "7d"
+        case last30d = "30d"
+        case last90d = "90d"
+
+        var id: String { rawValue }
+
+        var duration: TimeInterval {
+            switch self {
+            case .last24h: return 86_400
+            case .last7d: return 604_800
+            case .last30d: return 2_592_000
+            case .last90d: return 7_776_000
+            }
+        }
+    }
+
+    struct LatencyPoint: Identifiable {
+        let id = UUID()
+        let timestamp: Date
+        let ms: Int
+    }
+
+    struct StatusPoint: Identifiable {
+        let id = UUID()
+        let timestamp: Date
+        let state: Int
+    }
+
+    enum UptimeBlockStatus {
+        case up
+        case down
+        case degraded
+        case noData
+    }
+
+    struct SiteUptimeTimeline: Identifiable {
+        let id = UUID()
+        let siteName: String
+        let uptimePercentage: Double
+        let blocks: [UptimeBlockStatus]
+    }
+
+    struct PerformanceSample: Identifiable {
+        let id = UUID()
+        let timestamp: Date
+        let minMs: Int
+        let avgMs: Int
+        let maxMs: Int
+    }
+
     @Published var events: [HistoryEvent] = []
     @Published var search = ""
     @Published var selectedMonitor: UUID?
     @Published var selectedName: String = "All Names"
     @Published var timeFilter: TimeFilter = .allTime
+    @Published var graphSite: String = "All Sites"
+    @Published var graphRange: GraphRange = .last30d
 
     private let store: HistoryStoreProtocol
 
@@ -51,6 +105,152 @@ final class HistoryViewModel: ObservableObject {
     var availableNames: [String] {
         let names = Set(events.map(\.monitorName))
         return ["All Names"] + names.sorted()
+    }
+
+    var availableGraphSites: [String] {
+        let names = Set(events.map(\.monitorName))
+        return ["All Sites"] + names.sorted()
+    }
+
+    var graphEvents: [HistoryEvent] {
+        let cutoff = Date().addingTimeInterval(-graphRange.duration)
+        return events
+            .filter { event in
+                event.timestamp >= cutoff &&
+                (graphSite == "All Sites" || event.monitorName == graphSite)
+            }
+            .sorted(by: { $0.timestamp < $1.timestamp })
+    }
+
+    var latencyPoints: [LatencyPoint] {
+        graphEvents.compactMap { event in
+            guard let ms = event.durationMs else { return nil }
+            return LatencyPoint(timestamp: event.timestamp, ms: ms)
+        }
+    }
+
+    var statusPoints: [StatusPoint] {
+        graphEvents.map { event in
+            let isUp = event.status == "OK"
+            return StatusPoint(timestamp: event.timestamp, state: isUp ? 1 : 0)
+        }
+    }
+
+    var uptimePercentage: Double {
+        let points = statusPoints
+        guard !points.isEmpty else { return 0 }
+        let up = points.filter { $0.state == 1 }.count
+        return (Double(up) / Double(points.count)) * 100
+    }
+
+    var averageLatencyMs: Int {
+        let values = latencyPoints.map(\.ms)
+        guard !values.isEmpty else { return 0 }
+        return values.reduce(0, +) / values.count
+    }
+
+    var p95LatencyMs: Int {
+        let values = latencyPoints.map(\.ms).sorted()
+        guard !values.isEmpty else { return 0 }
+        let idx = min(values.count - 1, Int(Double(values.count) * 0.95))
+        return values[idx]
+    }
+
+    var peakLatencyMs: Int {
+        latencyPoints.map(\.ms).max() ?? 0
+    }
+
+    var performanceSamples: [PerformanceSample] {
+        let samples = latencyPoints
+        guard !samples.isEmpty else { return [] }
+
+        let bucketCount: Int
+        switch graphRange {
+        case .last24h: bucketCount = 36
+        case .last7d: bucketCount = 56
+        case .last30d: bucketCount = 72
+        case .last90d: bucketCount = 90
+        }
+
+        let end = Date()
+        let start = end.addingTimeInterval(-graphRange.duration)
+        let span = graphRange.duration / Double(bucketCount)
+        var buckets = Array(repeating: [Int](), count: bucketCount)
+
+        for point in samples {
+            let elapsed = point.timestamp.timeIntervalSince(start)
+            let raw = Int(elapsed / span)
+            let index = max(0, min(bucketCount - 1, raw))
+            buckets[index].append(point.ms)
+        }
+
+        return buckets.enumerated().compactMap { index, values in
+            guard !values.isEmpty else { return nil }
+            let minMs = values.min() ?? 0
+            let maxMs = values.max() ?? 0
+            let avgMs = values.reduce(0, +) / values.count
+            let timestamp = start.addingTimeInterval((Double(index) + 0.5) * span)
+            return PerformanceSample(timestamp: timestamp, minMs: minMs, avgMs: avgMs, maxMs: maxMs)
+        }
+    }
+
+    func uptimeBlocks(thresholdMs: Int) -> [UptimeBlockStatus] {
+        uptimeBlocks(from: graphEvents, thresholdMs: thresholdMs)
+    }
+
+    func uptimeTimelines(thresholdMs: Int) -> [SiteUptimeTimeline] {
+        let grouped = Dictionary(grouping: graphEvents, by: \.monitorName)
+        return grouped.keys.sorted().map { siteName in
+            let siteEvents = grouped[siteName] ?? []
+            let blocks = uptimeBlocks(from: siteEvents, thresholdMs: thresholdMs)
+            let sampleCount = siteEvents.count
+            let upCount = siteEvents.filter { $0.status == "OK" }.count
+            let uptime = sampleCount > 0 ? (Double(upCount) / Double(sampleCount)) * 100 : 0
+            return SiteUptimeTimeline(siteName: siteName, uptimePercentage: uptime, blocks: blocks)
+        }
+    }
+
+    private func uptimeBlocks(from events: [HistoryEvent], thresholdMs: Int) -> [UptimeBlockStatus] {
+        let blockCount: Int
+        switch graphRange {
+        case .last24h: blockCount = 24
+        case .last7d: blockCount = 42
+        case .last30d: blockCount = 60
+        case .last90d: blockCount = 90
+        }
+
+        let end = Date()
+        let start = end.addingTimeInterval(-graphRange.duration)
+        let bucketSpan = graphRange.duration / Double(blockCount)
+        let timeline = events.sorted(by: { $0.timestamp < $1.timestamp })
+
+        guard !timeline.isEmpty else {
+            return Array(repeating: .noData, count: blockCount)
+        }
+
+        var blocks: [UptimeBlockStatus] = []
+        blocks.reserveCapacity(blockCount)
+
+        for i in 0..<blockCount {
+            let bucketStart = start.addingTimeInterval(Double(i) * bucketSpan)
+            let bucketEnd = bucketStart.addingTimeInterval(bucketSpan)
+            let bucketEvents = timeline.filter { $0.timestamp >= bucketStart && $0.timestamp < bucketEnd }
+
+            if bucketEvents.isEmpty {
+                blocks.append(.noData)
+                continue
+            }
+
+            if bucketEvents.contains(where: { $0.status != "OK" }) {
+                blocks.append(.down)
+                continue
+            }
+
+            let degraded = bucketEvents.contains { ($0.durationMs ?? 0) > thresholdMs }
+            blocks.append(degraded ? .degraded : .up)
+        }
+
+        return blocks
     }
 
     func exportCSV() -> String {
