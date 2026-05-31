@@ -41,6 +41,10 @@ jobs:
           APP_PATH=$(find build/DerivedData/Build/Products/Release -name "Pulse.app" -maxdepth 1)
           echo "Found app at: $APP_PATH"
 
+          # Ad-hoc sign to reduce Gatekeeper "damaged" false positives on unsigned builds.
+          codesign --force --deep --sign - "$APP_PATH"
+          codesign --verify --deep --strict "$APP_PATH"
+
           mkdir -p dist
           ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" "dist/Pulse-${GITHUB_REF_NAME}.zip"
 

@@ -38,6 +38,7 @@ Pulse helps you:
 Pulse is an open-source project and release builds are distributed unsigned.
 On first launch, macOS may show:
 - `"Pulse" cannot be opened because Apple cannot check it for malicious software.`
+- `"Pulse" is damaged and can't be opened. You should move it to the Bin.`
 
 To run it anyway:
 1. In Finder, right-click `Pulse.app` and choose `Open`.
@@ -51,6 +52,13 @@ Alternative Terminal path:
 
 ```bash
 xattr -dr com.apple.quarantine /path/to/Pulse.app
+open /path/to/Pulse.app
+```
+
+If needed, remove all extended attributes and try again:
+
+```bash
+xattr -cr /path/to/Pulse.app
 open /path/to/Pulse.app
 ```
 
