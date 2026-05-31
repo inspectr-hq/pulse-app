@@ -43,3 +43,4 @@ fastlane/test_output/
 .env
 .env.*
 *.xcconfig.local
+.inspectr

@@ -55,9 +55,18 @@ struct MenuBarContentView: View {
                             Spacer()
                         }
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .padding(.vertical, 1)
+                .onHover { isHovering in
+                    if isHovering {
+                        NSCursor.pointingHand.push()
+                    } else {
+                        NSCursor.pop()
+                    }
+                }
             }
             Divider()
             menuAction("Ping now…") {
