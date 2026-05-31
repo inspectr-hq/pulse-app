@@ -423,6 +423,9 @@ final class AppViewModel: ObservableObject {
     }
 
     private func updateDockBadge() {
+        guard NSApp != nil else {
+            return
+        }
         guard settings.showAlertBadgeOnDockIcon else {
             NSApp.dockTile.badgeLabel = nil
             return
