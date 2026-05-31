@@ -9,7 +9,7 @@ struct HistoryReportsView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
-                    Text("History Reports")
+                    Text("Dashboard")
                         .font(.title3)
                         .fontWeight(.semibold)
                     Spacer()
@@ -30,8 +30,8 @@ struct HistoryReportsView: View {
 
                 HStack(spacing: 10) {
                     metricCard(title: "Uptime", value: String(format: "%.1f%%", historyVM.uptimePercentage), tint: appVM.settings.statusColorUp.color)
-                    metricCard(title: "Avg Latency", value: historyVM.averageLatencyMs > 0 ? "\(historyVM.averageLatencyMs) ms" : "-", tint: appVM.settings.statusColorSlow.color)
-                    metricCard(title: "P95 Latency", value: historyVM.p95LatencyMs > 0 ? "\(historyVM.p95LatencyMs) ms" : "-", tint: appVM.settings.statusColorFailure.color)
+                    metricCard(title: "Avg Latency", value: historyVM.averageLatencyMs > 0 ? "\(historyVM.averageLatencyMs) ms" : "-", tint: .secondary)
+                    metricCard(title: "P95 Latency", value: historyVM.p95LatencyMs > 0 ? "\(historyVM.p95LatencyMs) ms" : "-", tint: .secondary)
                     metricCard(title: "Samples", value: "\(historyVM.graphEvents.count)", tint: .secondary)
                 }
 

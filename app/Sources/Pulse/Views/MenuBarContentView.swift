@@ -68,23 +68,25 @@ struct MenuBarContentView: View {
                 }
             }
             Divider()
-            menuAction("Ping now…") {
-                logger.info("Menu click: Ping now")
+            menuAction("Check Now…") {
+                logger.info("Menu click: Check now")
                 Task { await vm.checkAll(autoOnly: false) }
             }
+            Divider()
             menuAction("Site Manager") {
                 logger.info("Menu click: Site Manager")
                 WindowManager.shared.showSiteManager(appVM: vm)
             }
             Divider()
-            menuAction("History Reports") {
-                logger.info("Menu click: History Reports")
+            menuAction("Dashboard") {
+                logger.info("Menu click: Dashboard")
                 WindowManager.shared.showHistoryReports(appVM: vm)
             }
             menuAction("History Logs") {
                 logger.info("Menu click: History Logs")
                 WindowManager.shared.showHistory(appVM: vm)
             }
+            Divider()
             menuAction("Settings…") {
                 logger.info("Menu click: Settings")
                 WindowManager.shared.showSettings(appVM: vm)
