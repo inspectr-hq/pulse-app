@@ -2,24 +2,73 @@ import SwiftUI
 import AppKit
 
 struct SettingsView: View {
+    enum Tab: String, CaseIterable, Identifiable {
+        case general = "General"
+        case menuBar = "Menu Bar"
+        case webhooks = "Webhooks"
+
+        var id: String { rawValue }
+
+        var icon: String {
+            switch self {
+            case .general: return "gearshape"
+            case .menuBar: return "menubar.rectangle"
+            case .webhooks: return "link"
+            }
+        }
+    }
+
     @EnvironmentObject var vm: AppViewModel
+    @State private var selectedTab: Tab = .general
 
     var body: some View {
-        TabView {
-            generalTab
-                .tabItem { Label("General", systemImage: "gearshape") }
+        VStack(spacing: 0) {
+            Text("Setting")
+                .font(.title2.weight(.semibold))
+                .frame(maxWidth: .infinity, alignment: .center)
+                .padding(.top, 8)
 
-            menuBarTab
-                .tabItem { Label("Menu Bar", systemImage: "menubar.rectangle") }
+            HStack(spacing: 14) {
+                ForEach(Tab.allCases) { tab in
+                    Button {
+                        selectedTab = tab
+                    } label: {
+                        VStack(spacing: 4) {
+                            Image(systemName: tab.icon)
+                                .font(.system(size: 22, weight: .regular))
+                            Text(tab.rawValue)
+                                .font(.system(size: 13))
+                        }
+                        .frame(width: 98, height: 68)
+                        .foregroundStyle(selectedTab == tab ? Color.accentColor : Color.primary)
+                        .background(
+                            RoundedRectangle(cornerRadius: 10)
+                                .fill(selectedTab == tab ? Color.accentColor.opacity(0.14) : Color.clear)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 14)
+            .padding(.top, 8)
+            .padding(.bottom, 12)
 
-            webhooksTab
-                .tabItem { Label("Webhooks", systemImage: "link") }
+            Divider()
 
-            supportTab
-                .tabItem { Label("Support", systemImage: "info.circle") }
+            Group {
+                switch selectedTab {
+                case .general:
+                    generalTab
+                case .menuBar:
+                    menuBarTab
+                case .webhooks:
+                    webhooksTab
+                }
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
         .frame(width: 600, height: 620)
         .onDisappear { vm.saveSettings() }
     }
@@ -185,19 +234,6 @@ struct SettingsView: View {
             }
             Text("Placeholders: $MESSAGE, $MONITOR, $STATUS, $URL, $TRIGGER, $STATUS_CODE, $RESPONSE_MS, $TIMESTAMP")
                 .font(.caption)
-                .foregroundStyle(.secondary)
-            Spacer()
-        }
-        .padding(.top, 8)
-    }
-
-    private var supportTab: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Pulse")
-                .font(.headline)
-            Text("Menu bar uptime checker")
-                .foregroundStyle(.secondary)
-            Text("Support links and diagnostics will be added in a later version.")
                 .foregroundStyle(.secondary)
             Spacer()
         }

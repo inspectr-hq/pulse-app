@@ -31,7 +31,7 @@ struct UptimeMenuBarApp: App {
     private func iconName(for status: OverallStatus) -> String {
         switch status {
         case .neutral: return "circle.dashed"
-        case .unknown: return "questionmark.circle"
+        case .unknown: return "circle.dashed"
         case .checking: return "arrow.triangle.2.circlepath"
         case .up: return "checkmark.circle.fill"
         case .down: return "xmark.circle.fill"
@@ -48,8 +48,9 @@ struct UptimeMenuBarApp: App {
             switch status {
             case .up: return appVM.settings.statusColorUp.color
             case .down: return appVM.settings.statusColorFailure.color
-            case .checking: return appVM.settings.statusColorSlow.color
-            case .unknown, .neutral: return appVM.settings.statusColorOffline.color
+            case .checking: return Color(red: 0.45, green: 0.72, blue: 1.0)
+            case .unknown: return Color(red: 0.28, green: 0.30, blue: 0.33)
+            case .neutral: return appVM.settings.statusColorOffline.color
             }
         }
     }
