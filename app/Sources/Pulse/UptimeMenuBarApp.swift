@@ -39,6 +39,10 @@ struct UptimeMenuBarApp: App {
     }
 
     private func iconColor(for status: OverallStatus) -> Color {
+        guard appVM.settings.showMenuIconStatusColor else {
+            return .primary
+        }
+
         switch appVM.settings.menuBarIconColorMode {
         case .never:
             return .primary

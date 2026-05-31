@@ -6,9 +6,9 @@ struct SettingsView: View {
         case general = "General"
         case menuBar = "Menu Bar"
         case webhooks = "Webhooks"
-
+        
         var id: String { rawValue }
-
+        
         var icon: String {
             switch self {
             case .general: return "gearshape"
@@ -17,17 +17,12 @@ struct SettingsView: View {
             }
         }
     }
-
+    
     @EnvironmentObject var vm: AppViewModel
     @State private var selectedTab: Tab = .general
-
+    
     var body: some View {
         VStack(spacing: 0) {
-            Text("Setting")
-                .font(.title2.weight(.semibold))
-                .frame(maxWidth: .infinity, alignment: .center)
-                .padding(.top, 8)
-
             HStack(spacing: 14) {
                 ForEach(Tab.allCases) { tab in
                     Button {
@@ -48,14 +43,14 @@ struct SettingsView: View {
                     }
                     .buttonStyle(.plain)
                 }
-                Spacer(minLength: 0)
             }
+            .frame(maxWidth: .infinity, alignment: .center)
             .padding(.horizontal, 14)
-            .padding(.top, 8)
+            .padding(.top, 14)
             .padding(.bottom, 12)
-
+            
             Divider()
-
+            
             Group {
                 switch selectedTab {
                 case .general:
@@ -72,15 +67,15 @@ struct SettingsView: View {
         .frame(width: 600, height: 620)
         .onDisappear { vm.saveSettings() }
     }
-
+    
     private var generalTab: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Toggle("Launch app at system startup", isOn: $vm.settings.launchAtLogin)
-            Toggle("Show alert badge on dock icon", isOn: $vm.settings.showAlertBadgeOnDockIcon)
-            Toggle("Enable logs", isOn: $vm.settings.enableLogs)
-
+            settingsToggleRow("Startup:", title: "Start at login", isOn: $vm.settings.launchAtLogin)
+            settingsToggleRow("Dock:", title: "Show alert badge", isOn: $vm.settings.showAlertBadgeOnDockIcon)
+            settingsToggleRow("Logs:", title: "Enable logs", isOn: $vm.settings.enableLogs)
+            
             Divider()
-
+            
             alignedRow("Ping Interval:") {
                 HStack(spacing: 8) {
                     TextField("900", value: $vm.settings.pingIntervalSeconds, format: .number)
@@ -90,7 +85,7 @@ struct SettingsView: View {
                         .foregroundStyle(.secondary)
                 }
             }
-
+            
             alignedRow("Pause Ping when:") {
                 Picker("", selection: $vm.settings.pausePingWhen) {
                     ForEach(PausePingMode.allCases) { mode in
@@ -101,7 +96,7 @@ struct SettingsView: View {
                 .pickerStyle(.menu)
                 .frame(width: 140, alignment: .leading)
             }
-
+            
             alignedRow("Stagger Requests:") {
                 HStack(spacing: 8) {
                     TextField("0", value: $vm.settings.staggerRequestsSeconds, format: .number)
@@ -111,14 +106,14 @@ struct SettingsView: View {
                         .foregroundStyle(.secondary)
                 }
             }
-
+            
             alignedRow("Failures to Alert:") {
                 Stepper(value: $vm.settings.failuresToAlert, in: 1...20) {
                     Text("\(vm.settings.failuresToAlert) consecutive")
                 }
                 .frame(width: 220, alignment: .leading)
             }
-
+            
             alignedRow("Default Threshold:") {
                 HStack(spacing: 8) {
                     TextField("2000", value: $vm.settings.defaultThresholdMs, format: .number)
@@ -128,7 +123,7 @@ struct SettingsView: View {
                         .foregroundStyle(.secondary)
                 }
             }
-
+            
             alignedRow("Default Method:") {
                 Picker("", selection: $vm.settings.defaultMethod) {
                     ForEach(HTTPMethod.allCases) { method in
@@ -139,7 +134,7 @@ struct SettingsView: View {
                 .pickerStyle(.menu)
                 .frame(width: 120, alignment: .leading)
             }
-
+            
             alignedRow("Status Colors:") {
                 VStack(alignment: .leading, spacing: 10) {
                     statusColorPickerRow("Up", color: Binding(
@@ -164,15 +159,17 @@ struct SettingsView: View {
         }
         .padding(.top, 6)
     }
-
+    
     private var menuBarTab: some View {
         VStack(alignment: .leading, spacing: 12) {
             Stepper("Max Menu Items: \(vm.settings.menuMaxItems)", value: $vm.settings.menuMaxItems, in: 1...200)
+            Toggle("Menu icon: Show status color", isOn: $vm.settings.showMenuIconStatusColor)
             Picker("Colorize icon", selection: $vm.settings.menuBarIconColorMode) {
                 Text("Always").tag(MenuBarIconColorMode.always)
                 Text("Only failing").tag(MenuBarIconColorMode.onlyWhenFailing)
                 Text("Never").tag(MenuBarIconColorMode.never)
             }
+            .disabled(!vm.settings.showMenuIconStatusColor)
             Divider()
             Toggle("Show method", isOn: $vm.settings.showMethodInMenu)
             Toggle("Show response time", isOn: $vm.settings.showResponseTimeInMenu)
@@ -182,7 +179,7 @@ struct SettingsView: View {
         }
         .padding(.top, 6)
     }
-
+    
     private var webhooksTab: some View {
         VStack(alignment: .leading, spacing: 12) {
             Toggle("Enable Webhooks", isOn: $vm.settings.webhookEnabled)
@@ -239,7 +236,20 @@ struct SettingsView: View {
         }
         .padding(.top, 8)
     }
-
+    
+    @ViewBuilder
+    private func settingsToggleRow(_ label: String, title: String, isOn: Binding<Bool>) -> some View {
+        HStack(alignment: .center, spacing: 12) {
+            Text(label)
+                .fontWeight(.semibold)
+                .frame(width: 155, alignment: .trailing)
+            Toggle(title, isOn: isOn)
+                .toggleStyle(.checkbox)
+                .frame(width: 220, alignment: .leading)
+            Spacer()
+        }
+    }
+    
     @ViewBuilder
     private func alignedRow<Content: View>(_ label: String, @ViewBuilder content: () -> Content) -> some View {
         HStack(alignment: .center, spacing: 12) {
@@ -250,7 +260,7 @@ struct SettingsView: View {
             Spacer()
         }
     }
-
+    
     @ViewBuilder
     private func statusColorPickerRow(_ label: String, color: Binding<Color>) -> some View {
         HStack(spacing: 10) {
@@ -262,7 +272,7 @@ struct SettingsView: View {
                 .frame(width: 44, alignment: .leading)
         }
     }
-
+    
     private func codableColor(from color: Color, fallback: CodableColor) -> CodableColor {
         let ns = NSColor(color)
         guard let rgb = ns.usingColorSpace(.deviceRGB) else { return fallback }
