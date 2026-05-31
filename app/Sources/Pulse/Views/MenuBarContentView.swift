@@ -9,48 +9,54 @@ struct MenuBarContentView: View {
         VStack(spacing: 6) {
             ForEach(vm.monitors.prefix(vm.settings.menuMaxItems)) { monitor in
                 let status = vm.statuses[monitor.id] ?? .unknown
-                VStack(alignment: .leading, spacing: 3) {
-                    HStack(spacing: 8) {
-                        Circle().fill(color(for: status)).frame(width: 11, height: 11)
-                        if vm.settings.showMethodInMenu {
-                            Text(monitor.method.rawValue)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .frame(width: 30, alignment: .leading)
-                        }
-                        Text(monitor.nameOrHost)
-                            .lineLimit(1)
-                        Spacer()
-                        if vm.settings.showStatusCodeInMenu {
-                            if let code = statusCode(for: status) {
-                                Text("\(code)")
-                                    .font(.callout)
+                Button {
+                    logger.info("Menu click: Monitor row \(monitor.id.uuidString, privacy: .public)")
+                    Task { await vm.check(monitorID: monitor.id, allowPaused: true, trigger: .manual) }
+                } label: {
+                    VStack(alignment: .leading, spacing: 3) {
+                        HStack(spacing: 8) {
+                            Circle().fill(color(for: status)).frame(width: 11, height: 11)
+                            if vm.settings.showMethodInMenu {
+                                Text(monitor.method.rawValue)
+                                    .font(.caption)
                                     .foregroundStyle(.secondary)
+                                    .frame(width: 30, alignment: .leading)
+                            }
+                            Text(monitor.nameOrHost)
+                                .lineLimit(1)
+                            Spacer()
+                            if vm.settings.showStatusCodeInMenu {
+                                if let code = statusCode(for: status) {
+                                    Text("\(code)")
+                                        .font(.callout)
+                                        .foregroundStyle(.secondary)
+                                }
                             }
                         }
-                    }
 
-                    HStack(spacing: 10) {
-                        if vm.settings.showResponseTimeInMenu {
-                            Text(responseTimeLabel(for: status))
-                                .font(.callout)
-                                .foregroundStyle(.secondary)
-                                .frame(width: 70, alignment: .leading)
+                        HStack(spacing: 10) {
+                            if vm.settings.showResponseTimeInMenu {
+                                Text(responseTimeLabel(for: status))
+                                    .font(.callout)
+                                    .foregroundStyle(.secondary)
+                                    .frame(width: 70, alignment: .leading)
+                            }
+                            if vm.settings.showLastCheckedInMenu, let checked = checkedAt(for: status) {
+                                Text(timeString(checked))
+                                    .font(.callout)
+                                    .foregroundStyle(.secondary)
+                                    .frame(width: 72, alignment: .leading)
+                            } else if vm.settings.showLastCheckedInMenu {
+                                Text("--:--:--")
+                                    .font(.callout)
+                                    .foregroundStyle(.secondary.opacity(0.5))
+                                    .frame(width: 72, alignment: .leading)
+                            }
+                            Spacer()
                         }
-                        if vm.settings.showLastCheckedInMenu, let checked = checkedAt(for: status) {
-                            Text(timeString(checked))
-                                .font(.callout)
-                                .foregroundStyle(.secondary)
-                                .frame(width: 72, alignment: .leading)
-                        } else if vm.settings.showLastCheckedInMenu {
-                            Text("--:--:--")
-                                .font(.callout)
-                                .foregroundStyle(.secondary.opacity(0.5))
-                                .frame(width: 72, alignment: .leading)
-                        }
-                        Spacer()
                     }
                 }
+                .buttonStyle(.plain)
                 .padding(.vertical, 1)
             }
             Divider()
