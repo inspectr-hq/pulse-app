@@ -99,7 +99,7 @@ final class AppViewModelBehaviorTests: XCTestCase {
         XCTAssertEqual(launchSpy.lastValue, true)
     }
 
-    func testCheckWritesHistoryEventForUpResult() async {
+    func testCheckWritesHistoryEventForUpResult() async throws {
         let monitor = SiteMonitor(url: URL(string: "https://a.com")!, displayName: "A", isEnabled: true, method: .get)
         let historySpy = SpyHistoryStore()
         let vm = AppViewModel(
@@ -121,7 +121,7 @@ final class AppViewModelBehaviorTests: XCTestCase {
         XCTAssertEqual(event.trigger, .manual)
     }
 
-    func testCheckWritesHistoryEventForDownResult() async {
+    func testCheckWritesHistoryEventForDownResult() async throws {
         let monitor = SiteMonitor(url: URL(string: "https://a.com")!, displayName: "A", isEnabled: true, method: .head)
         let historySpy = SpyHistoryStore()
         let vm = AppViewModel(
@@ -170,8 +170,16 @@ final class AppViewModelBehaviorTests: XCTestCase {
             webhookDispatcher: webhookSpy,
             launchAtLogin: SpyLaunchAtLogin()
         )
+        vm.settings.webhookConfigs = [
+            WebhookConfig(
+                name: "Test",
+                isEnabled: true,
+                url: "https://example.com/hook",
+                sendOn: .alerting,
+                scope: .allSites
+            )
+        ]
         vm.settings.webhookEnabled = true
-        vm.settings.webhookURL = "https://example.com/hook"
         vm.statuses[monitor.id] = .up(statusCode: 200, responseTimeMs: 10, checkedAt: Date())
 
         await vm.check(monitorID: monitor.id, allowPaused: true, trigger: .automatic)
@@ -183,22 +191,98 @@ final class AppViewModelBehaviorTests: XCTestCase {
     func testWebhookRecoveryTriggeredWhenConfigured() async {
         let monitor = SiteMonitor(url: URL(string: "https://a.com")!, displayName: "A", isEnabled: true, method: .get)
         let webhookSpy = SpyWebhookDispatcher()
+        let checker = SequenceChecker([
+            .down(reason: "HTTP 500", statusCode: 500, responseTimeMs: 30, checkedAt: Date()),
+            .up(statusCode: 200, responseTimeMs: 22, checkedAt: Date())
+        ])
         let vm = AppViewModel(
-            checker: StaticChecker(.up(statusCode: 200, responseTimeMs: 22, checkedAt: Date())),
+            checker: checker,
+            monitorStore: SpyMonitorStore(monitors: [monitor]),
+            historyStore: SpyHistoryStore(),
+            webhookDispatcher: webhookSpy,
+            launchAtLogin: SpyLaunchAtLogin()
+        )
+        vm.settings.webhookConfigs = [
+            WebhookConfig(
+                name: "Test",
+                isEnabled: true,
+                url: "https://example.com/hook",
+                sendOn: .alertingAndRecovery,
+                scope: .allSites
+            )
+        ]
+        vm.settings.webhookEnabled = false
+
+        // First check transitions into alerting state without dispatching webhook.
+        await vm.check(monitorID: monitor.id, allowPaused: true, trigger: .automatic)
+
+        // Second check recovers and should emit exactly one recovery webhook.
+        vm.settings.webhookEnabled = true
+
+        await vm.check(monitorID: monitor.id, allowPaused: true, trigger: .automatic)
+
+        XCTAssertEqual(webhookSpy.events.count, 1)
+        XCTAssertEqual(webhookSpy.events.first?.status, "up")
+    }
+
+    func testWebhookNotTriggeredWhenScopeIsSelectedSitesAndMonitorNotIncluded() async {
+        let monitor = SiteMonitor(url: URL(string: "https://a.com")!, displayName: "A", isEnabled: true, method: .get)
+        let webhookSpy = SpyWebhookDispatcher()
+        let vm = AppViewModel(
+            checker: StaticChecker(.down(reason: "HTTP 500", statusCode: 500, responseTimeMs: 99, checkedAt: Date())),
             monitorStore: SpyMonitorStore(monitors: [monitor]),
             historyStore: SpyHistoryStore(),
             webhookDispatcher: webhookSpy,
             launchAtLogin: SpyLaunchAtLogin()
         )
         vm.settings.webhookEnabled = true
-        vm.settings.webhookURL = "https://example.com/hook"
-        vm.settings.webhookSendOn = .alertingAndRecovery
-        vm.statuses[monitor.id] = .down(reason: "HTTP 500", statusCode: 500, responseTimeMs: 30, checkedAt: Date())
+        vm.settings.webhookConfigs = [
+            WebhookConfig(
+                name: "Selected only",
+                isEnabled: true,
+                url: "https://example.com/hook",
+                sendOn: .alerting,
+                scope: .selectedSites,
+                monitorIDs: [UUID()]
+            )
+        ]
+        vm.statuses[monitor.id] = .up(statusCode: 200, responseTimeMs: 10, checkedAt: Date())
 
         await vm.check(monitorID: monitor.id, allowPaused: true, trigger: .automatic)
 
+        XCTAssertEqual(webhookSpy.events.count, 0)
+    }
+
+    func testWebhookDoesNotSendRecoveryWhenSendOnAlertingOnly() async {
+        let monitor = SiteMonitor(url: URL(string: "https://a.com")!, displayName: "A", isEnabled: true, method: .get)
+        let webhookSpy = SpyWebhookDispatcher()
+        let checker = SequenceChecker([
+            .down(reason: "HTTP 500", statusCode: 500, responseTimeMs: 30, checkedAt: Date()),
+            .up(statusCode: 200, responseTimeMs: 22, checkedAt: Date())
+        ])
+        let vm = AppViewModel(
+            checker: checker,
+            monitorStore: SpyMonitorStore(monitors: [monitor]),
+            historyStore: SpyHistoryStore(),
+            webhookDispatcher: webhookSpy,
+            launchAtLogin: SpyLaunchAtLogin()
+        )
+        vm.settings.webhookEnabled = true
+        vm.settings.webhookConfigs = [
+            WebhookConfig(
+                name: "Alerting only",
+                isEnabled: true,
+                url: "https://example.com/hook",
+                sendOn: .alerting,
+                scope: .allSites
+            )
+        ]
+
+        await vm.check(monitorID: monitor.id, allowPaused: true, trigger: .automatic)
+        await vm.check(monitorID: monitor.id, allowPaused: true, trigger: .automatic)
+
         XCTAssertEqual(webhookSpy.events.count, 1)
-        XCTAssertEqual(webhookSpy.events.first?.status, "up")
+        XCTAssertEqual(webhookSpy.events.first?.status, "down")
     }
 }
 
@@ -272,5 +356,20 @@ private struct StaticChecker: SiteChecking {
 
     func check(_ monitor: SiteMonitor) async -> SiteCheckResult {
         SiteCheckResult(status: status, methodUsed: monitor.method)
+    }
+}
+
+private final class SequenceChecker: SiteChecking {
+    private var statuses: [SiteStatus]
+
+    init(_ statuses: [SiteStatus]) {
+        self.statuses = statuses
+    }
+
+    func check(_ monitor: SiteMonitor) async -> SiteCheckResult {
+        let next = statuses.isEmpty
+            ? .up(statusCode: 200, responseTimeMs: 1, checkedAt: Date())
+            : statuses.removeFirst()
+        return SiteCheckResult(status: next, methodUsed: monitor.method)
     }
 }
