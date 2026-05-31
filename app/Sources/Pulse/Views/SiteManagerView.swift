@@ -85,7 +85,17 @@ struct SiteManagerView: View {
         .sheet(isPresented: $showAdd) {
             MonitorFormView(
                 mode: .add,
-                monitor: WebsiteMonitor(url: URL(string: "https://example.com")!, displayName: "", isEnabled: true, method: .head, body: "", headers: [], allowInsecureSSL: false, thresholdMs: 2000, keyword: "")
+                monitor: WebsiteMonitor(
+                    url: URL(string: "https://example.com")!,
+                    displayName: "",
+                    isEnabled: true,
+                    method: vm.settings.defaultMethod,
+                    body: "",
+                    headers: [],
+                    allowInsecureSSL: false,
+                    thresholdMs: vm.settings.defaultThresholdMs,
+                    keyword: ""
+                )
             ) { draft, rawURL in
                 vm.addMonitor(draft, rawURL: rawURL)
             }
