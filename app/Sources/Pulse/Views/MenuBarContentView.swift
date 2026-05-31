@@ -101,11 +101,11 @@ struct MenuBarContentView: View {
 
     private func color(for status: WebsiteStatus) -> Color {
         switch status {
-        case .up: return .green
-        case .down: return .red
-        case .checking: return .yellow
-        case .paused: return .gray
-        case .unknown: return .gray.opacity(0.7)
+        case .up: return vm.settings.statusColorUp.color
+        case .down: return vm.settings.statusColorFailure.color
+        case .checking: return vm.settings.statusColorSlow.color
+        case .paused: return vm.settings.statusColorOffline.color
+        case .unknown: return vm.settings.statusColorOffline.color.opacity(0.7)
         }
     }
 

@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 struct SettingsView: View {
     @EnvironmentObject var vm: AppViewModel
@@ -92,10 +93,22 @@ struct SettingsView: View {
 
             alignedRow("Status Colors:") {
                 VStack(alignment: .leading, spacing: 10) {
-                    statusColorRow("Up", color: .green)
-                    statusColorRow("Slow", color: .yellow)
-                    statusColorRow("Failure", color: .red)
-                    statusColorRow("Offline", color: .gray)
+                    statusColorPickerRow("Up", color: Binding(
+                        get: { vm.settings.statusColorUp.color },
+                        set: { vm.settings.statusColorUp = codableColor(from: $0, fallback: vm.settings.statusColorUp) }
+                    ))
+                    statusColorPickerRow("Slow", color: Binding(
+                        get: { vm.settings.statusColorSlow.color },
+                        set: { vm.settings.statusColorSlow = codableColor(from: $0, fallback: vm.settings.statusColorSlow) }
+                    ))
+                    statusColorPickerRow("Failure", color: Binding(
+                        get: { vm.settings.statusColorFailure.color },
+                        set: { vm.settings.statusColorFailure = codableColor(from: $0, fallback: vm.settings.statusColorFailure) }
+                    ))
+                    statusColorPickerRow("Offline", color: Binding(
+                        get: { vm.settings.statusColorOffline.color },
+                        set: { vm.settings.statusColorOffline = codableColor(from: $0, fallback: vm.settings.statusColorOffline) }
+                    ))
                 }
             }
             Spacer()
@@ -122,10 +135,56 @@ struct SettingsView: View {
     }
 
     private var webhooksTab: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Toggle("Enable Webhooks", isOn: .constant(false))
-                .disabled(true)
-            Text("Webhook configuration is reserved for a later version.")
+        VStack(alignment: .leading, spacing: 12) {
+            Toggle("Enable Webhooks", isOn: $vm.settings.webhookEnabled)
+            alignedRow("Send On:") {
+                Picker("", selection: $vm.settings.webhookSendOn) {
+                    ForEach(WebhookSendOn.allCases) { mode in
+                        Text(mode.rawValue).tag(mode)
+                    }
+                }
+                .labelsHidden()
+                .pickerStyle(.menu)
+                .frame(width: 220, alignment: .leading)
+            }
+            alignedRow("Webhook URL:") {
+                TextField("https://example.com/webhook", text: $vm.settings.webhookURL)
+                    .textFieldStyle(.roundedBorder)
+            }
+            alignedRow("Method:") {
+                Picker("", selection: $vm.settings.webhookMethod) {
+                    Text("POST").tag(HTTPMethod.post)
+                    Text("GET").tag(HTTPMethod.get)
+                }
+                .labelsHidden()
+                .pickerStyle(.menu)
+                .frame(width: 120, alignment: .leading)
+            }
+            alignedRow("Payload:") {
+                TextEditor(text: $vm.settings.webhookPayloadTemplate)
+                    .frame(height: 120)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 6)
+                            .stroke(Color.secondary.opacity(0.25), lineWidth: 1)
+                    )
+            }
+            alignedRow("Retries:") {
+                Stepper(value: $vm.settings.webhookMaxRetries, in: 0...8) {
+                    Text("\(vm.settings.webhookMaxRetries)")
+                }
+                .frame(width: 120, alignment: .leading)
+            }
+            alignedRow("Initial Backoff:") {
+                HStack(spacing: 8) {
+                    TextField("1.0", value: $vm.settings.webhookInitialBackoffSeconds, format: .number)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 80)
+                    Text("seconds")
+                        .foregroundStyle(.secondary)
+                }
+            }
+            Text("Placeholders: $MESSAGE, $MONITOR, $STATUS, $URL, $TRIGGER, $STATUS_CODE, $RESPONSE_MS, $TIMESTAMP")
+                .font(.caption)
                 .foregroundStyle(.secondary)
             Spacer()
         }
@@ -157,18 +216,25 @@ struct SettingsView: View {
     }
 
     @ViewBuilder
-    private func statusColorRow(_ label: String, color: Color) -> some View {
+    private func statusColorPickerRow(_ label: String, color: Binding<Color>) -> some View {
         HStack(spacing: 10) {
             Text(label)
                 .frame(width: 54, alignment: .leading)
                 .foregroundStyle(.secondary)
-            RoundedRectangle(cornerRadius: 8)
-                .fill(color)
-                .frame(width: 24, height: 24)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 8)
-                        .stroke(Color.black.opacity(0.15), lineWidth: 1)
-                )
+            ColorPicker("", selection: color, supportsOpacity: true)
+                .labelsHidden()
+                .frame(width: 44, alignment: .leading)
         }
+    }
+
+    private func codableColor(from color: Color, fallback: CodableColor) -> CodableColor {
+        let ns = NSColor(color)
+        guard let rgb = ns.usingColorSpace(.deviceRGB) else { return fallback }
+        return CodableColor(
+            red: Double(rgb.redComponent),
+            green: Double(rgb.greenComponent),
+            blue: Double(rgb.blueComponent),
+            alpha: Double(rgb.alphaComponent)
+        )
     }
 }

@@ -30,10 +30,18 @@ struct HistoryView: View {
                 TableColumn("URL") { Text($0.url) }
                 TableColumn("Status") { event in
                     Text(event.statusCode.map { "\(event.status) (\($0))" } ?? event.status)
+                        .foregroundStyle(statusColor(for: event))
                 }
                 TableColumn("Duration") { Text($0.durationMs.map { "\($0) ms" } ?? "-") }
             }
         }
         .onAppear { historyVM.reload() }
+    }
+
+    private func statusColor(for event: HistoryEvent) -> Color {
+        if event.status == "OK" {
+            return appVM.settings.statusColorUp.color
+        }
+        return appVM.settings.statusColorFailure.color
     }
 }

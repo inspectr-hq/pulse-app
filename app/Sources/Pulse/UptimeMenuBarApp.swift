@@ -43,13 +43,13 @@ struct UptimeMenuBarApp: App {
         case .never:
             return .primary
         case .onlyWhenFailing:
-            return status == .down ? .red : .primary
+            return status == .down ? appVM.settings.statusColorFailure.color : .primary
         case .always:
             switch status {
-            case .up: return .green
-            case .down: return .red
-            case .checking: return .yellow
-            case .unknown, .neutral: return .gray
+            case .up: return appVM.settings.statusColorUp.color
+            case .down: return appVM.settings.statusColorFailure.color
+            case .checking: return appVM.settings.statusColorSlow.color
+            case .unknown, .neutral: return appVM.settings.statusColorOffline.color
             }
         }
     }
