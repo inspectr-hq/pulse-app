@@ -10,7 +10,8 @@ final class AppViewModelBehaviorTests: XCTestCase {
             monitorStore: store,
             historyStore: SpyHistoryStore(),
             webhookDispatcher: SpyWebhookDispatcher(),
-            launchAtLogin: SpyLaunchAtLogin()
+            launchAtLogin: SpyLaunchAtLogin(),
+            notifications: SpyNotifications()
         )
 
         let error = vm.addMonitor(rawURL: "inspectr.dev", name: "Inspectr")
@@ -30,7 +31,8 @@ final class AppViewModelBehaviorTests: XCTestCase {
             monitorStore: store,
             historyStore: SpyHistoryStore(),
             webhookDispatcher: SpyWebhookDispatcher(),
-            launchAtLogin: SpyLaunchAtLogin()
+            launchAtLogin: SpyLaunchAtLogin(),
+            notifications: SpyNotifications()
         )
 
         let error = vm.addMonitor(rawURL: "", name: "Bad")
@@ -48,7 +50,8 @@ final class AppViewModelBehaviorTests: XCTestCase {
             monitorStore: store,
             historyStore: SpyHistoryStore(),
             webhookDispatcher: SpyWebhookDispatcher(),
-            launchAtLogin: SpyLaunchAtLogin()
+            launchAtLogin: SpyLaunchAtLogin(),
+            notifications: SpyNotifications()
         )
 
         var updated = monitor
@@ -69,7 +72,8 @@ final class AppViewModelBehaviorTests: XCTestCase {
             monitorStore: store,
             historyStore: SpyHistoryStore(),
             webhookDispatcher: SpyWebhookDispatcher(),
-            launchAtLogin: SpyLaunchAtLogin()
+            launchAtLogin: SpyLaunchAtLogin(),
+            notifications: SpyNotifications()
         )
 
         vm.removeMonitor(id: monitor.id)
@@ -87,7 +91,8 @@ final class AppViewModelBehaviorTests: XCTestCase {
             monitorStore: store,
             historyStore: SpyHistoryStore(),
             webhookDispatcher: SpyWebhookDispatcher(),
-            launchAtLogin: launchSpy
+            launchAtLogin: launchSpy,
+            notifications: SpyNotifications()
         )
 
         vm.settings.launchAtLogin = true
@@ -107,7 +112,8 @@ final class AppViewModelBehaviorTests: XCTestCase {
             monitorStore: SpyMonitorStore(monitors: [monitor]),
             historyStore: historySpy,
             webhookDispatcher: SpyWebhookDispatcher(),
-            launchAtLogin: SpyLaunchAtLogin()
+            launchAtLogin: SpyLaunchAtLogin(),
+            notifications: SpyNotifications()
         )
 
         await vm.check(monitorID: monitor.id, allowPaused: true, trigger: .manual)
@@ -129,7 +135,8 @@ final class AppViewModelBehaviorTests: XCTestCase {
             monitorStore: SpyMonitorStore(monitors: [monitor]),
             historyStore: historySpy,
             webhookDispatcher: SpyWebhookDispatcher(),
-            launchAtLogin: SpyLaunchAtLogin()
+            launchAtLogin: SpyLaunchAtLogin(),
+            notifications: SpyNotifications()
         )
 
         await vm.check(monitorID: monitor.id, allowPaused: true, trigger: .automatic)
@@ -149,7 +156,8 @@ final class AppViewModelBehaviorTests: XCTestCase {
             monitorStore: SpyMonitorStore(monitors: [paused]),
             historyStore: historySpy,
             webhookDispatcher: SpyWebhookDispatcher(),
-            launchAtLogin: SpyLaunchAtLogin()
+            launchAtLogin: SpyLaunchAtLogin(),
+            notifications: SpyNotifications()
         )
 
         await vm.check(monitorID: paused.id, allowPaused: true, trigger: .manual)
@@ -168,7 +176,8 @@ final class AppViewModelBehaviorTests: XCTestCase {
             monitorStore: SpyMonitorStore(monitors: [monitor]),
             historyStore: SpyHistoryStore(),
             webhookDispatcher: webhookSpy,
-            launchAtLogin: SpyLaunchAtLogin()
+            launchAtLogin: SpyLaunchAtLogin(),
+            notifications: SpyNotifications()
         )
         vm.settings.webhookConfigs = [
             WebhookConfig(
@@ -200,7 +209,8 @@ final class AppViewModelBehaviorTests: XCTestCase {
             monitorStore: SpyMonitorStore(monitors: [monitor]),
             historyStore: SpyHistoryStore(),
             webhookDispatcher: webhookSpy,
-            launchAtLogin: SpyLaunchAtLogin()
+            launchAtLogin: SpyLaunchAtLogin(),
+            notifications: SpyNotifications()
         )
         vm.settings.webhookConfigs = [
             WebhookConfig(
@@ -233,7 +243,8 @@ final class AppViewModelBehaviorTests: XCTestCase {
             monitorStore: SpyMonitorStore(monitors: [monitor]),
             historyStore: SpyHistoryStore(),
             webhookDispatcher: webhookSpy,
-            launchAtLogin: SpyLaunchAtLogin()
+            launchAtLogin: SpyLaunchAtLogin(),
+            notifications: SpyNotifications()
         )
         vm.settings.webhookEnabled = true
         vm.settings.webhookConfigs = [
@@ -265,7 +276,8 @@ final class AppViewModelBehaviorTests: XCTestCase {
             monitorStore: SpyMonitorStore(monitors: [monitor]),
             historyStore: SpyHistoryStore(),
             webhookDispatcher: webhookSpy,
-            launchAtLogin: SpyLaunchAtLogin()
+            launchAtLogin: SpyLaunchAtLogin(),
+            notifications: SpyNotifications()
         )
         vm.settings.webhookEnabled = true
         vm.settings.webhookConfigs = [
@@ -338,6 +350,10 @@ private final class SpyLaunchAtLogin: LaunchAtLoginControlling {
     func setEnabled(_ enabled: Bool) {
         lastValue = enabled
     }
+}
+
+private struct SpyNotifications: NotificationDispatching {
+    func send(title: String, body: String) {}
 }
 
 private final class SpyWebhookDispatcher: WebhookDispatching {
