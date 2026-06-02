@@ -221,18 +221,15 @@ final class AppViewModelBehaviorTests: XCTestCase {
                 scope: .allSites
             )
         ]
-        vm.settings.webhookEnabled = false
 
-        // First check transitions into alerting state without dispatching webhook.
+        // First check transitions into alerting state and dispatches a down webhook.
         await vm.check(monitorID: monitor.id, allowPaused: true, trigger: .automatic)
 
-        // Second check recovers and should emit exactly one recovery webhook.
-        vm.settings.webhookEnabled = true
-
+        // Second check recovers and dispatches an up webhook.
         await vm.check(monitorID: monitor.id, allowPaused: true, trigger: .automatic)
 
-        XCTAssertEqual(webhookSpy.events.count, 1)
-        XCTAssertEqual(webhookSpy.events.first?.status, "up")
+        XCTAssertEqual(webhookSpy.events.count, 2)
+        XCTAssertEqual(webhookSpy.events.map(\.status), ["down", "up"])
     }
 
     func testWebhookNotTriggeredWhenScopeIsSelectedSitesAndMonitorNotIncluded() async {
@@ -295,6 +292,70 @@ final class AppViewModelBehaviorTests: XCTestCase {
 
         XCTAssertEqual(webhookSpy.events.count, 1)
         XCTAssertEqual(webhookSpy.events.first?.status, "down")
+    }
+
+    func testWebhookDispatcherReceivesStatusCodeAndResponseMsForDownTransition() async {
+        let monitor = SiteMonitor(url: URL(string: "https://a.com")!, displayName: "A", isEnabled: true, method: .get)
+        let webhookSpy = SpyWebhookDispatcher()
+        let vm = AppViewModel(
+            checker: StaticChecker(.down(reason: "HTTP 503", statusCode: 503, responseTimeMs: 87, checkedAt: Date())),
+            monitorStore: SpyMonitorStore(monitors: [monitor]),
+            historyStore: SpyHistoryStore(),
+            webhookDispatcher: webhookSpy,
+            launchAtLogin: SpyLaunchAtLogin(),
+            notifications: SpyNotifications()
+        )
+        vm.settings.webhookConfigs = [
+            WebhookConfig(
+                name: "Test",
+                isEnabled: true,
+                url: "https://example.com/hook",
+                sendOn: .alerting,
+                scope: .allSites
+            )
+        ]
+        vm.statuses[monitor.id] = .up(statusCode: 200, responseTimeMs: 10, checkedAt: Date())
+
+        await vm.check(monitorID: monitor.id, allowPaused: true, trigger: .automatic)
+
+        XCTAssertEqual(webhookSpy.events.count, 1)
+        XCTAssertEqual(webhookSpy.events.first?.status, "down")
+        XCTAssertEqual(webhookSpy.events.first?.statusCode, 503)
+        XCTAssertEqual(webhookSpy.events.first?.responseMs, 87)
+    }
+
+    func testWebhookDispatcherReceivesStatusCodeAndResponseMsForRecoveryTransition() async {
+        let monitor = SiteMonitor(url: URL(string: "https://a.com")!, displayName: "A", isEnabled: true, method: .get)
+        let webhookSpy = SpyWebhookDispatcher()
+        let checker = SequenceChecker([
+            .down(reason: "HTTP 500", statusCode: 500, responseTimeMs: 30, checkedAt: Date()),
+            .up(statusCode: 200, responseTimeMs: 22, checkedAt: Date())
+        ])
+        let vm = AppViewModel(
+            checker: checker,
+            monitorStore: SpyMonitorStore(monitors: [monitor]),
+            historyStore: SpyHistoryStore(),
+            webhookDispatcher: webhookSpy,
+            launchAtLogin: SpyLaunchAtLogin(),
+            notifications: SpyNotifications()
+        )
+        vm.settings.webhookConfigs = [
+            WebhookConfig(
+                name: "Test",
+                isEnabled: true,
+                url: "https://example.com/hook",
+                sendOn: .alertingAndRecovery,
+                scope: .allSites
+            )
+        ]
+
+        await vm.check(monitorID: monitor.id, allowPaused: true, trigger: .automatic)
+        await vm.check(monitorID: monitor.id, allowPaused: true, trigger: .automatic)
+
+        XCTAssertEqual(webhookSpy.events.count, 2)
+        XCTAssertEqual(webhookSpy.events.map(\.status), ["down", "up"])
+        XCTAssertEqual(webhookSpy.events.last?.statusCode, 200)
+        XCTAssertEqual(webhookSpy.events.last?.responseMs, 22)
     }
 }
 

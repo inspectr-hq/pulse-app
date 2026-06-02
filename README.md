@@ -4,16 +4,28 @@ Pulse is a lightweight macOS menu bar uptime checker.
 
 It gives you a fast, always-available way to monitor APIs, MCP servers, websites, and health endpoints from your Mac menu bar.
 
+![Dashboard](./content/inspectr-pulse-dashboard.png)
+
+![macOS](https://img.shields.io/badge/platform-macOS-lightgrey)
+![Latest Release](https://img.shields.io/github/v/release/inspectr-hq/pulse?label=Latest%20Release)
+![Total Downloads](https://img.shields.io/github/downloads/inspectr-hq/pulse/total?label=Total%20Downloads)
+
 ## Pulse Features
 
-- Native macOS menu bar app (`SwiftUI`, `MenuBarExtra`, macOS 15+)
+- Native macOS menu bar app
 - Multi-site monitoring with per-site method/threshold/keyword
-- Automatic checks (default every `900` seconds)
-- Manual checks from menu and site manager
+- Automatic checks on a fixed interval, plus manual checks from the menu bar and site manager
 - Per-site pause/unpause
-- History log persisted to Application Support JSON (atomic writes, ISO-8601 dates)
-- Optional webhook transitions (`up -> down`, `down -> up` when enabled), with multiple webhook rules and per-site filters
+- Dashboard views for uptime status and performance trends
+- History log for uptime and response-time data
+- Local notifications for alerts and recovery events
+- Webhooks for alert and recovery events, with multiple rules and per-site filters
 
+## Screenshots
+
+| Menu Bar | Site Manager | Dashboard | History Logs | Settings |
+|----------|--------------|-----------|--------------|----------|
+| ![Menu Bar](./content/inspectr-pulse-menubar.png) | ![Site Manager](./content/inspectr-pulse-site-manager.png) | ![Dashboard](./content/inspectr-pulse-dashboard.png) | ![History Logs](./content/inspectr-pulse-history-logs.png) | ![Settings](./content/inspectr-pulse-settings.png) |
 
 ## Why Monitoring Matters
 

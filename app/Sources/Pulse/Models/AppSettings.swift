@@ -55,8 +55,8 @@ struct WebhookConfig: Identifiable, Codable, Equatable {
       "status": "$STATUS",
       "url": "$URL",
       "trigger": "$TRIGGER",
-      "statusCode": "$STATUS_CODE",
-      "responseMs": "$RESPONSE_MS",
+      "status_code": "$STATUS_CODE",
+      "response_ms": "$RESPONSE_MS",
       "timestamp": "$TIMESTAMP"
     }
     """
@@ -115,7 +115,7 @@ struct AppSettings: Codable, Equatable {
     var statusColorSlow = CodableColor(red: 0.95, green: 0.77, blue: 0.05, alpha: 1.0)
     var statusColorFailure = CodableColor(red: 0.96, green: 0.24, blue: 0.2, alpha: 1.0)
     var statusColorOffline = CodableColor(red: 0.57, green: 0.59, blue: 0.62, alpha: 1.0)
-    var menuMaxItems: Int = 50
+    var menuMaxItems: Int = 20
     var showMethodInMenu: Bool = true
     var showResponseTimeInMenu: Bool = true
     var showLastCheckedInMenu: Bool = true
@@ -133,8 +133,8 @@ struct AppSettings: Codable, Equatable {
       "status": "$STATUS",
       "url": "$URL",
       "trigger": "$TRIGGER",
-      "statusCode": "$STATUS_CODE",
-      "responseMs": "$RESPONSE_MS",
+      "status_code": "$STATUS_CODE",
+      "response_ms": "$RESPONSE_MS",
       "timestamp": "$TIMESTAMP"
     }
     """
