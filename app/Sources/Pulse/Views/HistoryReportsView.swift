@@ -284,7 +284,7 @@ private struct UptimeTimelineRow: View {
                     Text(siteName)
                         .font(.headline)
                     Spacer()
-                    Text("\(uptimePercentage, specifier: "%.1f")% uptime")
+                    Text("\(formattedUptimePercentage(uptimePercentage))%")
                         .font(.title3.weight(.semibold))
                         .foregroundStyle(.primary)
                 }
@@ -383,7 +383,7 @@ private struct UptimeTimelineRow: View {
             HStack(spacing: 6) {
                 Image(systemName: iconName(for: status))
                     .foregroundStyle(color(for: status))
-                Text("\(title(for: status)) - Uptime \(bucket.uptimePercentage, specifier: "%.0f")%")
+                Text("\(title(for: status)) - \(formattedUptimePercentage(bucket.uptimePercentage))%")
                     .font(.headline)
                 Spacer()
             }
@@ -450,6 +450,15 @@ private struct UptimeTimelineRow: View {
         case .noData:
             return noDataColor
         }
+    }
+
+    private func formattedUptimePercentage(_ value: Double) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.locale = .current
+        formatter.minimumFractionDigits = 2
+        formatter.maximumFractionDigits = 2
+        return formatter.string(from: NSNumber(value: value)) ?? String(format: "%.2f", value)
     }
 
 }
