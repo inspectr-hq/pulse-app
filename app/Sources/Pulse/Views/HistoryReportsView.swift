@@ -321,10 +321,17 @@ private struct UptimeTimelineRow: View {
                     ZStack(alignment: .topLeading) {
                         HStack(alignment: .center, spacing: spacing) {
                             ForEach(buckets) { bucket in
+                                let isHovered = hoveredBucketID == bucket.id
                                 Rectangle()
                                     .fill(color(for: bucket.status))
                                     .frame(width: barWidth, height: 28)
                                     .clipShape(.rect(cornerRadius: 2))
+                                    .overlay {
+                                        if isHovered {
+                                            Rectangle()
+                                                .fill(Color.white.opacity(0.25))
+                                        }
+                                    }
                                     .onHover { isHovering in
                                         if isHovering {
                                             hoveredBucketID = bucket.id
