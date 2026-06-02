@@ -32,7 +32,7 @@ struct HistoryReportsView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
                 HStack(spacing: 10) {
-                    metricCard(title: "Uptime", value: String(format: "%.1f%%", historyVM.uptimePercentage), tint: appVM.settings.statusColorUp.color)
+                    metricCard(title: "Uptime", value: formattedPercentage(historyVM.uptimePercentage) + "%", tint: appVM.settings.statusColorUp.color)
                     metricCard(title: "Avg Latency", value: historyVM.averageLatencyMs > 0 ? "\(historyVM.averageLatencyMs) ms" : "-", tint: .secondary)
                     metricCard(title: "P95 Latency", value: historyVM.p95LatencyMs > 0 ? "\(historyVM.p95LatencyMs) ms" : "-", tint: .secondary)
                     metricCard(title: "Samples", value: "\(historyVM.graphEvents.count)", tint: .secondary)
@@ -262,6 +262,15 @@ struct HistoryReportsView: View {
         }
     }
 
+    private func formattedPercentage(_ value: Double) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.locale = .current
+        formatter.minimumFractionDigits = 2
+        formatter.maximumFractionDigits = 2
+        return formatter.string(from: NSNumber(value: value)) ?? String(format: "%.2f", value)
+    }
+
     static func tooltipShouldRenderBelow(rowIndex: Int) -> Bool {
         rowIndex == 0
     }
@@ -469,6 +478,15 @@ private struct UptimeTimelineRow: View {
     }
 
     private func formattedUptimePercentage(_ value: Double) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.locale = .current
+        formatter.minimumFractionDigits = 2
+        formatter.maximumFractionDigits = 2
+        return formatter.string(from: NSNumber(value: value)) ?? String(format: "%.2f", value)
+    }
+
+    private func formattedPercentage(_ value: Double) -> String {
         let formatter = NumberFormatter()
         formatter.numberStyle = .decimal
         formatter.locale = .current
