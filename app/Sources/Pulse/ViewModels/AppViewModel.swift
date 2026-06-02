@@ -149,6 +149,17 @@ final class AppViewModel: ObservableObject {
         updateDockBadge()
     }
 
+    func reorderMonitor(id: UUID, before targetID: UUID) {
+        guard let sourceIndex = monitors.firstIndex(where: { $0.id == id }),
+              let targetIndex = monitors.firstIndex(where: { $0.id == targetID }),
+              sourceIndex != targetIndex else { return }
+
+        let monitor = monitors.remove(at: sourceIndex)
+        let insertionIndex = sourceIndex < targetIndex ? targetIndex - 1 : targetIndex
+        monitors.insert(monitor, at: insertionIndex)
+        persistMonitors()
+    }
+
     func removeMonitor(id: UUID) {
         monitors.removeAll { $0.id == id }
         statuses.removeValue(forKey: id)
