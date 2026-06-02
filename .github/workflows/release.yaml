@@ -27,12 +27,15 @@ jobs:
 
       - name: Build Pulse
         run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "Building marketing version: $VERSION"
           xcodebuild \
             -project Pulse.xcodeproj \
             -scheme Pulse \
             -configuration Release \
             -destination 'platform=macOS' \
             -derivedDataPath build/DerivedData \
+            MARKETING_VERSION="$VERSION" \
             CODE_SIGNING_ALLOWED=NO \
             build
 
