@@ -295,7 +295,7 @@ private struct UptimeTimelineRow: View {
                     let totalSpacing = spacing * CGFloat(max(count - 1, 0))
                     let availableWidth = max(proxy.size.width, 0)
                     let barWidth = max(4, (availableWidth - totalSpacing) / CGFloat(count))
-                    let tooltipWidth: CGFloat = 240
+                    let tooltipWidth: CGFloat = 192
                     let tooltipHeight: CGFloat = 72
                     let hoveredBucket = hoveredBucketID.flatMap { id in buckets.first(where: { $0.id == id }) }
                     let tooltipBelow = isFirstRow
