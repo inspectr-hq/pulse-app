@@ -24,8 +24,7 @@ final class WebhookEngine: WebhookDispatching {
 
     func sendTransition(event: WebhookTransitionEvent, config: WebhookConfig) {
         guard config.isEnabled,
-              let url = URL(string: config.url),
-              !config.url.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+              let url = validatedWebhookURL(config.url) else { return }
 
         let payload = buildPayload(template: config.payloadTemplate, event: event)
         let attempts = max(1, config.maxRetries + 1)
@@ -64,5 +63,17 @@ final class WebhookEngine: WebhookDispatching {
         output = output.replacingOccurrences(of: "$STATUS", with: event.status)
         output = output.replacingOccurrences(of: "$TIMESTAMP", with: ISO8601DateFormatter().string(from: event.timestamp))
         return output
+    }
+
+    private func validatedWebhookURL(_ rawValue: String) -> URL? {
+        let trimmed = rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty,
+              let url = URL(string: trimmed),
+              let scheme = url.scheme?.lowercased(),
+              (scheme == "http" || scheme == "https"),
+              url.host != nil else {
+            return nil
+        }
+        return url
     }
 }
