@@ -14,6 +14,11 @@ It gives you a fast, always-available way to monitor APIs, MCP servers, websites
 - History log persisted to Application Support JSON (atomic writes, ISO-8601 dates)
 - Optional webhook transitions (`up -> down`, `down -> up` when enabled), with multiple webhook rules and per-site filters
 
+## Screenshots
+
+| Menu Bar | Site Manager | Dashboard | History Logs | Settings |
+|----------|--------------|-----------|--------------|----------|
+| ![Menu Bar](./content/inspectr-pulse-menubar.png) | ![Site Manager](./content/inspectr-pulse-site-manager.png) | ![Dashboard](./content/inspectr-pulse-dashboard.png) | ![History Logs](./content/inspectr-pulse-history-logs.png) | ![Settings](./content/inspectr-pulse-settings.png) |
 
 ## Why Monitoring Matters
 
