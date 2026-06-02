@@ -43,7 +43,7 @@ final class WindowManager {
         window.title = "Site Manager"
         window.contentView = NSHostingView(rootView: view)
         window.isReleasedWhenClosed = false
-        let delegate = WindowCloseDelegate { [weak self] in
+        let delegate = WindowStateDelegate { [weak self] in
             self?.siteManagerWindow = nil
             self?.siteManagerDelegate = nil
         }
@@ -57,11 +57,23 @@ final class WindowManager {
         logger.info("showSiteManager created and opened window")
     }
 
-    func showHistory(appVM: AppViewModel) {
+    func showHistory(
+        appVM: AppViewModel,
+        selectedName: String? = nil,
+        timeFilter: HistoryViewModel.TimeFilter? = nil,
+        graphSite: String? = nil,
+        graphRange: HistoryViewModel.GraphRange? = nil
+    ) {
         logger.info("showHistory called")
         NSApp.setActivationPolicy(.regular)
         if let window = historyWindow {
             logger.info("showHistory reusing existing window")
+            window.contentView = NSHostingView(rootView: HistoryView(
+                selectedName: selectedName,
+                timeFilter: timeFilter,
+                graphSite: graphSite,
+                graphRange: graphRange
+            ).environmentObject(appVM))
             if window.isMiniaturized {
                 window.deminiaturize(nil)
             }
@@ -72,7 +84,12 @@ final class WindowManager {
             return
         }
 
-        let view = HistoryView().environmentObject(appVM)
+        let view = HistoryView(
+            selectedName: selectedName,
+            timeFilter: timeFilter,
+            graphSite: graphSite,
+            graphRange: graphRange
+        ).environmentObject(appVM)
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 940, height: 560),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
@@ -82,7 +99,7 @@ final class WindowManager {
         window.title = "History Logs"
         window.contentView = NSHostingView(rootView: view)
         window.isReleasedWhenClosed = false
-        let delegate = WindowCloseDelegate { [weak self] in
+        let delegate = WindowStateDelegate { [weak self] in
             self?.historyWindow = nil
             self?.historyDelegate = nil
         }
@@ -121,7 +138,7 @@ final class WindowManager {
         window.title = "Dashboard"
         window.contentView = NSHostingView(rootView: view)
         window.isReleasedWhenClosed = false
-        let delegate = WindowCloseDelegate { [weak self] in
+        let delegate = WindowStateDelegate { [weak self] in
             self?.historyReportsWindow = nil
             self?.historyReportsDelegate = nil
         }
@@ -152,18 +169,19 @@ final class WindowManager {
 
         let view = SettingsView().environmentObject(appVM)
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 560, height: 380),
-            styleMask: [.titled, .closable, .miniaturizable],
+            contentRect: NSRect(x: 0, y: 0, width: 720, height: 620),
+            styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
             defer: false
         )
         window.title = "Settings"
+        window.minSize = NSSize(width: 600, height: 620)
         window.contentView = NSHostingView(rootView: view)
         window.isReleasedWhenClosed = false
-        let delegate = WindowCloseDelegate { [weak self] in
+        let delegate = WindowStateDelegate(onClose: { [weak self] in
             self?.settingsWindow = nil
             self?.settingsDelegate = nil
-        }
+        }, preserveTopOnResize: true)
         settingsDelegate = delegate
         window.delegate = delegate
         settingsWindow = window
@@ -175,14 +193,39 @@ final class WindowManager {
     }
 }
 
-private final class WindowCloseDelegate: NSObject, NSWindowDelegate {
-    private let onClose: () -> Void
+private func centerHorizontally(_ window: NSWindow, topEdge: CGFloat? = nil) {
+    let frame = window.frame
+    let visibleFrame = window.screen?.visibleFrame ?? NSScreen.main?.visibleFrame ?? .zero
+    let top = topEdge ?? frame.maxY
+    window.setFrameOrigin(CGPoint(
+        x: visibleFrame.midX - frame.width / 2,
+        y: top - frame.height
+    ))
+}
 
-    init(onClose: @escaping () -> Void) {
+private final class WindowStateDelegate: NSObject, NSWindowDelegate {
+    private let onClose: () -> Void
+    private let preserveTopOnResize: Bool
+    private var topEdgeBeforeResize: CGFloat?
+
+    init(onClose: @escaping () -> Void, preserveTopOnResize: Bool = false) {
         self.onClose = onClose
+        self.preserveTopOnResize = preserveTopOnResize
     }
 
     func windowWillClose(_ notification: Notification) {
         onClose()
+    }
+
+    func windowWillResize(_ window: NSWindow, to frameSize: NSSize) -> NSSize {
+        guard preserveTopOnResize else { return frameSize }
+        topEdgeBeforeResize = window.frame.maxY
+        return frameSize
+    }
+
+    func windowDidResize(_ notification: Notification) {
+        guard let window = notification.object as? NSWindow else { return }
+        guard preserveTopOnResize else { return }
+        centerHorizontally(window, topEdge: topEdgeBeforeResize)
     }
 }

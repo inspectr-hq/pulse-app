@@ -275,7 +275,7 @@ final class AppViewModel: ObservableObject {
 
     private func maybeSendWebhookTransition(previous: SiteStatus, current: SiteStatus, monitor: SiteMonitor, trigger: HistoryTrigger) {
         guard monitor.isEnabled else { return }
-        guard settings.webhookEnabled else { return }
+        guard !settings.webhookConfigs.isEmpty else { return }
 
         let previousStable = stableStatus(previous)
         let currentStable = stableStatus(current)

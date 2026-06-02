@@ -21,6 +21,8 @@ struct SettingsView: View {
     @EnvironmentObject var vm: AppViewModel
     @State private var selectedTab: Tab = .general
     @State private var selectedWebhookID: UUID?
+    private let compactWindowSize = NSSize(width: 720, height: 620)
+    private let webhooksWindowSize = NSSize(width: 840, height: 760)
     
     var body: some View {
         VStack(spacing: 0) {
@@ -29,21 +31,25 @@ struct SettingsView: View {
                     Button {
                         selectedTab = tab
                     } label: {
-                        VStack(spacing: 4) {
-                            Image(systemName: tab.icon)
-                                .font(.system(size: 22, weight: .regular))
-                            Text(tab.rawValue)
-                                .font(.system(size: 13))
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 10)
+                                .fill(selectedTab == tab ? Color.accentColor.opacity(0.14) : Color.clear)
+                            VStack(spacing: 4) {
+                                Image(systemName: tab.icon)
+                                    .font(.system(size: 22, weight: .regular))
+                                Text(tab.rawValue)
+                                    .font(.system(size: 13))
+                            }
                         }
                         .frame(width: 98, height: 68)
                         .foregroundStyle(selectedTab == tab ? Color.accentColor : Color.primary)
-                        .background(
-                            RoundedRectangle(cornerRadius: 10)
-                                .fill(selectedTab == tab ? Color.accentColor.opacity(0.14) : Color.clear)
-                        )
                     }
                     .buttonStyle(.plain)
+                    .contentShape(RoundedRectangle(cornerRadius: 10))
                 }
+            }
+            .onChange(of: selectedTab) { _, newTab in
+                resizeWindow(for: newTab)
             }
             .frame(maxWidth: .infinity, alignment: .center)
             .padding(.horizontal, 14)
@@ -52,20 +58,28 @@ struct SettingsView: View {
             
             Divider()
             
-            Group {
-                switch selectedTab {
-                case .general:
-                    generalTab
-                case .menuBar:
-                    menuBarTab
-                case .webhooks:
-                    webhooksTab
+            ScrollView {
+                Group {
+                    switch selectedTab {
+                    case .general:
+                        generalTab
+                    case .menuBar:
+                        menuBarTab
+                    case .webhooks:
+                        webhooksTab
+                    }
                 }
+                .frame(maxWidth: .infinity, alignment: .topLeading)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 8)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .frame(width: 600, height: 620)
+        .frame(minWidth: 600, minHeight: 620)
+        .frame(
+            minWidth: selectedTab == .webhooks ? webhooksWindowSize.width : compactWindowSize.width,
+            minHeight: selectedTab == .webhooks ? webhooksWindowSize.height : compactWindowSize.height
+        )
         .onDisappear { vm.saveSettings() }
     }
     
@@ -153,8 +167,6 @@ struct SettingsView: View {
                 .pickerStyle(.menu)
                 .frame(width: 120, alignment: .leading)
             }
-            
-            Spacer()
         }
         .padding(.top, 6)
     }
@@ -215,8 +227,6 @@ struct SettingsView: View {
                     ))
                 }
             }
-            
-            Spacer()
         }
         .frame(maxWidth: .infinity, alignment: .center)
         .padding(.top, 6)
@@ -224,205 +234,242 @@ struct SettingsView: View {
     
     private var webhooksTab: some View {
         VStack(alignment: .leading, spacing: 12) {
-            settingsToggleRow("Webhooks:", title: "Enable", isOn: $vm.settings.webhookEnabled)
-            alignedRow("Rule:") {
-                HStack(spacing: 8) {
-                    Picker("", selection: selectedWebhookBinding) {
+            HStack(alignment: .top, spacing: 16) {
+                webhookOverviewPane
+
+                Divider()
+                    .frame(maxHeight: .infinity)
+
+                webhookEditorPane
+            }
+        }
+        .padding(.top, 8)
+        .onAppear {
+            if selectedWebhookID == nil {
+                selectedWebhookID = vm.settings.webhookConfigs.first?.id
+            }
+        }
+    }
+
+    private var webhookOverviewPane: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .center, spacing: 8) {
+                Text("Webhooks")
+                    .font(.headline)
+
+                Spacer(minLength: 8)
+
+                Button {
+                    addWebhookRule()
+                } label: {
+                    Image(systemName: "plus")
+                }
+                .buttonStyle(.bordered)
+                .help("Add webhook rule")
+
+                Button {
+                    removeSelectedWebhookRule()
+                } label: {
+                    Image(systemName: "minus")
+                }
+                .buttonStyle(.bordered)
+                .disabled(selectedWebhookIndex == nil)
+                .help("Remove selected webhook rule")
+            }
+            .padding(.horizontal, 2)
+
+            Group {
+                if vm.settings.webhookConfigs.isEmpty {
+                    VStack(alignment: .center, spacing: 10) {
+                        Image(systemName: "link")
+                            .font(.system(size: 28, weight: .regular))
+                            .foregroundStyle(.secondary)
+                        Text("No webhook rules yet")
+                            .font(.headline)
+                        Text("Use webhooks to send alerts to your own systems, chat tools, or automation services when a site goes down or recovers.")
+                            .font(.caption)
+                            .multilineTextAlignment(.center)
+                            .foregroundStyle(.secondary)
+                        Button("Create webhook rule") {
+                            addWebhookRule()
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 20)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(Color(NSColor.textBackgroundColor))
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(Color.secondary.opacity(0.18), lineWidth: 1)
+                    )
+                } else {
+                    List(selection: $selectedWebhookID) {
                         ForEach(vm.settings.webhookConfigs) { config in
-                            Text(config.name).tag(Optional(config.id))
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(config.name)
+                                    .fontWeight(selectedWebhookID == config.id ? .semibold : .regular)
+                                Text("\(config.sendOn.rawValue) • \(config.scope.rawValue)")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            .tag(Optional(config.id))
                         }
                     }
-                    .labelsHidden()
-                    .pickerStyle(.menu)
-                    .frame(width: 170, alignment: .leading)
-                    Button {
-                        addWebhookRule()
-                    } label: {
-                        Image(systemName: "plus")
-                    }
-                    .buttonStyle(.bordered)
-                    .help("Add webhook rule")
-                    Button {
-                        removeSelectedWebhookRule()
-                    } label: {
-                        Image(systemName: "minus")
-                    }
-                    .buttonStyle(.bordered)
-                    .disabled(selectedWebhookIndex == nil)
-                    .help("Remove selected webhook rule")
+                    .listStyle(.plain)
+                    .scrollContentBackground(.hidden)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
+            .frame(width: 300, height: 320)
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(Color.secondary.opacity(0.18), lineWidth: 1)
+            )
+        }
+        .frame(minWidth: 240, maxWidth: 300, maxHeight: .infinity, alignment: .topLeading)
+    }
 
-            if let index = selectedWebhookIndex {
-                alignedRow("Rule Name:") {
-                    TextField("Webhook", text: Binding(
-                        get: { vm.settings.webhookConfigs[index].name },
-                        set: { vm.settings.webhookConfigs[index].name = $0 }
-                    ))
-                    .textFieldStyle(.roundedBorder)
-                }
+    private var webhookEditorPane: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Webhook Form")
+                .font(.headline)
 
-                alignedRow("Send On:") {
-                    Picker("", selection: Binding(
-                        get: { vm.settings.webhookConfigs[index].sendOn },
-                        set: { vm.settings.webhookConfigs[index].sendOn = $0 }
-                    )) {
-                        ForEach(WebhookSendOn.allCases) { mode in
-                            Text(mode.rawValue).tag(mode)
+            if let configBinding = selectedWebhookConfigBinding {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 12) {
+                        alignedRow("Rule Name:") {
+                            TextField("Webhook", text: Binding(
+                                get: { configBinding.wrappedValue.name },
+                                set: { configBinding.wrappedValue.name = $0 }
+                            ))
+                            .textFieldStyle(.roundedBorder)
                         }
-                    }
-                    .labelsHidden()
-                    .pickerStyle(.menu)
-                    .frame(width: 220, alignment: .leading)
-                }
 
-                alignedRow("Site Filter:") {
-                    Picker("", selection: Binding(
-                        get: { vm.settings.webhookConfigs[index].scope },
-                        set: { vm.settings.webhookConfigs[index].scope = $0 }
-                    )) {
-                        ForEach(WebhookScope.allCases) { scope in
-                            Text(scope.rawValue).tag(scope)
+                        alignedRow("Send On:") {
+                            Picker("", selection: Binding(
+                                get: { configBinding.wrappedValue.sendOn },
+                                set: { configBinding.wrappedValue.sendOn = $0 }
+                            )) {
+                                ForEach(WebhookSendOn.allCases) { mode in
+                                    Text(mode.rawValue).tag(mode)
+                                }
+                            }
+                            .labelsHidden()
+                            .pickerStyle(.menu)
+                            .frame(width: 220, alignment: .leading)
                         }
-                    }
-                    .labelsHidden()
-                    .pickerStyle(.menu)
-                    .frame(width: 220, alignment: .leading)
-                }
 
-                if vm.settings.webhookConfigs[index].scope == .selectedSites {
-                    alignedRow("Sites:") {
-                        ScrollView {
+                        webhookSiteFilterRow(config: configBinding)
+
+                        alignedRow("Webhook URL:") {
+                            TextField("https://example.com/webhook", text: Binding(
+                                get: { configBinding.wrappedValue.url },
+                                set: { configBinding.wrappedValue.url = $0 }
+                            ))
+                            .textFieldStyle(.roundedBorder)
+                        }
+                        alignedRow("Method:") {
+                            Picker("", selection: Binding(
+                                get: { configBinding.wrappedValue.method },
+                                set: { configBinding.wrappedValue.method = $0 }
+                            )) {
+                                Text("POST").tag(HTTPMethod.post)
+                                Text("GET").tag(HTTPMethod.get)
+                            }
+                            .labelsHidden()
+                            .pickerStyle(.menu)
+                            .frame(width: 120, alignment: .leading)
+                        }
+                        alignedRow("Payload:") {
                             VStack(alignment: .leading, spacing: 6) {
-                                ForEach(vm.monitors) { monitor in
-                                    Toggle(monitor.nameOrHost, isOn: Binding(
-                                        get: { vm.settings.webhookConfigs[index].monitorIDs.contains(monitor.id) },
-                                        set: { isOn in
-                                            if isOn {
-                                                if !vm.settings.webhookConfigs[index].monitorIDs.contains(monitor.id) {
-                                                    vm.settings.webhookConfigs[index].monitorIDs.append(monitor.id)
-                                                }
-                                            } else {
-                                                vm.settings.webhookConfigs[index].monitorIDs.removeAll { $0 == monitor.id }
-                                            }
-                                        }
-                                    ))
-                                    .toggleStyle(.checkbox)
+                                TextEditor(text: Binding(
+                                    get: { configBinding.wrappedValue.payloadTemplate },
+                                    set: { configBinding.wrappedValue.payloadTemplate = $0 }
+                                ))
+                                .font(.system(.body, design: .monospaced))
+                                .frame(height: 140)
+                                .padding(6)
+                                .background(Color(NSColor.textBackgroundColor))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .stroke(Color.secondary.opacity(0.25), lineWidth: 1)
+                                )
+                                HStack {
+                                    Button("Format JSON") { formatWebhookPayloadJSON(config: configBinding) }
+                                        .buttonStyle(.bordered)
+                                    Spacer()
                                 }
                             }
                         }
-                        .frame(height: 90)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 6)
-                                .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
-                        )
-                    }
-                }
+                        alignedRow("Retries:") {
+                            Stepper(value: Binding(
+                                get: { configBinding.wrappedValue.maxRetries },
+                                set: { configBinding.wrappedValue.maxRetries = $0 }
+                            ), in: 0...8) {
+                                Text("\(configBinding.wrappedValue.maxRetries)")
+                            }
+                            .frame(width: 120, alignment: .leading)
+                        }
+                        alignedRow("Initial Backoff:") {
+                            HStack(spacing: 8) {
+                                TextField("1.0", value: Binding(
+                                    get: { configBinding.wrappedValue.initialBackoffSeconds },
+                                    set: { configBinding.wrappedValue.initialBackoffSeconds = $0 }
+                                ), format: .number)
+                                    .textFieldStyle(.roundedBorder)
+                                    .frame(width: 80)
+                                Text("seconds")
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
 
-                alignedRow("Webhook URL:") {
-                    TextField("https://example.com/webhook", text: Binding(
-                        get: { vm.settings.webhookConfigs[index].url },
-                        set: { vm.settings.webhookConfigs[index].url = $0 }
-                    ))
-                    .textFieldStyle(.roundedBorder)
-                }
-                alignedRow("Method:") {
-                    Picker("", selection: Binding(
-                        get: { vm.settings.webhookConfigs[index].method },
-                        set: { vm.settings.webhookConfigs[index].method = $0 }
-                    )) {
-                        Text("POST").tag(HTTPMethod.post)
-                        Text("GET").tag(HTTPMethod.get)
-                    }
-                    .labelsHidden()
-                    .pickerStyle(.menu)
-                    .frame(width: 120, alignment: .leading)
-                }
-                alignedRow("Payload:") {
-                    VStack(alignment: .leading, spacing: 6) {
-                        TextEditor(text: Binding(
-                            get: { vm.settings.webhookConfigs[index].payloadTemplate },
-                            set: { vm.settings.webhookConfigs[index].payloadTemplate = $0 }
-                        ))
-                        .font(.system(.body, design: .monospaced))
-                        .frame(height: 140)
-                        .padding(6)
-                        .background(Color(NSColor.textBackgroundColor))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 6)
-                                .stroke(Color.secondary.opacity(0.25), lineWidth: 1)
-                        )
-                        HStack {
-                            Button("Format JSON") { formatWebhookPayloadJSON(index: index) }
-                                .buttonStyle(.bordered)
-                            Spacer()
+                        alignedRow("Placeholders:") {
+                            Text("$MESSAGE, $MONITOR, $STATUS, $URL, $TRIGGER, $STATUS_CODE, $RESPONSE_MS, $TIMESTAMP")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
                         }
                     }
-                }
-                alignedRow("Retries:") {
-                    Stepper(value: Binding(
-                        get: { vm.settings.webhookConfigs[index].maxRetries },
-                        set: { vm.settings.webhookConfigs[index].maxRetries = $0 }
-                    ), in: 0...8) {
-                        Text("\(vm.settings.webhookConfigs[index].maxRetries)")
-                    }
-                    .frame(width: 120, alignment: .leading)
-                }
-                alignedRow("Initial Backoff:") {
-                    HStack(spacing: 8) {
-                        TextField("1.0", value: Binding(
-                            get: { vm.settings.webhookConfigs[index].initialBackoffSeconds },
-                            set: { vm.settings.webhookConfigs[index].initialBackoffSeconds = $0 }
-                        ), format: .number)
-                            .textFieldStyle(.roundedBorder)
-                            .frame(width: 80)
-                        Text("seconds")
-                            .foregroundStyle(.secondary)
-                    }
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
+                    .padding(.trailing, 8)
                 }
             } else {
-                alignedRow("Rule:") {
-                    Text("No webhook rules configured.")
-                        .foregroundStyle(.secondary)
-                }
-            }
-
-            alignedRow("Placeholders:") {
-                Text("$MESSAGE, $MONITOR, $STATUS, $URL, $TRIGGER, $STATUS_CODE, $RESPONSE_MS, $TIMESTAMP")
-                    .font(.caption)
+                Text("Select a webhook rule to edit it.")
                     .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
             }
-            Spacer()
         }
-        .padding(.top, 8)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
     
     @ViewBuilder
     private func settingsToggleRow(_ label: String, title: String, isOn: Binding<Bool>) -> some View {
-        HStack(alignment: .center, spacing: 12) {
-            Text(label)
-                .fontWeight(.none)
-                .foregroundStyle(.secondary)
-                .frame(width: 155, alignment: .trailing)
-            Toggle(title, isOn: isOn)
-                .toggleStyle(.checkbox)
-                .frame(width: 260, alignment: .leading)
-        }
-        .frame(width: 427, alignment: .leading)
+            HStack(alignment: .center, spacing: 12) {
+                Text(label)
+                    .fontWeight(.none)
+                    .foregroundStyle(.secondary)
+                    .frame(width: 110, alignment: .trailing)
+                Toggle(title, isOn: isOn)
+                    .toggleStyle(.checkbox)
+                    .frame(width: 305, alignment: .leading)
+            }
+        .frame(width: 477, alignment: .leading)
         .frame(maxWidth: .infinity, alignment: .center)
     }
     
     @ViewBuilder
     private func alignedRow<Content: View>(_ label: String, @ViewBuilder content: () -> Content) -> some View {
-        HStack(alignment: .center, spacing: 12) {
-            Text(label)
-                .frame(width: 155, alignment: .trailing)
-                .foregroundStyle(.secondary)
-            content()
-                .frame(width: 260, alignment: .leading)
-        }
-        .frame(width: 427, alignment: .leading)
+            HStack(alignment: .center, spacing: 12) {
+                Text(label)
+                    .frame(width: 110, alignment: .trailing)
+                    .foregroundStyle(.secondary)
+                content()
+                    .frame(width: 305, alignment: .leading)
+            }
+        .frame(width: 477, alignment: .leading)
         .frame(maxWidth: .infinity, alignment: .center)
     }
     
@@ -454,16 +501,19 @@ struct SettingsView: View {
         return vm.settings.webhookConfigs.firstIndex(where: { $0.id == selectedWebhookID })
     }
 
-    private var selectedWebhookBinding: Binding<UUID?> {
-        Binding(
+    private var selectedWebhookConfigBinding: Binding<WebhookConfig>? {
+        guard let selectedWebhookID else { return nil }
+        return Binding(
             get: {
-                if let selectedWebhookID,
-                   vm.settings.webhookConfigs.contains(where: { $0.id == selectedWebhookID }) {
-                    return selectedWebhookID
-                }
-                return vm.settings.webhookConfigs.first?.id
+                vm.settings.webhookConfigs.first(where: { $0.id == selectedWebhookID })
+                ?? WebhookConfig(id: selectedWebhookID)
             },
-            set: { selectedWebhookID = $0 }
+            set: { updatedConfig in
+                guard let index = vm.settings.webhookConfigs.firstIndex(where: { $0.id == selectedWebhookID }) else {
+                    return
+                }
+                vm.settings.webhookConfigs[index] = updatedConfig
+            }
         )
     }
 
@@ -479,14 +529,98 @@ struct SettingsView: View {
         self.selectedWebhookID = vm.settings.webhookConfigs.first?.id
     }
 
-    private func formatWebhookPayloadJSON(index: Int) {
-        let source = vm.settings.webhookConfigs[index].payloadTemplate.trimmingCharacters(in: .whitespacesAndNewlines)
+    private func formatWebhookPayloadJSON(config: Binding<WebhookConfig>) {
+        let source = config.wrappedValue.payloadTemplate.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let data = source.data(using: .utf8),
               let object = try? JSONSerialization.jsonObject(with: data),
               let pretty = try? JSONSerialization.data(withJSONObject: object, options: [.prettyPrinted]),
               let output = String(data: pretty, encoding: .utf8) else {
             return
         }
-        vm.settings.webhookConfigs[index].payloadTemplate = output
+        config.wrappedValue.payloadTemplate = output
+    }
+
+    @ViewBuilder
+    private func webhookSiteFilterRow(config: Binding<WebhookConfig>) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .center, spacing: 12) {
+                Text("Site Filter:")
+                    .frame(width: 110, alignment: .trailing)
+                    .foregroundStyle(.secondary)
+
+                Picker("", selection: Binding(
+                    get: { config.wrappedValue.scope },
+                    set: { config.wrappedValue.scope = $0 }
+                )) {
+                    Text("All sites").tag(WebhookScope.allSites)
+                    Text("Selected sites").tag(WebhookScope.selectedSites)
+                }
+                .labelsHidden()
+                .pickerStyle(.segmented)
+                .frame(width: 260, alignment: .leading)
+            }
+            .frame(width: 477, alignment: .leading)
+            .frame(maxWidth: .infinity, alignment: .center)
+
+            if config.wrappedValue.scope == .selectedSites {
+                HStack(alignment: .top, spacing: 12) {
+                    Text("Sites:")
+                        .frame(width: 110, alignment: .trailing)
+                        .foregroundStyle(.secondary)
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        ScrollView {
+                            VStack(alignment: .leading, spacing: 6) {
+                                ForEach(vm.monitors) { monitor in
+                                    Toggle(monitor.nameOrHost, isOn: Binding(
+                                        get: { config.wrappedValue.monitorIDs.contains(monitor.id) },
+                                        set: { isOn in
+                                            if isOn {
+                                                if !config.wrappedValue.monitorIDs.contains(monitor.id) {
+                                                    config.wrappedValue.monitorIDs.append(monitor.id)
+                                                }
+                                            } else {
+                                                config.wrappedValue.monitorIDs.removeAll { $0 == monitor.id }
+                                            }
+                                        }
+                                    ))
+                                    .toggleStyle(.checkbox)
+                                }
+                            }
+                            .padding(.vertical, 2)
+                        }
+                        .frame(width: 305, height: 120)
+                        .padding(.horizontal, 8)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(Color(NSColor.textBackgroundColor))
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
+                        )
+                    }
+                    .frame(width: 305, alignment: .leading)
+                }
+                .frame(width: 477, alignment: .leading)
+                .frame(maxWidth: .infinity, alignment: .center)
+            }
+        }
+    }
+
+    private func resizeWindow(for tab: Tab) {
+        let targetSize = tab == .webhooks ? webhooksWindowSize : compactWindowSize
+        DispatchQueue.main.async {
+            guard let window = NSApp.keyWindow ?? NSApp.mainWindow else { return }
+            var frame = window.frame
+            let topEdge = frame.maxY
+            let visibleFrame = window.screen?.visibleFrame ?? NSScreen.main?.visibleFrame ?? .zero
+            frame.size = targetSize
+            frame.origin = CGPoint(
+                x: visibleFrame.midX - targetSize.width / 2,
+                y: topEdge - targetSize.height
+            )
+            window.setFrame(frame, display: true, animate: true)
+        }
     }
 }
