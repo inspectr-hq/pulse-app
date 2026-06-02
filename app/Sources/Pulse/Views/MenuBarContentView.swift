@@ -228,10 +228,8 @@ struct MenuBarContentView: View {
         switch monitor.method {
         case .get:
             return .openURL
-        case .post:
+        case .post, .head:
             return .copyCurl
-        case .head:
-            return nil
         }
     }
 
@@ -246,7 +244,13 @@ struct MenuBarContentView: View {
     }
 
     static func curlCommand(for monitor: SiteMonitor) -> String {
-        var components: [String] = ["curl", "-X", monitor.method.rawValue]
+        var components: [String] = ["curl"]
+        if monitor.method == .head {
+            components.append("-I")
+        } else {
+            components.append("-X")
+            components.append(monitor.method.rawValue)
+        }
 
         for header in monitor.headers where !header.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             let escapedValue = header.value.replacingOccurrences(of: "\"", with: "\\\"")
