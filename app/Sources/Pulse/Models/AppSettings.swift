@@ -55,8 +55,8 @@ struct WebhookConfig: Identifiable, Codable, Equatable {
       "status": "$STATUS",
       "url": "$URL",
       "trigger": "$TRIGGER",
-      "statusCode": "$STATUS_CODE",
-      "responseMs": "$RESPONSE_MS",
+      "status_code": "$STATUS_CODE",
+      "response_ms": "$RESPONSE_MS",
       "timestamp": "$TIMESTAMP"
     }
     """
@@ -133,8 +133,8 @@ struct AppSettings: Codable, Equatable {
       "status": "$STATUS",
       "url": "$URL",
       "trigger": "$TRIGGER",
-      "statusCode": "$STATUS_CODE",
-      "responseMs": "$RESPONSE_MS",
+      "status_code": "$STATUS_CODE",
+      "response_ms": "$RESPONSE_MS",
       "timestamp": "$TIMESTAMP"
     }
     """
