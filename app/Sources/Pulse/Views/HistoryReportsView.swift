@@ -104,7 +104,10 @@ struct HistoryReportsView: View {
 
                 GroupBox("Uptime Timeline") {
                     VStack(alignment: .leading, spacing: 8) {
-                        ForEach(historyVM.uptimeTimelines(thresholdMs: appVM.settings.defaultThresholdMs)) { timeline in
+                        ForEach(Self.orderedTimelines(
+                            historyVM.uptimeTimelines(thresholdMs: appVM.settings.defaultThresholdMs),
+                            using: appVM.monitors
+                        )) { timeline in
                             let siteStatus = latestStatus(for: timeline.siteName)
                             UptimeTimelineRow(
                                 siteName: timeline.siteName,
@@ -137,6 +140,21 @@ struct HistoryReportsView: View {
             }
         }
         .onAppear { historyVM.reload() }
+    }
+
+    static func orderedTimelines(
+        _ timelines: [HistoryViewModel.SiteUptimeTimeline],
+        using monitors: [SiteMonitor]
+    ) -> [HistoryViewModel.SiteUptimeTimeline] {
+        let orderLookup = Dictionary(uniqueKeysWithValues: monitors.enumerated().map { ($1.nameOrHost, $0) })
+        return timelines.sorted { lhs, rhs in
+            let leftIndex = orderLookup[lhs.siteName] ?? Int.max
+            let rightIndex = orderLookup[rhs.siteName] ?? Int.max
+            if leftIndex != rightIndex {
+                return leftIndex < rightIndex
+            }
+            return lhs.siteName.localizedCaseInsensitiveCompare(rhs.siteName) == .orderedAscending
+        }
     }
 
     private func latestStatus(for siteName: String) -> SiteStatus {

@@ -83,6 +83,27 @@ final class AppViewModelBehaviorTests: XCTestCase {
         XCTAssertEqual(store.savedMonitorsCalls, 1)
     }
 
+    func testReorderMonitorMovesItemAndPersistsOrder() {
+        let first = SiteMonitor(url: URL(string: "https://a.com")!, displayName: "A")
+        let second = SiteMonitor(url: URL(string: "https://b.com")!, displayName: "B")
+        let third = SiteMonitor(url: URL(string: "https://c.com")!, displayName: "C")
+        let store = SpyMonitorStore(monitors: [first, second, third])
+        let vm = AppViewModel(
+            checker: StaticChecker(.up(statusCode: 200, responseTimeMs: 10, checkedAt: Date())),
+            monitorStore: store,
+            historyStore: SpyHistoryStore(),
+            webhookDispatcher: SpyWebhookDispatcher(),
+            launchAtLogin: SpyLaunchAtLogin(),
+            notifications: SpyNotifications()
+        )
+
+        vm.reorderMonitor(id: third.id, before: first.id)
+
+        XCTAssertEqual(vm.monitors.map(\.displayName), ["C", "A", "B"])
+        XCTAssertEqual(store.savedMonitorsCalls, 1)
+        XCTAssertEqual(store.monitors.map(\.displayName), ["C", "A", "B"])
+    }
+
     func testSaveSettingsPersistsAndCallsLaunchAtLogin() {
         let launchSpy = SpyLaunchAtLogin()
         let store = SpyMonitorStore(monitors: [])
@@ -292,6 +313,19 @@ final class AppViewModelBehaviorTests: XCTestCase {
 
         XCTAssertEqual(webhookSpy.events.count, 1)
         XCTAssertEqual(webhookSpy.events.first?.status, "down")
+    }
+
+    func testOrderedTimelinesFollowMonitorOrder() {
+        let monitorA = SiteMonitor(url: URL(string: "https://a.com")!, displayName: "Alpha")
+        let monitorB = SiteMonitor(url: URL(string: "https://b.com")!, displayName: "Beta")
+        let timelines = [
+            HistoryViewModel.SiteUptimeTimeline(siteName: monitorA.nameOrHost, uptimePercentage: 100, blocks: []),
+            HistoryViewModel.SiteUptimeTimeline(siteName: monitorB.nameOrHost, uptimePercentage: 50, blocks: [])
+        ]
+
+        let ordered = HistoryReportsView.orderedTimelines(timelines, using: [monitorB, monitorA])
+
+        XCTAssertEqual(ordered.map(\.siteName), [monitorB.nameOrHost, monitorA.nameOrHost])
     }
 
     func testWebhookDispatcherReceivesStatusCodeAndResponseMsForDownTransition() async {
