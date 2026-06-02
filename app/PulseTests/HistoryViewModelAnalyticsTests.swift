@@ -108,6 +108,48 @@ final class HistoryViewModelAnalyticsTests: XCTestCase {
         XCTAssertEqual(bucket.uptimePercentage, 50, accuracy: 0.001)
         XCTAssertEqual(bucket.bucketEnd.timeIntervalSince(bucket.bucketStart), 3600, accuracy: 0.001)
     }
+
+    func testUptimeBucketsCanBeScopedToASingleSite() {
+        let referenceDate = Date()
+        let siteA = UUID()
+        let siteB = UUID()
+        let events: [HistoryEvent] = [
+            HistoryEvent(
+                timestamp: referenceDate.addingTimeInterval(-3_600),
+                monitorID: siteA,
+                monitorName: "Site A",
+                url: "https://a.dev",
+                method: "GET",
+                status: "OK",
+                statusCode: 200,
+                durationMs: 120,
+                reason: nil,
+                trigger: .automatic
+            ),
+            HistoryEvent(
+                timestamp: referenceDate.addingTimeInterval(-1_800),
+                monitorID: siteB,
+                monitorName: "Site B",
+                url: "https://b.dev",
+                method: "GET",
+                status: "Down",
+                statusCode: nil,
+                durationMs: 90,
+                reason: "timeout",
+                trigger: .automatic
+            )
+        ]
+
+        let vm = HistoryViewModel(store: StubHistoryStore(events: events))
+        vm.graphRange = .last24h
+
+        let siteABuckets = vm.uptimeBuckets(for: "Site A", thresholdMs: 2_000, referenceDate: referenceDate)
+        let siteBBuckets = vm.uptimeBuckets(for: "Site B", thresholdMs: 2_000, referenceDate: referenceDate)
+
+        XCTAssertEqual(siteABuckets.first(where: { $0.sampleCount > 0 })?.status, .up)
+        XCTAssertEqual(siteBBuckets.first(where: { $0.sampleCount > 0 })?.status, .down)
+        XCTAssertFalse(siteABuckets.contains(where: { $0.status == .degraded }))
+    }
 }
 
 private final class StubHistoryStore: HistoryStoreProtocol {

@@ -237,6 +237,15 @@ final class HistoryViewModel: ObservableObject {
         uptimeBuckets(from: graphEvents, thresholdMs: thresholdMs, referenceDate: referenceDate)
     }
 
+    func uptimeBuckets(
+        for siteName: String,
+        thresholdMs: Int,
+        referenceDate: Date = Date()
+    ) -> [UptimeBucket] {
+        let siteEvents = events.filter { $0.monitorName == siteName }
+        return uptimeBuckets(from: siteEvents, thresholdMs: thresholdMs, referenceDate: referenceDate)
+    }
+
     private func uptimeBuckets(from events: [HistoryEvent], thresholdMs: Int, referenceDate: Date) -> [UptimeBucket] {
         let blockCount: Int
         switch graphRange {

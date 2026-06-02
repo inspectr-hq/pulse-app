@@ -32,7 +32,7 @@ struct HistoryReportsView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
                 HStack(spacing: 10) {
-                    metricCard(title: "Uptime", value: String(format: "%.1f%%", historyVM.uptimePercentage), tint: appVM.settings.statusColorUp.color)
+                    metricCard(title: "Uptime", value: formattedPercentage(historyVM.uptimePercentage) + "%", tint: appVM.settings.statusColorUp.color)
                     metricCard(title: "Avg Latency", value: historyVM.averageLatencyMs > 0 ? "\(historyVM.averageLatencyMs) ms" : "-", tint: .secondary)
                     metricCard(title: "P95 Latency", value: historyVM.p95LatencyMs > 0 ? "\(historyVM.p95LatencyMs) ms" : "-", tint: .secondary)
                     metricCard(title: "Samples", value: "\(historyVM.graphEvents.count)", tint: .secondary)
@@ -102,7 +102,11 @@ struct HistoryReportsView: View {
                     }
                 }
 
-                GroupBox("Uptime Timeline") {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Uptime Timeline")
+                        .font(.headline)
+                        .foregroundStyle(.primary)
+
                     VStack(alignment: .leading, spacing: 12) {
                         ForEach(Array(Self.orderedTimelines(
                             historyVM.uptimeTimelines(thresholdMs: appVM.settings.defaultThresholdMs),
@@ -110,6 +114,7 @@ struct HistoryReportsView: View {
                         ).enumerated()), id: \.element.id) { index, timeline in
                             let siteStatus = latestStatus(for: timeline.siteName)
                             let buckets = historyVM.uptimeBuckets(
+                                for: timeline.siteName,
                                 thresholdMs: appVM.settings.defaultThresholdMs,
                                 referenceDate: Date()
                             )
@@ -257,6 +262,15 @@ struct HistoryReportsView: View {
         }
     }
 
+    private func formattedPercentage(_ value: Double) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.locale = .current
+        formatter.minimumFractionDigits = 2
+        formatter.maximumFractionDigits = 2
+        return formatter.string(from: NSNumber(value: value)) ?? String(format: "%.2f", value)
+    }
+
     static func tooltipShouldRenderBelow(rowIndex: Int) -> Bool {
         rowIndex == 0
     }
@@ -316,10 +330,17 @@ private struct UptimeTimelineRow: View {
                     ZStack(alignment: .topLeading) {
                         HStack(alignment: .center, spacing: spacing) {
                             ForEach(buckets) { bucket in
+                                let isHovered = hoveredBucketID == bucket.id
                                 Rectangle()
                                     .fill(color(for: bucket.status))
                                     .frame(width: barWidth, height: 28)
                                     .clipShape(.rect(cornerRadius: 2))
+                                    .overlay {
+                                        if isHovered {
+                                            Rectangle()
+                                                .fill(Color.white.opacity(0.25))
+                                        }
+                                    }
                                     .onHover { isHovering in
                                         if isHovering {
                                             hoveredBucketID = bucket.id
@@ -457,6 +478,15 @@ private struct UptimeTimelineRow: View {
     }
 
     private func formattedUptimePercentage(_ value: Double) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.locale = .current
+        formatter.minimumFractionDigits = 2
+        formatter.maximumFractionDigits = 2
+        return formatter.string(from: NSNumber(value: value)) ?? String(format: "%.2f", value)
+    }
+
+    private func formattedPercentage(_ value: Double) -> String {
         let formatter = NumberFormatter()
         formatter.numberStyle = .decimal
         formatter.locale = .current
