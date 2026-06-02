@@ -102,7 +102,11 @@ struct HistoryReportsView: View {
                     }
                 }
 
-                GroupBox("Uptime Timeline") {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Uptime Timeline")
+                        .font(.headline)
+                        .foregroundStyle(.primary)
+
                     VStack(alignment: .leading, spacing: 12) {
                         ForEach(Array(Self.orderedTimelines(
                             historyVM.uptimeTimelines(thresholdMs: appVM.settings.defaultThresholdMs),
@@ -110,6 +114,7 @@ struct HistoryReportsView: View {
                         ).enumerated()), id: \.element.id) { index, timeline in
                             let siteStatus = latestStatus(for: timeline.siteName)
                             let buckets = historyVM.uptimeBuckets(
+                                for: timeline.siteName,
                                 thresholdMs: appVM.settings.defaultThresholdMs,
                                 referenceDate: Date()
                             )
