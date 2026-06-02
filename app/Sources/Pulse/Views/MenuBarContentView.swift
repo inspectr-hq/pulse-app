@@ -7,7 +7,10 @@ struct MenuBarContentView: View {
 
     var body: some View {
         VStack(spacing: 6) {
-            ForEach(menuBarMonitors.prefix(vm.settings.menuMaxItems)) { monitor in
+            ForEach(Self.visibleMonitors(
+                monitors: vm.monitors,
+                hidePausedSitesInMenuBar: vm.settings.hidePausedSitesInMenuBar
+            ).prefix(vm.settings.menuMaxItems)) { monitor in
                 let status = vm.statuses[monitor.id] ?? .unknown
                 Button {
                     logger.info("Menu click: Monitor row \(monitor.id.uuidString, privacy: .public)")
@@ -105,11 +108,11 @@ struct MenuBarContentView: View {
         }
     }
 
-    private var menuBarMonitors: [SiteMonitor] {
-        if vm.settings.hidePausedSitesInMenuBar {
-            return vm.monitors.filter { $0.isEnabled }
+    static func visibleMonitors(monitors: [SiteMonitor], hidePausedSitesInMenuBar: Bool) -> [SiteMonitor] {
+        if hidePausedSitesInMenuBar {
+            return monitors.filter { $0.isEnabled }
         }
-        return vm.monitors
+        return monitors
     }
 
     @ViewBuilder
