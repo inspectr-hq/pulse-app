@@ -114,7 +114,7 @@ struct HistoryReportsView: View {
                                 referenceDate: Date()
                             )
                             UptimeTimelineRow(
-                                isFirstRow: index == 0,
+                                rowIndex: index,
                                 siteName: timeline.siteName,
                                 statusIconName: iconName(for: siteStatus),
                                 statusIconColor: iconColor(for: siteStatus),
@@ -256,10 +256,14 @@ struct HistoryReportsView: View {
         case .last90d: return .last90d
         }
     }
+
+    static func tooltipShouldRenderBelow(rowIndex: Int) -> Bool {
+        rowIndex == 0
+    }
 }
 
 private struct UptimeTimelineRow: View {
-    let isFirstRow: Bool
+    let rowIndex: Int
     let siteName: String
     let statusIconName: String
     let statusIconColor: Color
@@ -298,7 +302,7 @@ private struct UptimeTimelineRow: View {
                     let tooltipWidth: CGFloat = 192
                     let tooltipHeight: CGFloat = 72
                     let hoveredBucket = hoveredBucketID.flatMap { id in buckets.first(where: { $0.id == id }) }
-                    let tooltipBelow = isFirstRow
+                    let tooltipBelow = HistoryReportsView.tooltipShouldRenderBelow(rowIndex: rowIndex)
                     let tooltipX = hoveredBucket.map {
                         tooltipOffsetX(
                             bucketID: $0.id,
@@ -460,5 +464,4 @@ private struct UptimeTimelineRow: View {
         formatter.maximumFractionDigits = 2
         return formatter.string(from: NSNumber(value: value)) ?? String(format: "%.2f", value)
     }
-
 }

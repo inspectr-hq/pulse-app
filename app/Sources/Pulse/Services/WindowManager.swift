@@ -194,13 +194,14 @@ final class WindowManager {
 }
 
 private func centerHorizontally(_ window: NSWindow, topEdge: CGFloat? = nil) {
-    let frame = window.frame
     let visibleFrame = window.screen?.visibleFrame ?? NSScreen.main?.visibleFrame ?? .zero
-    let top = topEdge ?? frame.maxY
-    window.setFrameOrigin(CGPoint(
-        x: visibleFrame.midX - frame.width / 2,
-        y: top - frame.height
-    ))
+    window.setFrameOrigin(
+        windowCenteredOrigin(
+            frame: window.frame,
+            visibleFrame: visibleFrame,
+            topEdge: topEdge
+        )
+    )
 }
 
 private final class WindowStateDelegate: NSObject, NSWindowDelegate {
@@ -228,4 +229,12 @@ private final class WindowStateDelegate: NSObject, NSWindowDelegate {
         guard preserveTopOnResize else { return }
         centerHorizontally(window, topEdge: topEdgeBeforeResize)
     }
+}
+
+func windowCenteredOrigin(frame: NSRect, visibleFrame: NSRect, topEdge: CGFloat? = nil) -> CGPoint {
+    let top = topEdge ?? frame.maxY
+    return CGPoint(
+        x: visibleFrame.midX - frame.width / 2,
+        y: top - frame.height
+    )
 }
