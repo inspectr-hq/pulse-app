@@ -114,7 +114,7 @@ struct HistoryReportsView: View {
                                 referenceDate: Date()
                             )
                             UptimeTimelineRow(
-                                isFirstRow: index == 0,
+                                rowIndex: index,
                                 siteName: timeline.siteName,
                                 statusIconName: iconName(for: siteStatus),
                                 statusIconColor: iconColor(for: siteStatus),
@@ -256,10 +256,14 @@ struct HistoryReportsView: View {
         case .last90d: return .last90d
         }
     }
+
+    static func tooltipShouldRenderBelow(rowIndex: Int) -> Bool {
+        rowIndex == 0
+    }
 }
 
 private struct UptimeTimelineRow: View {
-    let isFirstRow: Bool
+    let rowIndex: Int
     let siteName: String
     let statusIconName: String
     let statusIconColor: Color
@@ -284,7 +288,7 @@ private struct UptimeTimelineRow: View {
                     Text(siteName)
                         .font(.headline)
                     Spacer()
-                    Text("\(uptimePercentage, specifier: "%.1f")% uptime")
+                    Text("\(formattedUptimePercentage(uptimePercentage))%")
                         .font(.title3.weight(.semibold))
                         .foregroundStyle(.primary)
                 }
@@ -295,10 +299,10 @@ private struct UptimeTimelineRow: View {
                     let totalSpacing = spacing * CGFloat(max(count - 1, 0))
                     let availableWidth = max(proxy.size.width, 0)
                     let barWidth = max(4, (availableWidth - totalSpacing) / CGFloat(count))
-                    let tooltipWidth: CGFloat = 240
+                    let tooltipWidth: CGFloat = 192
                     let tooltipHeight: CGFloat = 72
                     let hoveredBucket = hoveredBucketID.flatMap { id in buckets.first(where: { $0.id == id }) }
-                    let tooltipBelow = isFirstRow
+                    let tooltipBelow = HistoryReportsView.tooltipShouldRenderBelow(rowIndex: rowIndex)
                     let tooltipX = hoveredBucket.map {
                         tooltipOffsetX(
                             bucketID: $0.id,
@@ -383,7 +387,7 @@ private struct UptimeTimelineRow: View {
             HStack(spacing: 6) {
                 Image(systemName: iconName(for: status))
                     .foregroundStyle(color(for: status))
-                Text("\(title(for: status)) - Uptime \(bucket.uptimePercentage, specifier: "%.0f")%")
+                Text("\(title(for: status)) - \(formattedUptimePercentage(bucket.uptimePercentage))%")
                     .font(.headline)
                 Spacer()
             }
@@ -395,8 +399,12 @@ private struct UptimeTimelineRow: View {
         .padding(12)
         .background(
             RoundedRectangle(cornerRadius: 12)
-                .fill(.regularMaterial)
+                .fill(Color(nsColor: .windowBackgroundColor))
                 .shadow(color: .black.opacity(0.12), radius: 6, x: 0, y: 2)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color.secondary.opacity(0.10), lineWidth: 1)
         )
     }
 
@@ -448,4 +456,12 @@ private struct UptimeTimelineRow: View {
         }
     }
 
+    private func formattedUptimePercentage(_ value: Double) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.locale = .current
+        formatter.minimumFractionDigits = 2
+        formatter.maximumFractionDigits = 2
+        return formatter.string(from: NSNumber(value: value)) ?? String(format: "%.2f", value)
+    }
 }

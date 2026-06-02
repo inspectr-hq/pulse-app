@@ -25,4 +25,65 @@ final class MenuBarContentViewTests: XCTestCase {
 
         XCTAssertEqual(visible.map(\.displayName), ["Active"])
     }
+
+    func testAccessoryActionUsesBrowserForGetMonitors() {
+        let monitor = SiteMonitor(url: URL(string: "https://example.com")!, displayName: "Example", method: .get)
+
+        let action = MenuBarContentView.accessoryAction(for: monitor)
+
+        XCTAssertEqual(action, .openURL)
+    }
+
+    func testAccessoryActionUsesCurlForPostMonitors() {
+        let monitor = SiteMonitor(url: URL(string: "https://example.com/webhook")!, displayName: "Webhook", method: .post)
+
+        let action = MenuBarContentView.accessoryAction(for: monitor)
+
+        XCTAssertEqual(action, .copyCurl)
+    }
+
+    func testAccessoryActionUsesCurlForHeadMonitors() {
+        let monitor = SiteMonitor(url: URL(string: "https://example.com/health")!, displayName: "Health", method: .head)
+
+        let action = MenuBarContentView.accessoryAction(for: monitor)
+
+        XCTAssertEqual(action, .copyCurl)
+    }
+
+    func testCurlCommandIncludesMethodHeadersBodyAndURL() {
+        let monitor = SiteMonitor(
+            url: URL(string: "https://example.com/webhook")!,
+            displayName: "Webhook",
+            method: .post,
+            body: #"{"hello":"world"}"#,
+            headers: [
+                HeaderEntry(name: "Content-Type", value: "application/json"),
+                HeaderEntry(name: "", value: "ignored")
+            ]
+        )
+
+        let command = MenuBarContentView.curlCommand(for: monitor)
+
+        XCTAssertTrue(command.contains("curl"))
+        XCTAssertTrue(command.contains("-X POST"))
+        XCTAssertTrue(command.contains("-H \"Content-Type: application/json\""))
+        XCTAssertTrue(command.contains("--data-raw \"{\\\"hello\\\":\\\"world\\\"}\""))
+        XCTAssertTrue(command.contains("\"https://example.com/webhook\""))
+        XCTAssertFalse(command.contains("ignored"))
+    }
+
+    func testCurlCommandUsesIForHeadMonitors() {
+        let monitor = SiteMonitor(
+            url: URL(string: "https://example.com/health")!,
+            displayName: "Health",
+            method: .head
+        )
+
+        let command = MenuBarContentView.curlCommand(for: monitor)
+
+        XCTAssertTrue(command.contains("curl"))
+        XCTAssertTrue(command.contains("-I"))
+        XCTAssertFalse(command.contains("-X HEAD"))
+        XCTAssertTrue(command.contains("\"https://example.com/health\""))
+    }
 }
