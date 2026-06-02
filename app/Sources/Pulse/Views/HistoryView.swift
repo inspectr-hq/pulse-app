@@ -1,8 +1,30 @@
 import SwiftUI
 
 struct HistoryView: View {
-    @StateObject private var historyVM = HistoryViewModel()
+    @StateObject private var historyVM: HistoryViewModel
     @EnvironmentObject var appVM: AppViewModel
+
+    init(
+        selectedName: String? = nil,
+        timeFilter: HistoryViewModel.TimeFilter? = nil,
+        graphSite: String? = nil,
+        graphRange: HistoryViewModel.GraphRange? = nil
+    ) {
+        let viewModel = HistoryViewModel()
+        if let selectedName {
+            viewModel.selectedName = selectedName
+        }
+        if let timeFilter {
+            viewModel.timeFilter = timeFilter
+        }
+        if let graphSite {
+            viewModel.graphSite = graphSite
+        }
+        if let graphRange {
+            viewModel.graphRange = graphRange
+        }
+        self._historyVM = StateObject(wrappedValue: viewModel)
+    }
 
     var body: some View {
         VStack {

@@ -117,7 +117,15 @@ struct HistoryReportsView: View {
                                 downColor: appVM.settings.statusColorFailure.color,
                                 degradedColor: appVM.settings.statusColorSlow.color,
                                 noDataColor: appVM.settings.statusColorOffline.color.opacity(0.35)
-                            )
+                            ) {
+                                WindowManager.shared.showHistory(
+                                    appVM: appVM,
+                                    selectedName: timeline.siteName,
+                                    timeFilter: historyTimeFilter(for: historyVM.graphRange),
+                                    graphSite: timeline.siteName,
+                                    graphRange: historyVM.graphRange
+                                )
+                            }
                         }
                     }
                 }
@@ -215,6 +223,15 @@ struct HistoryReportsView: View {
         case .last90d: return "90d ago"
         }
     }
+
+    private func historyTimeFilter(for range: HistoryViewModel.GraphRange) -> HistoryViewModel.TimeFilter {
+        switch range {
+        case .last24h: return .last24h
+        case .last7d: return .last7d
+        case .last30d: return .last30d
+        case .last90d: return .last90d
+        }
+    }
 }
 
 private struct UptimeTimelineRow: View {
@@ -234,6 +251,7 @@ private struct UptimeTimelineRow: View {
     let downColor: Color
     let degradedColor: Color
     let noDataColor: Color
+    let onSelect: () -> Void
 
     private var samples: [BlockSample] {
         Array(blocks.enumerated()).map { index, state in
@@ -242,47 +260,51 @@ private struct UptimeTimelineRow: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .center) {
-                Image(systemName: statusIconName)
-                    .foregroundStyle(statusIconColor)
-                Text(siteName)
-                    .font(.headline)
-                Spacer()
-                Text("\(uptimePercentage, specifier: "%.1f")% uptime")
-                    .font(.title3.weight(.semibold))
-                    .foregroundStyle(.primary)
-            }
+        Button(action: onSelect) {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(alignment: .center) {
+                    Image(systemName: statusIconName)
+                        .foregroundStyle(statusIconColor)
+                    Text(siteName)
+                        .font(.headline)
+                    Spacer()
+                    Text("\(uptimePercentage, specifier: "%.1f")% uptime")
+                        .font(.title3.weight(.semibold))
+                        .foregroundStyle(.primary)
+                }
 
-            Chart(samples) { sample in
-                RectangleMark(
-                    xStart: .value("Start", Double(sample.index) + 0.08),
-                    xEnd: .value("End", Double(sample.index) + 0.92),
-                    yStart: .value("Bottom", 0),
-                    yEnd: .value("Top", 1)
-                )
-                .foregroundStyle(color(for: sample.state))
-                .clipShape(.rect(cornerRadius: 2))
-            }
-            .chartXAxis(.hidden)
-            .chartYAxis(.hidden)
-            .chartPlotStyle { plot in
-                plot
-                    .background(.clear)
-            }
-            .frame(height: 28)
-            .accessibilityLabel("\(siteName) uptime timeline")
+                Chart(samples) { sample in
+                    RectangleMark(
+                        xStart: .value("Start", Double(sample.index) + 0.08),
+                        xEnd: .value("End", Double(sample.index) + 0.92),
+                        yStart: .value("Bottom", 0),
+                        yEnd: .value("Top", 1)
+                    )
+                    .foregroundStyle(color(for: sample.state))
+                    .clipShape(.rect(cornerRadius: 2))
+                }
+                .chartXAxis(.hidden)
+                .chartYAxis(.hidden)
+                .chartPlotStyle { plot in
+                    plot
+                        .background(.clear)
+                }
+                .frame(height: 28)
+                .accessibilityLabel("\(siteName) uptime timeline")
 
-            HStack {
-                Text(rangeStartLabel)
-                    .foregroundStyle(.secondary)
-                    .font(.caption)
-                Spacer()
-                Text("Today")
-                    .foregroundStyle(.secondary)
-                    .font(.caption)
+                HStack {
+                    Text(rangeStartLabel)
+                        .foregroundStyle(.secondary)
+                        .font(.caption)
+                    Spacer()
+                    Text("Today")
+                        .foregroundStyle(.secondary)
+                        .font(.caption)
+                }
             }
         }
+        .buttonStyle(.plain)
+        .contentShape(RoundedRectangle(cornerRadius: 10))
         .padding(.vertical, 4)
     }
 
