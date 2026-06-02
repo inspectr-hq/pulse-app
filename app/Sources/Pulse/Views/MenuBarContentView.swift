@@ -1,5 +1,6 @@
 import SwiftUI
 import OSLog
+import AppKit
 
 struct MenuBarContentView: View {
     @EnvironmentObject var vm: AppViewModel
@@ -12,63 +13,85 @@ struct MenuBarContentView: View {
                 hidePausedSitesInMenuBar: vm.settings.hidePausedSitesInMenuBar
             ).prefix(vm.settings.menuMaxItems)) { monitor in
                 let status = vm.statuses[monitor.id] ?? .unknown
-                Button {
-                    logger.info("Menu click: Monitor row \(monitor.id.uuidString, privacy: .public)")
-                    Task { await vm.check(monitorID: monitor.id, allowPaused: true, trigger: .manual) }
-                } label: {
-                    VStack(alignment: .leading, spacing: 3) {
-                        HStack(spacing: 8) {
-                            Circle().fill(color(for: status)).frame(width: 11, height: 11)
-                            if vm.settings.showMethodInMenu {
-                                Text(monitor.method.rawValue)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                    .frame(width: 30, alignment: .leading)
+                HStack(spacing: 8) {
+                    Button {
+                        logger.info("Menu click: Monitor row \(monitor.id.uuidString, privacy: .public)")
+                        Task { await vm.check(monitorID: monitor.id, allowPaused: true, trigger: .manual) }
+                    } label: {
+                        VStack(alignment: .leading, spacing: 3) {
+                            HStack(spacing: 8) {
+                                Circle().fill(color(for: status)).frame(width: 11, height: 11)
+                                if vm.settings.showMethodInMenu {
+                                    Text(monitor.method.rawValue)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                        .frame(width: 30, alignment: .leading)
+                                }
+                                Text(monitor.nameOrHost)
+                                    .lineLimit(1)
+                                Spacer()
                             }
-                            Text(monitor.nameOrHost)
-                                .lineLimit(1)
-                            Spacer()
-                        }
 
-                        HStack(spacing: 10) {
-                            if vm.settings.showResponseTimeInMenu {
-                                Text(responseTimeLabel(for: status))
-                                    .font(.callout)
-                                    .foregroundStyle(.secondary)
-                                    .frame(width: 70, alignment: .leading)
+                            HStack(spacing: 10) {
+                                if vm.settings.showResponseTimeInMenu {
+                                    Text(responseTimeLabel(for: status))
+                                        .font(.callout)
+                                        .foregroundStyle(.secondary)
+                                        .frame(width: 70, alignment: .leading)
+                                }
+                                if vm.settings.showLastCheckedInMenu, let checked = checkedAt(for: status) {
+                                    Text(timeString(checked))
+                                        .font(.callout)
+                                        .foregroundStyle(.secondary)
+                                        .frame(width: 72, alignment: .leading)
+                                } else if vm.settings.showLastCheckedInMenu {
+                                    Text("--:--:--")
+                                        .font(.callout)
+                                        .foregroundStyle(.secondary.opacity(0.5))
+                                        .frame(width: 72, alignment: .leading)
+                                }
+                                Spacer()
+                                if vm.settings.showStatusCodeInMenu, let code = statusCode(for: status) {
+                                    Text("\(code)")
+                                        .font(.callout)
+                                        .foregroundStyle(.secondary)
+                                        .frame(minWidth: 34, alignment: .trailing)
+                                }
                             }
-                            if vm.settings.showLastCheckedInMenu, let checked = checkedAt(for: status) {
-                                Text(timeString(checked))
-                                    .font(.callout)
-                                    .foregroundStyle(.secondary)
-                                    .frame(width: 72, alignment: .leading)
-                            } else if vm.settings.showLastCheckedInMenu {
-                                Text("--:--:--")
-                                    .font(.callout)
-                                    .foregroundStyle(.secondary.opacity(0.5))
-                                    .frame(width: 72, alignment: .leading)
-                            }
-                            Spacer()
-                            if vm.settings.showStatusCodeInMenu, let code = statusCode(for: status) {
-                                Text("\(code)")
-                                    .font(.callout)
-                                    .foregroundStyle(.secondary)
-                                    .frame(minWidth: 34, alignment: .trailing)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .onHover { isHovering in
+                        if isHovering {
+                            NSCursor.pointingHand.push()
+                        } else {
+                            NSCursor.pop()
+                        }
+                    }
+                    
+                    if let monitorAction = Self.accessoryAction(for: monitor) {
+                        Button {
+                            performAccessoryAction(for: monitor, action: monitorAction)
+                        } label: {
+                            Image(systemName: monitorAction.iconName)
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(.secondary)
+                                .frame(width: 18, height: 18)
+                        }
+                        .buttonStyle(.plain)
+                        .help(monitorAction.helpText)
+                        .onHover { isHovering in
+                            if isHovering {
+                                NSCursor.pointingHand.push()
+                            } else {
+                                NSCursor.pop()
                             }
                         }
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
                 .padding(.vertical, 1)
-                .onHover { isHovering in
-                    if isHovering {
-                        NSCursor.pointingHand.push()
-                    } else {
-                        NSCursor.pop()
-                    }
-                }
             }
             Divider()
             menuAction("Check Now…") {
@@ -180,5 +203,66 @@ struct MenuBarContentView: View {
         let formatter = DateFormatter()
         formatter.dateFormat = "HH:mm:ss"
         return formatter.string(from: date)
+    }
+
+    enum MenuBarAccessoryAction {
+        case openURL
+        case copyCurl
+
+        var iconName: String {
+            switch self {
+            case .openURL: return "safari"
+            case .copyCurl: return "terminal"
+            }
+        }
+
+        var helpText: String {
+            switch self {
+            case .openURL: return "Open in browser"
+            case .copyCurl: return "Copy curl command"
+            }
+        }
+    }
+
+    static func accessoryAction(for monitor: SiteMonitor) -> MenuBarAccessoryAction? {
+        switch monitor.method {
+        case .get:
+            return .openURL
+        case .post:
+            return .copyCurl
+        case .head:
+            return nil
+        }
+    }
+
+    private func performAccessoryAction(for monitor: SiteMonitor, action: MenuBarAccessoryAction) {
+        switch action {
+        case .openURL:
+            NSWorkspace.shared.open(monitor.url)
+        case .copyCurl:
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(Self.curlCommand(for: monitor), forType: .string)
+        }
+    }
+
+    static func curlCommand(for monitor: SiteMonitor) -> String {
+        var components: [String] = ["curl", "-X", monitor.method.rawValue]
+
+        for header in monitor.headers where !header.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            let escapedValue = header.value.replacingOccurrences(of: "\"", with: "\\\"")
+            components.append("-H")
+            components.append("\"\(header.name): \(escapedValue)\"")
+        }
+
+        if !monitor.body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            let escapedBody = monitor.body
+                .replacingOccurrences(of: "\\", with: "\\\\")
+                .replacingOccurrences(of: "\"", with: "\\\"")
+            components.append("--data-raw")
+            components.append("\"\(escapedBody)\"")
+        }
+
+        components.append("\"\(monitor.url.absoluteString)\"")
+        return components.joined(separator: " ")
     }
 }
