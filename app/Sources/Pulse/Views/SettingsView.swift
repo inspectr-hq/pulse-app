@@ -202,6 +202,7 @@ struct SettingsView: View {
             settingsToggleRow("Response Time:", title: "Show response time", isOn: $vm.settings.showResponseTimeInMenu)
             settingsToggleRow("Last Checked:", title: "Show last checked", isOn: $vm.settings.showLastCheckedInMenu)
             settingsToggleRow("Status Code:", title: "Show status code", isOn: $vm.settings.showStatusCodeInMenu)
+            settingsToggleRow("Paused Sites:", title: "Hide paused sites in menu bar", isOn: $vm.settings.hidePausedSitesInMenuBar)
 
             Divider()
                 .frame(width: 400)

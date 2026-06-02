@@ -120,6 +120,7 @@ struct AppSettings: Codable, Equatable {
     var showResponseTimeInMenu: Bool = true
     var showLastCheckedInMenu: Bool = true
     var showStatusCodeInMenu: Bool = true
+    var hidePausedSitesInMenuBar: Bool = false
     var showMenuIconStatusColor: Bool = true
     var menuBarIconColorMode: MenuBarIconColorMode = .always
     var webhookEnabled: Bool = false
