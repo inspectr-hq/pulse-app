@@ -115,7 +115,7 @@ struct AppSettings: Codable, Equatable {
     var statusColorSlow = CodableColor(red: 0.95, green: 0.77, blue: 0.05, alpha: 1.0)
     var statusColorFailure = CodableColor(red: 0.96, green: 0.24, blue: 0.2, alpha: 1.0)
     var statusColorOffline = CodableColor(red: 0.57, green: 0.59, blue: 0.62, alpha: 1.0)
-    var menuMaxItems: Int = 50
+    var menuMaxItems: Int = 20
     var showMethodInMenu: Bool = true
     var showResponseTimeInMenu: Bool = true
     var showLastCheckedInMenu: Bool = true
