@@ -35,9 +35,9 @@ final class WebhookEngine: WebhookDispatching {
             for attempt in 0..<attempts {
                 var request = URLRequest(url: url)
                 request.httpMethod = config.method.rawValue
-                request.setValue("application/json", forHTTPHeaderField: "Content-Type")
                 request.timeoutInterval = 10
-                if config.method != .head {
+                if config.method == .post {
+                    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
                     request.httpBody = payload.data(using: .utf8)
                 }
 
@@ -58,10 +58,10 @@ final class WebhookEngine: WebhookDispatching {
         output = output.replacingOccurrences(of: "$MESSAGE", with: event.message)
         output = output.replacingOccurrences(of: "$MONITOR", with: event.monitorName)
         output = output.replacingOccurrences(of: "$URL", with: event.monitorURL)
-        output = output.replacingOccurrences(of: "$STATUS", with: event.status)
         output = output.replacingOccurrences(of: "$TRIGGER", with: event.trigger)
         output = output.replacingOccurrences(of: "$STATUS_CODE", with: event.statusCode.map(String.init) ?? "")
         output = output.replacingOccurrences(of: "$RESPONSE_MS", with: event.responseMs.map(String.init) ?? "")
+        output = output.replacingOccurrences(of: "$STATUS", with: event.status)
         output = output.replacingOccurrences(of: "$TIMESTAMP", with: ISO8601DateFormatter().string(from: event.timestamp))
         return output
     }
