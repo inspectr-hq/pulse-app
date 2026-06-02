@@ -62,6 +62,52 @@ final class HistoryViewModelAnalyticsTests: XCTestCase {
             XCTAssertLessThanOrEqual(sample.avgMs, sample.maxMs)
         }
     }
+
+    func testUptimeBucketsExposePeriodAndUptimePercentage() {
+        let referenceDate = Date()
+        let monitor = UUID()
+        let events: [HistoryEvent] = [
+            HistoryEvent(
+                timestamp: referenceDate.addingTimeInterval(-3 * 3_600 - 900),
+                monitorID: monitor,
+                monitorName: "Site A",
+                url: "https://a.dev",
+                method: "GET",
+                status: "OK",
+                statusCode: 200,
+                durationMs: 120,
+                reason: nil,
+                trigger: .automatic
+            ),
+            HistoryEvent(
+                timestamp: referenceDate.addingTimeInterval(-3 * 3_600 - 300),
+                monitorID: monitor,
+                monitorName: "Site A",
+                url: "https://a.dev",
+                method: "GET",
+                status: "Down",
+                statusCode: nil,
+                durationMs: 90,
+                reason: "timeout",
+                trigger: .automatic
+            )
+        ]
+
+        let vm = HistoryViewModel(store: StubHistoryStore(events: events))
+        vm.graphRange = .last24h
+        let buckets = vm.uptimeBuckets(thresholdMs: 2_000, referenceDate: referenceDate)
+
+        let bucket = try? XCTUnwrap(buckets.first { $0.sampleCount == 2 })
+        guard let bucket else {
+            XCTFail("Expected one bucket with two samples")
+            return
+        }
+
+        XCTAssertEqual(buckets.count, 24)
+        XCTAssertEqual(bucket.status, .degraded)
+        XCTAssertEqual(bucket.uptimePercentage, 50, accuracy: 0.001)
+        XCTAssertEqual(bucket.bucketEnd.timeIntervalSince(bucket.bucketStart), 3600, accuracy: 0.001)
+    }
 }
 
 private final class StubHistoryStore: HistoryStoreProtocol {

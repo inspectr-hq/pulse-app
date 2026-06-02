@@ -56,6 +56,20 @@ final class HistoryViewModel: ObservableObject {
         let blocks: [UptimeBlockStatus]
     }
 
+    struct UptimeBucket: Identifiable {
+        let id: Int
+        let bucketStart: Date
+        let bucketEnd: Date
+        let status: UptimeBlockStatus
+        let sampleCount: Int
+        let successCount: Int
+
+        var uptimePercentage: Double {
+            guard sampleCount > 0 else { return 0 }
+            return (Double(successCount) / Double(sampleCount)) * 100
+        }
+    }
+
     struct PerformanceSample: Identifiable {
         let id = UUID()
         let timestamp: Date
@@ -204,14 +218,14 @@ final class HistoryViewModel: ObservableObject {
     }
 
     func uptimeBlocks(thresholdMs: Int) -> [UptimeBlockStatus] {
-        uptimeBlocks(from: graphEvents, thresholdMs: thresholdMs)
+        uptimeBuckets(thresholdMs: thresholdMs).map(\.status)
     }
 
     func uptimeTimelines(thresholdMs: Int) -> [SiteUptimeTimeline] {
         let grouped = Dictionary(grouping: graphEvents, by: \.monitorName)
         return grouped.keys.sorted().map { siteName in
             let siteEvents = grouped[siteName] ?? []
-            let blocks = uptimeBlocks(from: siteEvents, thresholdMs: thresholdMs)
+            let blocks = uptimeBuckets(from: siteEvents, thresholdMs: thresholdMs, referenceDate: Date()).map(\.status)
             let sampleCount = siteEvents.count
             let upCount = siteEvents.filter { $0.status == "OK" }.count
             let uptime = sampleCount > 0 ? (Double(upCount) / Double(sampleCount)) * 100 : 0
@@ -219,7 +233,11 @@ final class HistoryViewModel: ObservableObject {
         }
     }
 
-    private func uptimeBlocks(from events: [HistoryEvent], thresholdMs: Int) -> [UptimeBlockStatus] {
+    func uptimeBuckets(thresholdMs: Int, referenceDate: Date = Date()) -> [UptimeBucket] {
+        uptimeBuckets(from: graphEvents, thresholdMs: thresholdMs, referenceDate: referenceDate)
+    }
+
+    private func uptimeBuckets(from events: [HistoryEvent], thresholdMs: Int, referenceDate: Date) -> [UptimeBucket] {
         let blockCount: Int
         switch graphRange {
         case .last24h: blockCount = 24
@@ -231,15 +249,26 @@ final class HistoryViewModel: ObservableObject {
         let timeline = events.sorted(by: { $0.timestamp < $1.timestamp })
 
         guard !timeline.isEmpty else {
-            return Array(repeating: .noData, count: blockCount)
+            return (0..<blockCount).map { index in
+                let bucketStart = referenceDate.addingTimeInterval(-graphRange.duration + (Double(index) * graphRange.duration / Double(blockCount)))
+                let bucketEnd = bucketStart.addingTimeInterval(graphRange.duration / Double(blockCount))
+                return UptimeBucket(
+                    id: index,
+                    bucketStart: bucketStart,
+                    bucketEnd: bucketEnd,
+                    status: .noData,
+                    sampleCount: 0,
+                    successCount: 0
+                )
+            }
         }
 
-        let end = Date()
+        let end = referenceDate
         let start = end.addingTimeInterval(-graphRange.duration)
         let bucketSpan = graphRange.duration / Double(blockCount)
 
-        var blocks: [UptimeBlockStatus] = []
-        blocks.reserveCapacity(blockCount)
+        var buckets: [UptimeBucket] = []
+        buckets.reserveCapacity(blockCount)
 
         for i in 0..<blockCount {
             let bucketStart = start.addingTimeInterval(Double(i) * bucketSpan)
@@ -247,7 +276,7 @@ final class HistoryViewModel: ObservableObject {
             let bucketEvents = timeline.filter { $0.timestamp >= bucketStart && $0.timestamp < bucketEnd }
 
             if bucketEvents.isEmpty {
-                blocks.append(.noData)
+                buckets.append(UptimeBucket(id: i, bucketStart: bucketStart, bucketEnd: bucketEnd, status: .noData, sampleCount: 0, successCount: 0))
                 continue
             }
 
@@ -256,15 +285,15 @@ final class HistoryViewModel: ObservableObject {
 
             // Downtime means the bucket had no successful checks at all.
             if successes == 0 {
-                blocks.append(.down)
+                buckets.append(UptimeBucket(id: i, bucketStart: bucketStart, bucketEnd: bucketEnd, status: .down, sampleCount: bucketEvents.count, successCount: successes))
                 continue
             }
 
             let degraded = failures > 0
-            blocks.append(degraded ? .degraded : .up)
+            buckets.append(UptimeBucket(id: i, bucketStart: bucketStart, bucketEnd: bucketEnd, status: degraded ? .degraded : .up, sampleCount: bucketEvents.count, successCount: successes))
         }
 
-        return blocks
+        return buckets
     }
 
     func exportCSV() -> String {

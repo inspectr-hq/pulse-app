@@ -103,18 +103,24 @@ struct HistoryReportsView: View {
                 }
 
                 GroupBox("Uptime Timeline") {
-                    VStack(alignment: .leading, spacing: 8) {
-                        ForEach(Self.orderedTimelines(
+                    VStack(alignment: .leading, spacing: 12) {
+                        ForEach(Array(Self.orderedTimelines(
                             historyVM.uptimeTimelines(thresholdMs: appVM.settings.defaultThresholdMs),
                             using: appVM.monitors
-                        )) { timeline in
+                        ).enumerated()), id: \.element.id) { index, timeline in
                             let siteStatus = latestStatus(for: timeline.siteName)
+                            let buckets = historyVM.uptimeBuckets(
+                                thresholdMs: appVM.settings.defaultThresholdMs,
+                                referenceDate: Date()
+                            )
                             UptimeTimelineRow(
+                                isFirstRow: index == 0,
                                 siteName: timeline.siteName,
                                 statusIconName: iconName(for: siteStatus),
                                 statusIconColor: iconColor(for: siteStatus),
                                 uptimePercentage: timeline.uptimePercentage,
-                                blocks: timeline.blocks,
+                                buckets: buckets,
+                                range: historyVM.graphRange,
                                 rangeStartLabel: rangeStartLabel,
                                 upColor: appVM.settings.statusColorUp.color,
                                 downColor: appVM.settings.statusColorFailure.color,
@@ -253,17 +259,13 @@ struct HistoryReportsView: View {
 }
 
 private struct UptimeTimelineRow: View {
-    struct BlockSample: Identifiable {
-        let id = UUID()
-        let index: Int
-        let state: HistoryViewModel.UptimeBlockStatus
-    }
-
+    let isFirstRow: Bool
     let siteName: String
     let statusIconName: String
     let statusIconColor: Color
     let uptimePercentage: Double
-    let blocks: [HistoryViewModel.UptimeBlockStatus]
+    let buckets: [HistoryViewModel.UptimeBucket]
+    let range: HistoryViewModel.GraphRange
     let rangeStartLabel: String
     let upColor: Color
     let downColor: Color
@@ -271,15 +273,11 @@ private struct UptimeTimelineRow: View {
     let noDataColor: Color
     let onSelect: () -> Void
 
-    private var samples: [BlockSample] {
-        Array(blocks.enumerated()).map { index, state in
-            BlockSample(index: index, state: state)
-        }
-    }
+    @State private var hoveredBucketID: Int?
 
     var body: some View {
         Button(action: onSelect) {
-            VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 8) {
                 HStack(alignment: .center) {
                     Image(systemName: statusIconName)
                         .foregroundStyle(statusIconColor)
@@ -291,21 +289,52 @@ private struct UptimeTimelineRow: View {
                         .foregroundStyle(.primary)
                 }
 
-                Chart(samples) { sample in
-                    RectangleMark(
-                        xStart: .value("Start", Double(sample.index) + 0.08),
-                        xEnd: .value("End", Double(sample.index) + 0.92),
-                        yStart: .value("Bottom", 0),
-                        yEnd: .value("Top", 1)
-                    )
-                    .foregroundStyle(color(for: sample.state))
-                    .clipShape(.rect(cornerRadius: 2))
-                }
-                .chartXAxis(.hidden)
-                .chartYAxis(.hidden)
-                .chartPlotStyle { plot in
-                    plot
-                        .background(.clear)
+                GeometryReader { proxy in
+                    let spacing: CGFloat = 3
+                    let count = max(buckets.count, 1)
+                    let totalSpacing = spacing * CGFloat(max(count - 1, 0))
+                    let availableWidth = max(proxy.size.width, 0)
+                    let barWidth = max(4, (availableWidth - totalSpacing) / CGFloat(count))
+                    let tooltipWidth: CGFloat = 240
+                    let tooltipHeight: CGFloat = 72
+                    let hoveredBucket = hoveredBucketID.flatMap { id in buckets.first(where: { $0.id == id }) }
+                    let tooltipBelow = isFirstRow
+                    let tooltipX = hoveredBucket.map {
+                        tooltipOffsetX(
+                            bucketID: $0.id,
+                            availableWidth: availableWidth,
+                            barWidth: barWidth,
+                            spacing: spacing,
+                            tooltipWidth: tooltipWidth
+                        )
+                    }
+
+                    ZStack(alignment: .topLeading) {
+                        HStack(alignment: .center, spacing: spacing) {
+                            ForEach(buckets) { bucket in
+                                Rectangle()
+                                    .fill(color(for: bucket.status))
+                                    .frame(width: barWidth, height: 28)
+                                    .clipShape(.rect(cornerRadius: 2))
+                                    .onHover { isHovering in
+                                        if isHovering {
+                                            hoveredBucketID = bucket.id
+                                        } else if hoveredBucketID == bucket.id {
+                                            hoveredBucketID = nil
+                                        }
+                                    }
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                        if let hoveredBucket, let tooltipX {
+                            tooltipCard(for: hoveredBucket)
+                                .frame(width: tooltipWidth, alignment: .leading)
+                                .offset(x: tooltipX, y: tooltipYOffset(isBelowTopRow: tooltipBelow, tooltipHeight: tooltipHeight))
+                                .allowsHitTesting(false)
+                        }
+                    }
+                    .frame(height: 28, alignment: .topLeading)
                 }
                 .frame(height: 28)
                 .accessibilityLabel("\(siteName) uptime timeline")
@@ -319,11 +348,91 @@ private struct UptimeTimelineRow: View {
                         .foregroundStyle(.secondary)
                         .font(.caption)
                 }
+                .padding(.top, 2)
             }
+            .padding(.vertical, 10)
+            .padding(.horizontal, 12)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color.secondary.opacity(0.04))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(Color.secondary.opacity(0.12), lineWidth: 1)
+            )
         }
         .buttonStyle(.plain)
-        .contentShape(RoundedRectangle(cornerRadius: 10))
-        .padding(.vertical, 4)
+        .contentShape(RoundedRectangle(cornerRadius: 12))
+    }
+
+    private func tooltipOffsetX(
+        bucketID: Int,
+        availableWidth: CGFloat,
+        barWidth: CGFloat,
+        spacing: CGFloat,
+        tooltipWidth: CGFloat
+    ) -> CGFloat {
+        let barCenter = CGFloat(bucketID) * (barWidth + spacing) + (barWidth / 2)
+        let unclamped = barCenter - (tooltipWidth / 2)
+        return min(max(0, unclamped), max(0, availableWidth - tooltipWidth))
+    }
+
+    private func tooltipCard(for bucket: HistoryViewModel.UptimeBucket) -> some View {
+        let status = bucket.status
+        return VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 6) {
+                Image(systemName: iconName(for: status))
+                    .foregroundStyle(color(for: status))
+                Text("\(title(for: status)) - Uptime \(bucket.uptimePercentage, specifier: "%.0f")%")
+                    .font(.headline)
+                Spacer()
+            }
+
+            Text(bucketPeriodLabel(bucket, range: range))
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(.regularMaterial)
+                .shadow(color: .black.opacity(0.12), radius: 6, x: 0, y: 2)
+        )
+    }
+
+    private func tooltipYOffset(isBelowTopRow: Bool, tooltipHeight: CGFloat) -> CGFloat {
+        isBelowTopRow ? 30 : -(tooltipHeight + 4)
+    }
+
+    private func bucketPeriodLabel(_ bucket: HistoryViewModel.UptimeBucket, range: HistoryViewModel.GraphRange) -> String {
+        let formatter = DateFormatter()
+        switch range {
+        case .last24h:
+            formatter.dateStyle = .none
+            formatter.timeStyle = .short
+        case .last7d, .last30d, .last90d:
+            formatter.dateStyle = .medium
+            formatter.timeStyle = .none
+        }
+        return formatter.string(from: bucket.bucketStart)
+    }
+
+    private func title(for status: HistoryViewModel.UptimeBlockStatus) -> String {
+        switch status {
+        case .up: return "Up"
+        case .down: return "Downtime"
+        case .degraded: return "Degraded"
+        case .noData: return "No Data"
+        }
+    }
+
+    private func iconName(for status: HistoryViewModel.UptimeBlockStatus) -> String {
+        switch status {
+        case .up: return "checkmark.circle.fill"
+        case .down: return "xmark.octagon.fill"
+        case .degraded: return "exclamationmark.triangle.fill"
+        case .noData: return "questionmark.circle.fill"
+        }
     }
 
     private func color(for status: HistoryViewModel.UptimeBlockStatus) -> Color {
@@ -338,4 +447,5 @@ private struct UptimeTimelineRow: View {
             return noDataColor
         }
     }
+
 }
