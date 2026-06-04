@@ -110,7 +110,7 @@ struct SettingsView: View {
                 .labelsHidden()
                 .pickerStyle(.menu)
                 .frame(width: 180, alignment: .leading)
-                .help("Controls whether automatic scheduler checks are paused when your Mac is offline. Manual checks always run.")
+                .help("Controls whether checks are paused when your Mac is offline.")
             }
             
             alignedRow("Delay Checks:") {

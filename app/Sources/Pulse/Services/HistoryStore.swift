@@ -3,6 +3,7 @@ import Foundation
 protocol HistoryStoreProtocol {
     func loadEvents() -> [HistoryEvent]
     func append(_ event: HistoryEvent, retentionPolicy: HistoryRetentionPolicy, maxEvents: Int)
+    func replaceAll(with events: [HistoryEvent])
     func delete(eventID: UUID)
     func clear()
 }
@@ -54,6 +55,10 @@ final class HistoryStore: HistoryStoreProtocol {
 
     func clear() {
         persist([])
+    }
+
+    func replaceAll(with events: [HistoryEvent]) {
+        persist(events)
     }
 
     func delete(eventID: UUID) {

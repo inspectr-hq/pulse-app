@@ -74,6 +74,7 @@ private final class FakeMonitorStore: MonitorStoreProtocol {
 private final class FakeHistoryStore: HistoryStoreProtocol {
     func loadEvents() -> [HistoryEvent] { [] }
     func append(_ event: HistoryEvent, retentionPolicy: HistoryRetentionPolicy, maxEvents: Int) {}
+    func replaceAll(with events: [HistoryEvent]) {}
     func clear() {}
     func delete(eventID: UUID) {}
 }

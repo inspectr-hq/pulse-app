@@ -3,6 +3,130 @@ import XCTest
 
 @MainActor
 final class HistoryViewModelAnalyticsTests: XCTestCase {
+    func testFilteredEventsCanBeLimitedToUpStatus() {
+        let now = Date()
+        let monitor = UUID()
+        let events: [HistoryEvent] = [
+            HistoryEvent(timestamp: now, monitorID: monitor, monitorName: "Site A", url: "https://a.dev/up", method: "GET", status: "OK", statusCode: 200, durationMs: 120, reason: nil, trigger: .automatic),
+            HistoryEvent(timestamp: now.addingTimeInterval(-60), monitorID: monitor, monitorName: "Site A", url: "https://a.dev/down", method: "GET", status: "Down", statusCode: nil, durationMs: 90, reason: "timeout", trigger: .automatic)
+        ]
+
+        let vm = HistoryViewModel(store: StubHistoryStore(events: events))
+        vm.statusFilter = .up
+
+        XCTAssertEqual(vm.filteredEvents.map(\.status), ["OK"])
+    }
+
+    func testFilteredEventsCanBeLimitedToDownStatusAndCombinedWithSearch() {
+        let now = Date()
+        let monitor = UUID()
+        let events: [HistoryEvent] = [
+            HistoryEvent(timestamp: now, monitorID: monitor, monitorName: "Site A", url: "https://a.dev/up", method: "GET", status: "OK", statusCode: 200, durationMs: 120, reason: nil, trigger: .automatic),
+            HistoryEvent(timestamp: now.addingTimeInterval(-60), monitorID: monitor, monitorName: "Site A", url: "https://a.dev/outage", method: "GET", status: "Down", statusCode: nil, durationMs: 90, reason: "timeout", trigger: .automatic),
+            HistoryEvent(timestamp: now.addingTimeInterval(-120), monitorID: monitor, monitorName: "Site A", url: "https://a.dev/degraded", method: "GET", status: "Timeout", statusCode: nil, durationMs: 3000, reason: "slow", trigger: .automatic)
+        ]
+
+        let vm = HistoryViewModel(store: StubHistoryStore(events: events))
+        vm.statusFilter = .down
+        vm.search = "outage"
+
+        let filtered = vm.filteredEvents
+        XCTAssertEqual(filtered.count, 1)
+        XCTAssertEqual(filtered.first?.status, "Down")
+        XCTAssertEqual(filtered.first?.url, "https://a.dev/outage")
+    }
+
+    func testClearDeletesOnlyFilteredEventsWhenFiltersAreActive() {
+        let now = Date()
+        let firstMonitor = UUID()
+        let secondMonitor = UUID()
+        let events: [HistoryEvent] = [
+            HistoryEvent(timestamp: now, monitorID: firstMonitor, monitorName: "Site A", url: "https://a.dev", method: "GET", status: "OK", statusCode: 200, durationMs: 120, reason: nil, trigger: .automatic),
+            HistoryEvent(timestamp: now.addingTimeInterval(-60), monitorID: secondMonitor, monitorName: "Site B", url: "https://b.dev", method: "GET", status: "Down", statusCode: nil, durationMs: 90, reason: "timeout", trigger: .automatic)
+        ]
+
+        let vm = HistoryViewModel(store: StubHistoryStore(events: events))
+        vm.statusFilter = .down
+
+        vm.clear()
+
+        XCTAssertEqual(vm.events.count, 1)
+        XCTAssertEqual(vm.events.first?.status, "OK")
+        XCTAssertEqual(vm.filteredEvents.count, 0)
+    }
+
+    func testClearWithFiltersPersistsRetainedEventsInSingleWrite() {
+        let now = Date()
+        let monitor = UUID()
+        let events: [HistoryEvent] = [
+            HistoryEvent(timestamp: now, monitorID: monitor, monitorName: "Site A", url: "https://a.dev/up", method: "GET", status: "OK", statusCode: 200, durationMs: 120, reason: nil, trigger: .automatic),
+            HistoryEvent(timestamp: now.addingTimeInterval(-60), monitorID: monitor, monitorName: "Site A", url: "https://a.dev/down", method: "GET", status: "Down", statusCode: nil, durationMs: 90, reason: "timeout", trigger: .automatic)
+        ]
+        let store = RecordingHistoryStore(events: events)
+        let vm = HistoryViewModel(store: store)
+        vm.statusFilter = .down
+
+        vm.clear()
+
+        XCTAssertEqual(store.replaceAllCalls, 1)
+        XCTAssertEqual(store.clearedCalls, 0)
+        XCTAssertEqual(store.events.map(\.status), ["OK"])
+    }
+
+    func testClearDeletesAllEventsWhenNoFiltersAreActive() {
+        let now = Date()
+        let monitor = UUID()
+        let events: [HistoryEvent] = [
+            HistoryEvent(timestamp: now, monitorID: monitor, monitorName: "Site A", url: "https://a.dev/1", method: "GET", status: "OK", statusCode: 200, durationMs: 120, reason: nil, trigger: .automatic),
+            HistoryEvent(timestamp: now.addingTimeInterval(-60), monitorID: monitor, monitorName: "Site A", url: "https://a.dev/2", method: "GET", status: "Down", statusCode: nil, durationMs: 90, reason: "timeout", trigger: .automatic)
+        ]
+
+        let vm = HistoryViewModel(store: StubHistoryStore(events: events))
+
+        vm.clear()
+
+        XCTAssertTrue(vm.events.isEmpty)
+        XCTAssertTrue(vm.filteredEvents.isEmpty)
+    }
+
+    func testStatusFilterCombinesWithSelectedName() {
+        let now = Date()
+        let firstMonitor = UUID()
+        let secondMonitor = UUID()
+        let events: [HistoryEvent] = [
+            HistoryEvent(timestamp: now, monitorID: firstMonitor, monitorName: "Site A", url: "https://a.dev/up", method: "GET", status: "OK", statusCode: 200, durationMs: 120, reason: nil, trigger: .automatic),
+            HistoryEvent(timestamp: now.addingTimeInterval(-60), monitorID: firstMonitor, monitorName: "Site A", url: "https://a.dev/down", method: "GET", status: "Down", statusCode: nil, durationMs: 90, reason: "timeout", trigger: .automatic),
+            HistoryEvent(timestamp: now.addingTimeInterval(-120), monitorID: secondMonitor, monitorName: "Site B", url: "https://b.dev/down", method: "GET", status: "Down", statusCode: nil, durationMs: 95, reason: "timeout", trigger: .automatic)
+        ]
+
+        let vm = HistoryViewModel(store: StubHistoryStore(events: events))
+        vm.selectedName = "Site A"
+        vm.statusFilter = .down
+
+        let filtered = vm.filteredEvents
+        XCTAssertEqual(filtered.count, 1)
+        XCTAssertEqual(filtered.first?.monitorName, "Site A")
+        XCTAssertEqual(filtered.first?.status, "Down")
+    }
+
+    func testStatusFilterCombinesWithTimeFilter() {
+        let now = Date()
+        let monitor = UUID()
+        let events: [HistoryEvent] = [
+            HistoryEvent(timestamp: now.addingTimeInterval(-2 * 3_600), monitorID: monitor, monitorName: "Site A", url: "https://a.dev/recent-down", method: "GET", status: "Down", statusCode: nil, durationMs: 90, reason: "timeout", trigger: .automatic),
+            HistoryEvent(timestamp: now.addingTimeInterval(-26 * 3_600), monitorID: monitor, monitorName: "Site A", url: "https://a.dev/old-down", method: "GET", status: "Down", statusCode: nil, durationMs: 95, reason: "timeout", trigger: .automatic),
+            HistoryEvent(timestamp: now.addingTimeInterval(-1_800), monitorID: monitor, monitorName: "Site A", url: "https://a.dev/recent-up", method: "GET", status: "OK", statusCode: 200, durationMs: 120, reason: nil, trigger: .automatic)
+        ]
+
+        let vm = HistoryViewModel(store: StubHistoryStore(events: events))
+        vm.timeFilter = .last24h
+        vm.statusFilter = .down
+
+        let filtered = vm.filteredEvents
+        XCTAssertEqual(filtered.count, 1)
+        XCTAssertEqual(filtered.first?.url, "https://a.dev/recent-down")
+    }
+
     func testUptimeTimelinesGroupPerSiteAndClassifyStates() {
         let now = Date()
         let siteA = UUID()
@@ -165,11 +289,45 @@ private final class StubHistoryStore: HistoryStoreProtocol {
         events.append(event)
     }
 
+    func replaceAll(with events: [HistoryEvent]) {
+        self.events = events
+    }
+
     func delete(eventID: UUID) {
         events.removeAll { $0.id == eventID }
     }
 
     func clear() {
+        events = []
+    }
+}
+
+private final class RecordingHistoryStore: HistoryStoreProtocol {
+    private(set) var events: [HistoryEvent]
+    private(set) var replaceAllCalls = 0
+    private(set) var clearedCalls = 0
+
+    init(events: [HistoryEvent]) {
+        self.events = events
+    }
+
+    func loadEvents() -> [HistoryEvent] { events }
+
+    func append(_ event: HistoryEvent, retentionPolicy: HistoryRetentionPolicy, maxEvents: Int) {
+        events.append(event)
+    }
+
+    func replaceAll(with events: [HistoryEvent]) {
+        replaceAllCalls += 1
+        self.events = events
+    }
+
+    func delete(eventID: UUID) {
+        events.removeAll { $0.id == eventID }
+    }
+
+    func clear() {
+        clearedCalls += 1
         events = []
     }
 }

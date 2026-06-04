@@ -37,7 +37,9 @@ final class AppViewModel: ObservableObject {
         historyStore: HistoryStoreProtocol = HistoryStore(),
         webhookDispatcher: WebhookDispatching = WebhookEngine(),
         launchAtLogin: LaunchAtLoginControlling = LaunchAtLoginService(),
-        notifications: NotificationDispatching = NotificationCenterDispatcher()
+        notifications: NotificationDispatching = NotificationCenterDispatcher(),
+        initialNetworkReachable: Bool = true,
+        monitorNetworkPath: Bool = true
     ) {
         self.checker = checker
         self.monitorStore = monitorStore
@@ -45,6 +47,7 @@ final class AppViewModel: ObservableObject {
         self.webhookDispatcher = webhookDispatcher
         self.launchAtLogin = launchAtLogin
         self.notifications = notifications
+        self.isNetworkReachable = initialNetworkReachable
         self.monitors = monitorStore.loadMonitors()
         self.settings = monitorStore.loadSettings()
         migrateLegacyWebhookSettingsIfNeeded()
@@ -53,7 +56,9 @@ final class AppViewModel: ObservableObject {
             statuses[monitor.id] = monitor.isEnabled ? .unknown : .paused
         }
         updateDockBadge()
-        startPathMonitoring()
+        if monitorNetworkPath {
+            startPathMonitoring()
+        }
     }
 
     deinit {
@@ -183,8 +188,8 @@ final class AppViewModel: ObservableObject {
     }
 
     func checkAll(autoOnly: Bool = false) async {
-        if autoOnly && shouldPauseAutomaticChecks {
-            logger.info("checkAll(autoOnly=true) skipped; network unavailable")
+        if shouldPauseChecks {
+            logger.info("checkAll(autoOnly=\(autoOnly, privacy: .public)) skipped; network unavailable")
             return
         }
         let targets = monitors.filter { autoOnly ? $0.isEnabled : true }
@@ -212,6 +217,10 @@ final class AppViewModel: ObservableObject {
     }
 
     func check(monitorID: UUID, allowPaused: Bool = false, trigger: HistoryTrigger = .manual) async {
+        if shouldPauseChecks {
+            logger.info("check skipped monitor=\(monitorID.uuidString, privacy: .public) trigger=\(trigger.rawValue, privacy: .public) reason=networkUnavailable")
+            return
+        }
         guard !inFlight.contains(monitorID) else {
             logger.info("check skipped monitor=\(monitorID.uuidString, privacy: .public) reason=inFlight")
             return
@@ -365,7 +374,7 @@ final class AppViewModel: ObservableObject {
         }
     }
 
-    private var shouldPauseAutomaticChecks: Bool {
+    private var shouldPauseChecks: Bool {
         settings.pausePingWhen == .offline && !isNetworkReachable
     }
 
