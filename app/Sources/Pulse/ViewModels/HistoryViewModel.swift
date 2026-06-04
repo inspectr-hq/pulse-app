@@ -12,6 +12,14 @@ final class HistoryViewModel: ObservableObject {
         var id: String { rawValue }
     }
 
+    enum StatusFilter: String, CaseIterable, Identifiable {
+        case all = "All"
+        case up = "Up"
+        case down = "Down"
+
+        var id: String { rawValue }
+    }
+
     enum GraphRange: String, CaseIterable, Identifiable {
         case last24h = "24h"
         case last7d = "7d"
@@ -83,6 +91,7 @@ final class HistoryViewModel: ObservableObject {
     @Published var selectedMonitor: UUID?
     @Published var selectedName: String = "All Names"
     @Published var timeFilter: TimeFilter = .allTime
+    @Published var statusFilter: StatusFilter = .all
     @Published var graphSite: String = "All Sites"
     @Published var graphRange: GraphRange = .last30d
 
@@ -98,8 +107,11 @@ final class HistoryViewModel: ObservableObject {
     }
 
     func clear() {
-        store.clear()
-        reload()
+        search = ""
+        selectedMonitor = nil
+        selectedName = "All Names"
+        timeFilter = .allTime
+        statusFilter = .all
     }
 
     func delete(eventID: UUID) {
@@ -113,6 +125,12 @@ final class HistoryViewModel: ObservableObject {
             let bySearch = search.isEmpty || event.url.localizedCaseInsensitiveContains(search) || event.monitorName.localizedCaseInsensitiveContains(search)
             let byMonitor = selectedMonitor == nil || event.monitorID == selectedMonitor
             let byName = selectedName == "All Names" || event.monitorName == selectedName
+            let byStatus: Bool
+            switch statusFilter {
+            case .all: byStatus = true
+            case .up: byStatus = event.status == "OK"
+            case .down: byStatus = event.status != "OK"
+            }
             let byTime: Bool
             switch timeFilter {
             case .allTime: byTime = true
@@ -121,7 +139,7 @@ final class HistoryViewModel: ObservableObject {
             case .last30d: byTime = event.timestamp >= now.addingTimeInterval(-2592000)
             case .last90d: byTime = event.timestamp >= now.addingTimeInterval(-7776000)
             }
-            return bySearch && byMonitor && byName && byTime
+            return bySearch && byMonitor && byName && byStatus && byTime
         }
     }
 

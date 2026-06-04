@@ -3,6 +3,66 @@ import XCTest
 
 @MainActor
 final class HistoryViewModelAnalyticsTests: XCTestCase {
+    func testFilteredEventsCanBeLimitedToUpStatus() {
+        let now = Date()
+        let monitor = UUID()
+        let events: [HistoryEvent] = [
+            HistoryEvent(timestamp: now, monitorID: monitor, monitorName: "Site A", url: "https://a.dev/up", method: "GET", status: "OK", statusCode: 200, durationMs: 120, reason: nil, trigger: .automatic),
+            HistoryEvent(timestamp: now.addingTimeInterval(-60), monitorID: monitor, monitorName: "Site A", url: "https://a.dev/down", method: "GET", status: "Down", statusCode: nil, durationMs: 90, reason: "timeout", trigger: .automatic)
+        ]
+
+        let vm = HistoryViewModel(store: StubHistoryStore(events: events))
+        vm.statusFilter = .up
+
+        XCTAssertEqual(vm.filteredEvents.map(\.status), ["OK"])
+    }
+
+    func testFilteredEventsCanBeLimitedToDownStatusAndCombinedWithSearch() {
+        let now = Date()
+        let monitor = UUID()
+        let events: [HistoryEvent] = [
+            HistoryEvent(timestamp: now, monitorID: monitor, monitorName: "Site A", url: "https://a.dev/up", method: "GET", status: "OK", statusCode: 200, durationMs: 120, reason: nil, trigger: .automatic),
+            HistoryEvent(timestamp: now.addingTimeInterval(-60), monitorID: monitor, monitorName: "Site A", url: "https://a.dev/outage", method: "GET", status: "Down", statusCode: nil, durationMs: 90, reason: "timeout", trigger: .automatic),
+            HistoryEvent(timestamp: now.addingTimeInterval(-120), monitorID: monitor, monitorName: "Site A", url: "https://a.dev/degraded", method: "GET", status: "Timeout", statusCode: nil, durationMs: 3000, reason: "slow", trigger: .automatic)
+        ]
+
+        let vm = HistoryViewModel(store: StubHistoryStore(events: events))
+        vm.statusFilter = .down
+        vm.search = "outage"
+
+        let filtered = vm.filteredEvents
+        XCTAssertEqual(filtered.count, 1)
+        XCTAssertEqual(filtered.first?.status, "Down")
+        XCTAssertEqual(filtered.first?.url, "https://a.dev/outage")
+    }
+
+    func testClearResetsFiltersWithoutRemovingEvents() {
+        let now = Date()
+        let firstMonitor = UUID()
+        let secondMonitor = UUID()
+        let events: [HistoryEvent] = [
+            HistoryEvent(timestamp: now, monitorID: firstMonitor, monitorName: "Site A", url: "https://a.dev", method: "GET", status: "OK", statusCode: 200, durationMs: 120, reason: nil, trigger: .automatic),
+            HistoryEvent(timestamp: now.addingTimeInterval(-60), monitorID: secondMonitor, monitorName: "Site B", url: "https://b.dev", method: "GET", status: "Down", statusCode: nil, durationMs: 90, reason: "timeout", trigger: .automatic)
+        ]
+
+        let vm = HistoryViewModel(store: StubHistoryStore(events: events))
+        vm.search = "b.dev"
+        vm.selectedMonitor = secondMonitor
+        vm.selectedName = "Site B"
+        vm.timeFilter = .last24h
+        vm.statusFilter = .down
+
+        vm.clear()
+
+        XCTAssertEqual(vm.search, "")
+        XCTAssertNil(vm.selectedMonitor)
+        XCTAssertEqual(vm.selectedName, "All Names")
+        XCTAssertEqual(vm.timeFilter, .allTime)
+        XCTAssertEqual(vm.statusFilter, .all)
+        XCTAssertEqual(vm.events.count, 2)
+        XCTAssertEqual(vm.filteredEvents.count, 2)
+    }
+
     func testUptimeTimelinesGroupPerSiteAndClassifyStates() {
         let now = Date()
         let siteA = UUID()

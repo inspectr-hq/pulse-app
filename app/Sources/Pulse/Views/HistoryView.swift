@@ -39,6 +39,12 @@ struct HistoryView: View {
                     }
                 }
                 .frame(width: 170)
+                Picker("Status", selection: $historyVM.statusFilter) {
+                    ForEach(HistoryViewModel.StatusFilter.allCases) { status in
+                        Text(status.rawValue).tag(status)
+                    }
+                }
+                .frame(width: 100)
                 TextField("Search", text: $historyVM.search)
                 Button("Export CSV") {
                     let panel = NSSavePanel()
