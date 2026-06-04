@@ -107,11 +107,16 @@ final class HistoryViewModel: ObservableObject {
     }
 
     func clear() {
-        search = ""
-        selectedMonitor = nil
-        selectedName = "All Names"
-        timeFilter = .allTime
-        statusFilter = .all
+        if hasActiveFilters {
+            let filteredIDs = Set(filteredEvents.map(\.id))
+            events.removeAll { filteredIDs.contains($0.id) }
+            persistCurrentEvents()
+            reload()
+            return
+        }
+
+        store.clear()
+        reload()
     }
 
     func delete(eventID: UUID) {
@@ -146,6 +151,19 @@ final class HistoryViewModel: ObservableObject {
     var availableNames: [String] {
         let names = Set(events.map(\.monitorName))
         return ["All Names"] + names.sorted()
+    }
+
+    private var hasActiveFilters: Bool {
+        !search.isEmpty ||
+        selectedMonitor != nil ||
+        selectedName != "All Names" ||
+        timeFilter != .allTime ||
+        statusFilter != .all
+    }
+
+    private func persistCurrentEvents() {
+        let retained = events.sorted(by: { $0.timestamp < $1.timestamp })
+        store.replaceAll(with: retained)
     }
 
     var availableGraphSites: [String] {

@@ -239,6 +239,59 @@ final class AppViewModelBehaviorTests: XCTestCase {
         XCTAssertEqual(vm.statuses[monitor.id], .unknown)
     }
 
+    func testAutomaticSingleCheckSkipsWhenOfflineAndPauseWhenOfflineIsEnabled() async {
+        let monitor = SiteMonitor(url: URL(string: "https://a.com")!, displayName: "A", isEnabled: true, method: .get)
+        let historySpy = SpyHistoryStore()
+        let checker = CountingChecker(.up(statusCode: 200, responseTimeMs: 44, checkedAt: Date()))
+        var settings = AppSettings()
+        settings.pausePingWhen = .offline
+        let store = SpyMonitorStore(monitors: [monitor], settings: settings)
+        let vm = AppViewModel(
+            checker: checker,
+            monitorStore: store,
+            historyStore: historySpy,
+            webhookDispatcher: SpyWebhookDispatcher(),
+            launchAtLogin: SpyLaunchAtLogin(),
+            notifications: SpyNotifications(),
+            initialNetworkReachable: false,
+            monitorNetworkPath: false
+        )
+        let previousCheckedAt = Date(timeIntervalSince1970: 1_700_000_100)
+        vm.statuses[monitor.id] = .up(statusCode: 200, responseTimeMs: 10, checkedAt: previousCheckedAt)
+
+        await vm.check(monitorID: monitor.id, allowPaused: true, trigger: .automatic)
+
+        XCTAssertEqual(checker.calls, 0)
+        XCTAssertEqual(historySpy.events.count, 0)
+        XCTAssertEqual(vm.statuses[monitor.id], .up(statusCode: 200, responseTimeMs: 10, checkedAt: previousCheckedAt))
+    }
+
+    func testChecksStillRunOfflineWhenPauseWhenOfflineIsNever() async {
+        let monitor = SiteMonitor(url: URL(string: "https://a.com")!, displayName: "A", isEnabled: true, method: .get)
+        let historySpy = SpyHistoryStore()
+        let checkedAt = Date()
+        let checker = CountingChecker(.up(statusCode: 200, responseTimeMs: 44, checkedAt: checkedAt))
+        var settings = AppSettings()
+        settings.pausePingWhen = .never
+        let store = SpyMonitorStore(monitors: [monitor], settings: settings)
+        let vm = AppViewModel(
+            checker: checker,
+            monitorStore: store,
+            historyStore: historySpy,
+            webhookDispatcher: SpyWebhookDispatcher(),
+            launchAtLogin: SpyLaunchAtLogin(),
+            notifications: SpyNotifications(),
+            initialNetworkReachable: false,
+            monitorNetworkPath: false
+        )
+
+        await vm.check(monitorID: monitor.id, allowPaused: true, trigger: .manual)
+
+        XCTAssertEqual(checker.calls, 1)
+        XCTAssertEqual(historySpy.events.count, 1)
+        XCTAssertEqual(vm.statuses[monitor.id], .up(statusCode: 200, responseTimeMs: 44, checkedAt: checkedAt))
+    }
+
     func testWebhookTriggeredOnUpToDownTransition() async {
         let monitor = SiteMonitor(url: URL(string: "https://a.com")!, displayName: "A", isEnabled: true, method: .get)
         let webhookSpy = SpyWebhookDispatcher()
@@ -479,6 +532,10 @@ private final class SpyHistoryStore: HistoryStoreProtocol {
 
     func append(_ event: HistoryEvent, retentionPolicy: HistoryRetentionPolicy, maxEvents: Int) {
         events.append(event)
+    }
+
+    func replaceAll(with events: [HistoryEvent]) {
+        self.events = events
     }
 
     func clear() {
