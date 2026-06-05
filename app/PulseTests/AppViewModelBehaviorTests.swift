@@ -3,6 +3,61 @@ import XCTest
 
 @MainActor
 final class AppViewModelBehaviorTests: XCTestCase {
+    func testSiteMonitorCodableRoundTripsResponseMetadataExtraction() throws {
+        let monitor = SiteMonitor(
+            url: URL(string: "https://example.com/health")!,
+            displayName: "Example",
+            method: .get,
+            responseMetadataExtraction: ResponseMetadataExtraction(
+                isEnabled: true,
+                label: "Version",
+                mode: .jsonPath,
+                pattern: "$.version"
+            )
+        )
+
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+
+        let data = try encoder.encode(monitor)
+        let decoded = try decoder.decode(SiteMonitor.self, from: data)
+
+        let extraction = try XCTUnwrap(decoded.responseMetadataExtraction)
+        XCTAssertTrue(extraction.isEnabled)
+        XCTAssertEqual(extraction.label, "Version")
+        XCTAssertEqual(extraction.mode, .jsonPath)
+        XCTAssertEqual(extraction.pattern, "$.version")
+    }
+
+    func testSiteMonitorDecodesWithoutResponseMetadataExtraction() throws {
+        let json = """
+        {
+          "id": "00000000-0000-0000-0000-000000000001",
+          "url": "https://example.com/health",
+          "displayName": "Example",
+          "isEnabled": true,
+          "method": "GET",
+          "body": "",
+          "headers": [],
+          "allowInsecureSSL": false,
+          "thresholdMs": 2000,
+          "keyword": "",
+          "createdAt": "2026-06-05T08:00:00Z"
+        }
+        """
+
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+
+        let monitor = try decoder.decode(SiteMonitor.self, from: Data(json.utf8))
+
+        XCTAssertNil(monitor.responseMetadataExtraction)
+        XCTAssertEqual(monitor.url.absoluteString, "https://example.com/health")
+        XCTAssertEqual(monitor.method, .get)
+    }
+
     func testAddMonitorPersistsAndInitializesUnknownStatus() {
         let store = SpyMonitorStore(monitors: [])
         let vm = AppViewModel(
@@ -167,6 +222,30 @@ final class AppViewModelBehaviorTests: XCTestCase {
         XCTAssertEqual(event.status, "Down")
         XCTAssertEqual(event.statusCode, 500)
         XCTAssertEqual(event.trigger, .automatic)
+    }
+
+    func testCheckPersistsExtractedMetadataInHistoryEvent() async throws {
+        let checkedAt = Date(timeIntervalSince1970: 1_700_000_200)
+        let monitor = SiteMonitor(url: URL(string: "https://a.com")!, displayName: "A", isEnabled: true, method: .get)
+        let historySpy = SpyHistoryStore()
+        let vm = AppViewModel(
+            checker: StaticChecker(
+                .up(statusCode: 200, responseTimeMs: 55, checkedAt: checkedAt),
+                metadataLabel: "Version",
+                metadataValue: "2.6.0"
+            ),
+            monitorStore: SpyMonitorStore(monitors: [monitor]),
+            historyStore: historySpy,
+            webhookDispatcher: SpyWebhookDispatcher(),
+            launchAtLogin: SpyLaunchAtLogin(),
+            notifications: SpyNotifications()
+        )
+
+        await vm.check(monitorID: monitor.id, allowPaused: true, trigger: .manual)
+
+        let event = try XCTUnwrap(historySpy.events.first)
+        XCTAssertEqual(event.metadataLabel, "Version")
+        XCTAssertEqual(event.metadataValue, "2.6.0")
     }
 
     func testPausedSiteManualCheckStaysPausedButStillLogsRealResult() async {
@@ -568,13 +647,22 @@ private final class SpyWebhookDispatcher: WebhookDispatching {
 
 private struct StaticChecker: SiteChecking {
     let status: SiteStatus
+    let metadataLabel: String?
+    let metadataValue: String?
 
-    init(_ status: SiteStatus) {
+    init(_ status: SiteStatus, metadataLabel: String? = nil, metadataValue: String? = nil) {
         self.status = status
+        self.metadataLabel = metadataLabel
+        self.metadataValue = metadataValue
     }
 
     func check(_ monitor: SiteMonitor) async -> SiteCheckResult {
-        SiteCheckResult(status: status, methodUsed: monitor.method)
+        SiteCheckResult(
+            status: status,
+            methodUsed: monitor.method,
+            metadataLabel: metadataLabel,
+            metadataValue: metadataValue
+        )
     }
 }
 

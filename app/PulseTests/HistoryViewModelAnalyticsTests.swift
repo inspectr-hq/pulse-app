@@ -274,6 +274,112 @@ final class HistoryViewModelAnalyticsTests: XCTestCase {
         XCTAssertEqual(siteBBuckets.first(where: { $0.sampleCount > 0 })?.status, .down)
         XCTAssertFalse(siteABuckets.contains(where: { $0.status == .degraded }))
     }
+
+    func testMetadataMarkersEmitOnlyOnValueTransitions() throws {
+        let now = Date()
+        let monitor = UUID()
+        let events: [HistoryEvent] = [
+            HistoryEvent(timestamp: now.addingTimeInterval(-300), monitorID: monitor, monitorName: "Site A", url: "https://a.dev", method: "GET", status: "OK", statusCode: 200, durationMs: 120, reason: nil, trigger: .automatic, metadataLabel: "Version", metadataValue: "2.5.0"),
+            HistoryEvent(timestamp: now.addingTimeInterval(-240), monitorID: monitor, monitorName: "Site A", url: "https://a.dev", method: "GET", status: "OK", statusCode: 200, durationMs: 118, reason: nil, trigger: .automatic, metadataLabel: "Version", metadataValue: "2.5.0"),
+            HistoryEvent(timestamp: now.addingTimeInterval(-180), monitorID: monitor, monitorName: "Site A", url: "https://a.dev", method: "GET", status: "OK", statusCode: 200, durationMs: 115, reason: nil, trigger: .automatic, metadataLabel: "Version", metadataValue: "2.6.0")
+        ]
+
+        let vm = HistoryViewModel(store: StubHistoryStore(events: events))
+        vm.graphRange = .last24h
+        vm.graphSite = "Site A"
+
+        XCTAssertEqual(vm.metadataMarkers.count, 2)
+        XCTAssertEqual(vm.metadataMarkers.map(\.value), ["2.5.0", "2.6.0"])
+        XCTAssertEqual(vm.metadataMarkers.map(\.label), ["Version", "Version"])
+    }
+
+    func testMetadataMarkersIgnoreNilAndEmptyValues() {
+        let now = Date()
+        let monitor = UUID()
+        let events: [HistoryEvent] = [
+            HistoryEvent(timestamp: now.addingTimeInterval(-300), monitorID: monitor, monitorName: "Site A", url: "https://a.dev", method: "GET", status: "OK", statusCode: 200, durationMs: 120, reason: nil, trigger: .automatic, metadataLabel: nil, metadataValue: nil),
+            HistoryEvent(timestamp: now.addingTimeInterval(-240), monitorID: monitor, monitorName: "Site A", url: "https://a.dev", method: "GET", status: "OK", statusCode: 200, durationMs: 118, reason: nil, trigger: .automatic, metadataLabel: "Version", metadataValue: "2.5.0"),
+            HistoryEvent(timestamp: now.addingTimeInterval(-180), monitorID: monitor, monitorName: "Site A", url: "https://a.dev", method: "GET", status: "OK", statusCode: 200, durationMs: 115, reason: nil, trigger: .automatic, metadataLabel: "Version", metadataValue: ""),
+            HistoryEvent(timestamp: now.addingTimeInterval(-120), monitorID: monitor, monitorName: "Site A", url: "https://a.dev", method: "GET", status: "OK", statusCode: 200, durationMs: 110, reason: nil, trigger: .automatic, metadataLabel: "Version", metadataValue: "2.6.0")
+        ]
+
+        let vm = HistoryViewModel(store: StubHistoryStore(events: events))
+        vm.graphRange = .last24h
+        vm.graphSite = "Site A"
+
+        XCTAssertEqual(vm.metadataMarkers.map(\.value), ["2.5.0", "2.6.0"])
+    }
+
+    func testMetadataMarkersRespectGraphSiteFilter() {
+        let now = Date()
+        let siteA = UUID()
+        let siteB = UUID()
+        let events: [HistoryEvent] = [
+            HistoryEvent(timestamp: now.addingTimeInterval(-300), monitorID: siteA, monitorName: "Site A", url: "https://a.dev", method: "GET", status: "OK", statusCode: 200, durationMs: 120, reason: nil, trigger: .automatic, metadataLabel: "Version", metadataValue: "2.5.0"),
+            HistoryEvent(timestamp: now.addingTimeInterval(-180), monitorID: siteB, monitorName: "Site B", url: "https://b.dev", method: "GET", status: "OK", statusCode: 200, durationMs: 115, reason: nil, trigger: .automatic, metadataLabel: "Version", metadataValue: "9.9.9")
+        ]
+
+        let vm = HistoryViewModel(store: StubHistoryStore(events: events))
+        vm.graphRange = .last24h
+        vm.graphSite = "Site B"
+
+        XCTAssertEqual(vm.metadataMarkers.count, 1)
+        XCTAssertEqual(vm.metadataMarkers.first?.value, "9.9.9")
+    }
+
+    func testMetadataMarkersAreHiddenForAllSitesSelection() {
+        let now = Date()
+        let siteA = UUID()
+        let siteB = UUID()
+        let events: [HistoryEvent] = [
+            HistoryEvent(timestamp: now.addingTimeInterval(-300), monitorID: siteA, monitorName: "Site A", url: "https://a.dev", method: "GET", status: "OK", statusCode: 200, durationMs: 120, reason: nil, trigger: .automatic, metadataLabel: "Version", metadataValue: "2.5.0"),
+            HistoryEvent(timestamp: now.addingTimeInterval(-180), monitorID: siteB, monitorName: "Site B", url: "https://b.dev", method: "GET", status: "OK", statusCode: 200, durationMs: 115, reason: nil, trigger: .automatic, metadataLabel: "Version", metadataValue: "9.9.9")
+        ]
+
+        let vm = HistoryViewModel(store: StubHistoryStore(events: events))
+        vm.graphRange = .last24h
+        vm.graphSite = "All Sites"
+
+        XCTAssertTrue(vm.metadataMarkers.isEmpty)
+    }
+
+    func testExportCSVIncludesMetadataLabelAndValueColumns() {
+        let now = Date()
+        let monitor = UUID()
+        let events: [HistoryEvent] = [
+            HistoryEvent(
+                timestamp: now,
+                monitorID: monitor,
+                monitorName: "Site A",
+                url: "https://a.dev",
+                method: "GET",
+                status: "OK",
+                statusCode: 200,
+                durationMs: 120,
+                reason: nil,
+                trigger: .automatic,
+                metadataLabel: "Version",
+                metadataValue: "2.6.0"
+            )
+        ]
+
+        let vm = HistoryViewModel(store: StubHistoryStore(events: events))
+        let csv = vm.exportCSV()
+
+        XCTAssertTrue(csv.contains("metadata_label,metadata_value"))
+        XCTAssertTrue(csv.contains("Version,2.6.0"))
+    }
+
+    func testGraphDateDomainMatchesSelectedRange() {
+        let referenceDate = Date(timeIntervalSince1970: 1_700_000_000)
+        let vm = HistoryViewModel(store: StubHistoryStore(events: []))
+        vm.graphRange = .last24h
+
+        let domain = vm.graphDateDomain(referenceDate: referenceDate)
+
+        XCTAssertEqual(domain.lowerBound, referenceDate.addingTimeInterval(-86_400))
+        XCTAssertEqual(domain.upperBound, referenceDate)
+    }
 }
 
 private final class StubHistoryStore: HistoryStoreProtocol {

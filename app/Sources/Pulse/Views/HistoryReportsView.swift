@@ -50,7 +50,8 @@ struct HistoryReportsView: View {
                                 .fill(Color.secondary.opacity(0.08))
                         )
 
-                        Chart(historyVM.performanceSamples) { sample in
+                        Chart {
+                            ForEach(historyVM.performanceSamples) { sample in
                             AreaMark(
                                 x: .value("Time", sample.timestamp),
                                 y: .value("Average ms", sample.avgMs)
@@ -78,6 +79,30 @@ struct HistoryReportsView: View {
                             )
                             .symbolSize(14)
                             .foregroundStyle(Color.blue.opacity(0.85))
+                            }
+
+                            if Self.shouldShowMetadataMarkers(for: historyVM.graphSite) {
+                                ForEach(historyVM.metadataMarkers) { marker in
+                                RuleMark(x: .value("Metadata Change", marker.timestamp))
+                                    .foregroundStyle(Color.orange.opacity(0.9))
+                                    .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [4, 3]))
+                                    .annotation(position: .top, spacing: 6) {
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text(Self.metadataMarkerTitle(for: marker))
+                                                .font(.caption.weight(.semibold))
+                                            Text(marker.timestamp.formatted(date: .abbreviated, time: .shortened))
+                                                .font(.caption2)
+                                                .foregroundStyle(.secondary)
+                                        }
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 6)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 8)
+                                                .fill(Color(NSColor.windowBackgroundColor).opacity(0.92))
+                                        )
+                                    }
+                                }
+                            }
                         }
                         .chartYAxis {
                             AxisMarks(position: .leading) { value in
@@ -97,6 +122,7 @@ struct HistoryReportsView: View {
                                 AxisValueLabel(format: .dateTime.hour().minute())
                             }
                         }
+                        .chartXScale(domain: historyVM.graphDateDomain())
                         .chartLegend(.hidden)
                         .frame(height: 260)
                     }
@@ -273,6 +299,14 @@ struct HistoryReportsView: View {
 
     static func tooltipShouldRenderBelow(rowIndex: Int) -> Bool {
         rowIndex == 0
+    }
+
+    static func shouldShowMetadataMarkers(for graphSite: String) -> Bool {
+        graphSite != "All Sites"
+    }
+
+    static func metadataMarkerTitle(for marker: HistoryViewModel.MetadataMarker) -> String {
+        "\(marker.label) \(marker.value)"
     }
 }
 

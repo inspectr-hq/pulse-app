@@ -14,6 +14,21 @@ struct HeaderEntry: Codable, Equatable, Identifiable {
     var value: String
 }
 
+enum ExtractionMode: String, Codable, CaseIterable, Equatable, Identifiable {
+    case jsonPath
+    case header
+    case regex
+
+    var id: String { rawValue }
+}
+
+struct ResponseMetadataExtraction: Codable, Equatable {
+    var isEnabled: Bool
+    var label: String
+    var mode: ExtractionMode
+    var pattern: String
+}
+
 struct SiteMonitor: Identifiable, Codable, Equatable {
     let id: UUID
     var url: URL
@@ -25,6 +40,7 @@ struct SiteMonitor: Identifiable, Codable, Equatable {
     var allowInsecureSSL: Bool
     var thresholdMs: Int
     var keyword: String
+    var responseMetadataExtraction: ResponseMetadataExtraction?
     var createdAt: Date
 
     init(
@@ -38,6 +54,7 @@ struct SiteMonitor: Identifiable, Codable, Equatable {
         allowInsecureSSL: Bool = false,
         thresholdMs: Int = 2000,
         keyword: String = "",
+        responseMetadataExtraction: ResponseMetadataExtraction? = nil,
         createdAt: Date = Date()
     ) {
         self.id = id
@@ -50,6 +67,7 @@ struct SiteMonitor: Identifiable, Codable, Equatable {
         self.allowInsecureSSL = allowInsecureSSL
         self.thresholdMs = thresholdMs
         self.keyword = keyword
+        self.responseMetadataExtraction = responseMetadataExtraction
         self.createdAt = createdAt
     }
 

@@ -46,6 +46,10 @@ struct MonitorFormView: View {
                     TextField("Display name", text: $draft.displayName)
                         .textFieldStyle(.roundedBorder)
                 }
+                labeledRow("") {
+                    Toggle("Active", isOn: $draft.isEnabled)
+                        .toggleStyle(.checkbox)
+                }
             }
 
             Divider()
@@ -112,9 +116,34 @@ struct MonitorFormView: View {
                 TextField("Monitor keyword in response", text: $draft.keyword)
                     .textFieldStyle(.roundedBorder)
             }
-            labeledRow("") {
-                Toggle("Active", isOn: $draft.isEnabled)
+
+            labeledRow("Tracked Value:", alignment: .top) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Toggle(
+                        "Extract tracked value",
+                        isOn: extractionBinding(\.isEnabled, default: false)
+                    )
                     .toggleStyle(.checkbox)
+
+                    if extractionBinding(\.isEnabled, default: false).wrappedValue {
+                        TextField("Version", text: extractionBinding(\.label, default: ""))
+                            .textFieldStyle(.roundedBorder)
+
+                        Picker("Mode", selection: extractionBinding(\.mode, default: .jsonPath)) {
+                            ForEach(ExtractionMode.allCases) { mode in
+                                Text(modeLabel(for: mode)).tag(mode)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                        TextField(
+                            Self.patternPlaceholder(for: extractionBinding(\.mode, default: .jsonPath).wrappedValue),
+                            text: extractionBinding(\.pattern, default: "")
+                        )
+                        .textFieldStyle(.roundedBorder)
+                    }
+                }
             }
 
             if let errorMessage {
@@ -152,6 +181,39 @@ struct MonitorFormView: View {
         )
     }
 
+    private func extractionBinding<T>(
+        _ keyPath: WritableKeyPath<ResponseMetadataExtraction, T>,
+        default defaultValue: T
+    ) -> Binding<T> {
+        Binding(
+            get: {
+                draft.responseMetadataExtraction?[keyPath: keyPath] ?? defaultValue
+            },
+            set: { newValue in
+                if draft.responseMetadataExtraction == nil {
+                    draft.responseMetadataExtraction = ResponseMetadataExtraction(
+                        isEnabled: false,
+                        label: "",
+                        mode: .jsonPath,
+                        pattern: ""
+                    )
+                }
+                draft.responseMetadataExtraction?[keyPath: keyPath] = newValue
+            }
+        )
+    }
+
+    private func modeLabel(for mode: ExtractionMode) -> String {
+        switch mode {
+        case .jsonPath:
+            return "JSON Path"
+        case .header:
+            return "HTTP Header"
+        case .regex:
+            return "Regex"
+        }
+    }
+
     @ViewBuilder
     private func sectionHeader(_ title: String) -> some View {
         HStack(spacing: 8) {
@@ -163,12 +225,27 @@ struct MonitorFormView: View {
     }
 
     @ViewBuilder
-    private func labeledRow<Content: View>(_ label: String, @ViewBuilder content: () -> Content) -> some View {
-        HStack(alignment: .center, spacing: 12) {
+    private func labeledRow<Content: View>(
+        _ label: String,
+        alignment: VerticalAlignment = .center,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        HStack(alignment: alignment, spacing: 12) {
             Text(label)
                 .frame(width: 88, alignment: .trailing)
                 .foregroundStyle(.secondary)
             content()
+        }
+    }
+
+    static func patternPlaceholder(for mode: ExtractionMode) -> String {
+        switch mode {
+        case .jsonPath:
+            return "$.version"
+        case .header:
+            return "X-Version"
+        case .regex:
+            return "version=(.*)"
         }
     }
 }
