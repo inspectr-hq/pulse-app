@@ -18,13 +18,14 @@ It gives you a fast, always-available way to monitor APIs, MCP servers, websites
 - Per-site pause/unpause
 - Dashboard views for uptime status and performance trends
 - History log for uptime and response-time data
+- Track values from responses (`JSON path`, `HTTP header`, `regex`)
 - Local notifications for alerts and recovery events
 - Webhooks for alert and recovery events, with multiple rules and per-site filters
 
 ## Screenshots
 
-| Menu Bar | Site Manager | Dashboard | History Logs | Settings |
-|----------|--------------|-----------|--------------|----------|
+| Menu Bar                                          | Site Manager                                               | Dashboard                                            | History Logs                                               | Settings                                           |
+| ------------------------------------------------- | ---------------------------------------------------------- | ---------------------------------------------------- | ---------------------------------------------------------- | -------------------------------------------------- |
 | ![Menu Bar](./content/inspectr-pulse-menubar.png) | ![Site Manager](./content/inspectr-pulse-site-manager.png) | ![Dashboard](./content/inspectr-pulse-dashboard.png) | ![History Logs](./content/inspectr-pulse-history-logs.png) | ![Settings](./content/inspectr-pulse-settings.png) |
 
 ## Why Monitoring Matters
@@ -32,6 +33,7 @@ It gives you a fast, always-available way to monitor APIs, MCP servers, websites
 Small outages, DNS/TLS issues, or degraded response times are easy to miss until users report them.
 
 Pulse helps you:
+
 - catch regressions quickly after deploys
 - verify service health during local development
 - see response-time trends
@@ -49,10 +51,12 @@ Pulse helps you:
 
 Pulse is an open-source project and release builds are distributed unsigned.
 On first launch, macOS may show:
+
 - `"Pulse" cannot be opened because Apple cannot check it for malicious software.`
 - `"Pulse" is damaged and can't be opened. You should move it to the Bin.`
 
 To run it anyway:
+
 1. In Finder, right-click `Pulse.app` and choose `Open`.
 2. Click `Open` again in the warning dialog.
 
@@ -87,107 +91,136 @@ This section documents each setting and whether it currently has active runtime 
 ### General
 
 - `Start at login`
-  - Behavior: Calls `SMAppService.mainApp.register()` / `unregister()` when settings are saved.
+  
+     - Behavior: Calls `SMAppService.mainApp.register()` / `unregister()` when settings are saved.
 
 - `Show alert badge`
-  - Behavior: Shows a Dock badge count for enabled monitors that are down, or up but slower than `Default Threshold`.
+  
+     - Behavior: Shows a Dock badge count for enabled monitors that are down, or up but slower than `Default Threshold`.
 
 - `Ping Interval (seconds)`
-  - Behavior: Reschedules periodic automatic checks using `MonitorScheduler`.
+  
+     - Behavior: Reschedules periodic automatic checks using `MonitorScheduler`.
 
 - `Auto Checks`
-  - Behavior: `Pause when offline` skips automatic scheduler checks while macOS reports no active internet path. Manual checks always run.
+  
+     - Behavior: `Pause when offline` skips automatic scheduler checks while macOS reports no active internet path. Manual checks always run.
 
 - `Delay Checks (seconds between sites)`
-  - Behavior: Adds delay between each monitor check in batch runs (`checkAll`) to reduce burst traffic and rate-limit pressure.
+  
+     - Behavior: Adds delay between each monitor check in batch runs (`checkAll`) to reduce burst traffic and rate-limit pressure.
 
 - `Failures to Alert (consecutive)`
-  - Behavior: Alerting is gated until the same monitor fails N consecutive checks. Recovery can alert once the monitor returns up.
+  
+     - Behavior: Alerting is gated until the same monitor fails N consecutive checks. Recovery can alert once the monitor returns up.
 
 - `Default Threshold (ms)`
-  - Behavior: Used as the initial threshold value for newly added monitors.
+  
+     - Behavior: Used as the initial threshold value for newly added monitors.
 
 - `Default Method`
-  - Behavior: Used as the initial HTTP method for newly added monitors.
+  
+     - Behavior: Used as the initial HTTP method for newly added monitors.
 
 ### Menu Bar
 
 - `Menu Items: Max N`
-  - Behavior: Limits number of monitor rows rendered in dropdown (`prefix(maxItems)`).
+  
+     - Behavior: Limits number of monitor rows rendered in dropdown (`prefix(maxItems)`).
 
 - `Menu Icon: Show status color`
-  - Behavior: If disabled, menu bar icon is rendered monochrome.
+  
+     - Behavior: If disabled, menu bar icon is rendered monochrome.
 
 - `Colorize Icon` (`Always`, `Only failing`, `Never`)
-  - Behavior:
-    - `Always`: icon reflects current overall status color.
-    - `Only failing`: icon is colored only for `down` state.
-    - `Never`: icon is monochrome.
+  
+     - Behavior:
+          - `Always`: icon reflects current overall status color.
+          - `Only failing`: icon is colored only for `down` state.
+          - `Never`: icon is monochrome.
 
 - `Show method`
-  - Behavior: Shows/hides HTTP method in each dropdown row.
+  
+     - Behavior: Shows/hides HTTP method in each dropdown row.
 
 - `Show response time`
-  - Behavior: Shows/hides response-time line in dropdown rows.
+  
+     - Behavior: Shows/hides response-time line in dropdown rows.
 
 - `Show last checked`
-  - Behavior: Shows/hides last checked time line in dropdown rows.
+  
+     - Behavior: Shows/hides last checked time line in dropdown rows.
 
 - `Show status code`
-  - Behavior: Shows/hides HTTP status code in dropdown rows.
+  
+     - Behavior: Shows/hides HTTP status code in dropdown rows.
 
 - `Status Colors` (`Up`, `Slow`, `Failure`, `Offline`)
-  - Behavior: Applied to status dots in menu/site manager/history and to menu bar icon coloring when icon color mode allows it.
+  
+     - Behavior: Applied to status dots in menu/site manager/history and to menu bar icon coloring when icon color mode allows it.
 
 ### Webhooks
 
 - `Enable Webhooks`
-  - Status: Implemented
-  - Behavior: Enables webhook engine for alerting/recovery transitions (also gated by `Failures to Alert`).
+  
+     - Behavior: Enables webhook engine for alerting/recovery transitions (also gated by `Failures to Alert`).
 
 - `Webhook Rules (multiple)`
-  - Status: Implemented
-  - Behavior: Configure multiple webhook endpoints, each with its own method/payload/retry policy.
+  
+     - Behavior: Configure multiple webhook endpoints, each with its own method/payload/retry policy.
 
 - `Site Filter`
-  - Status: Implemented
-  - Behavior: Each webhook rule can target `All sites` or only selected monitors.
+  
+     - Behavior: Each webhook rule can target `All sites` or only selected monitors.
 
 - `Send On` (`Alerting`, `Alerting and Recovery`)
-  - Status: Implemented
-  - Behavior:
-    - `Alerting`: sends on `up -> down`
-    - `Alerting and Recovery`: also sends on `down -> up`
+  
+     - Behavior:
+          - `Alerting`: sends on `up -> down`
+          - `Alerting and Recovery`: also sends on `down -> up`
 
 - `Webhook URL`
-  - Status: Implemented
-  - Behavior: Required destination URL; empty/invalid URL disables send.
+  
+     - Behavior: Required destination URL; empty/invalid URL disables send.
 
 - `Method` (`POST`, `GET`)
-  - Status: Implemented
-  - Behavior: Sets webhook request method.
+  
+     - Behavior: Sets webhook request method.
 
 - `Payload`
-  - Status: Implemented
-  - Behavior: Template placeholders are replaced before send.
+  
+     - Behavior: Template placeholders are replaced before send.
 
 - `Retries`
-  - Status: Implemented
-  - Behavior: Retries failed webhook requests with exponential backoff.
+  
+     - Behavior: Retries failed webhook requests with exponential backoff.
 
 - `Initial Backoff`
-  - Status: Implemented
-  - Behavior: Base delay in seconds used for retry backoff.
+  
+     - Behavior: Base delay in seconds used for retry backoff.
 
 - Supported payload placeholders:
-  - `$MESSAGE`, `$MONITOR`, `$STATUS`, `$URL`, `$TRIGGER`, `$STATUS_CODE`, `$RESPONSE_MS`, `$TIMESTAMP`
+  
+     - `$MESSAGE`, `$MONITOR`, `$STATUS`, `$URL`, `$TRIGGER`, `$STATUS_CODE`, `$RESPONSE_MS`, `$TIMESTAMP`
 
 ### History
 
 - `History retention` (`1h`, `1d`, `1m`, `3m`, `Unlimited`)
-  - Status: Implemented
-  - Behavior: Applies rolling time-window pruning when new history events are appended.
-  - Default: `1m`
+  
+     - Behavior: Applies rolling time-window pruning when new history events are appended.
+     - Default: `1m`
+
+- `Tracked Value`
+  
+     - Behavior: When configured per site, Pulse can extract one tracked response value and persist it in history.
+     - Supported extraction modes:
+          - `JSON path` (example: `$.version`)
+          - `HTTP header` (example: `X-Version`)
+          - `Regex` (example: `version=(.*)`)
+
+- `CSV export`
+  
+     - Behavior: Export all history data as CSV file
 
 ## Runtime Rules (Current)
 
@@ -200,13 +233,13 @@ This section documents each setting and whether it currently has active runtime 
 - Manual checks can check paused monitors; UI status remains `Paused`, but real result is stored in history as a `manual` event.
 - Batch checks can be delayed between sites using `Delay Checks`.
 - Alert transitions are threshold-gated by `Failures to Alert`.
+- Tracked-value extraction never changes site status by itself. Extraction failure does not fail monitor.
 - Overall status logic:
-  - `down` if any enabled monitor is down
-  - `checking` if any enabled monitor is checking and none are down
-  - `up` if at least one enabled monitor is up and none are down/checking
-  - `unknown` if enabled monitors exist and none has a completed check yet
-  - `neutral` if no enabled monitors
-
+     - `down` if any enabled monitor is down
+     - `checking` if any enabled monitor is checking and none are down
+     - `up` if at least one enabled monitor is up and none are down/checking
+     - `unknown` if enabled monitors exist and none has a completed check yet
+     - `neutral` if no enabled monitors
 
 ## Build & Test
 
