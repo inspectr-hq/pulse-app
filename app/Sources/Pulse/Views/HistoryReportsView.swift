@@ -2,10 +2,20 @@ import SwiftUI
 import Charts
 
 struct HistoryReportsView: View {
+    enum ChartXAxisLabelStyle: Equatable {
+        case hourMinute
+        case monthDay
+    }
+
+    static let metadataMarkerAnnotationYOffset: CGFloat = 18
+    static let metadataMarkerBackgroundOpacity: Double = 0.78
+
     @StateObject private var historyVM = HistoryViewModel()
     @EnvironmentObject var appVM: AppViewModel
 
     var body: some View {
+        let graphDateDomain = historyVM.graphDateDomain()
+
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Text("Dashboard")
@@ -86,7 +96,11 @@ struct HistoryReportsView: View {
                                 RuleMark(x: .value("Metadata Change", marker.timestamp))
                                     .foregroundStyle(Color.orange.opacity(0.9))
                                     .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [4, 3]))
-                                    .annotation(position: .top, spacing: 6) {
+                                    .annotation(
+                                        position: .top,
+                                        alignment: Self.metadataMarkerAnnotationAlignment(for: marker, in: graphDateDomain),
+                                        spacing: 6
+                                    ) {
                                         VStack(alignment: .leading, spacing: 2) {
                                             Text(Self.metadataMarkerTitle(for: marker))
                                                 .font(.caption.weight(.semibold))
@@ -98,8 +112,9 @@ struct HistoryReportsView: View {
                                         .padding(.vertical, 6)
                                         .background(
                                             RoundedRectangle(cornerRadius: 8)
-                                                .fill(Color(NSColor.windowBackgroundColor).opacity(0.92))
+                                                .fill(Color(NSColor.windowBackgroundColor).opacity(Self.metadataMarkerBackgroundOpacity))
                                         )
+                                        .offset(y: Self.metadataMarkerAnnotationYOffset)
                                     }
                                 }
                             }
@@ -119,10 +134,15 @@ struct HistoryReportsView: View {
                             AxisMarks(values: .automatic(desiredCount: 6)) { value in
                                 AxisGridLine(stroke: StrokeStyle(lineWidth: 1))
                                     .foregroundStyle(.quaternary)
-                                AxisValueLabel(format: .dateTime.hour().minute())
+                                switch Self.chartXAxisLabelStyle(for: historyVM.graphRange) {
+                                case .hourMinute:
+                                    AxisValueLabel(format: .dateTime.hour().minute())
+                                case .monthDay:
+                                    AxisValueLabel(format: .dateTime.day().month(.abbreviated))
+                                }
                             }
                         }
-                        .chartXScale(domain: historyVM.graphDateDomain())
+                        .chartXScale(domain: graphDateDomain)
                         .chartLegend(.hidden)
                         .frame(height: 260)
                     }
@@ -305,8 +325,37 @@ struct HistoryReportsView: View {
         graphSite != "All Sites"
     }
 
+    static func chartXAxisLabelStyle(for range: HistoryViewModel.GraphRange) -> ChartXAxisLabelStyle {
+        switch range {
+        case .last24h:
+            return .hourMinute
+        case .last7d, .last30d, .last90d:
+            return .monthDay
+        }
+    }
+
     static func metadataMarkerTitle(for marker: HistoryViewModel.MetadataMarker) -> String {
         "\(marker.label) \(marker.value)"
+    }
+
+    static func metadataMarkerAnnotationAlignment(
+        for marker: HistoryViewModel.MetadataMarker,
+        in domain: ClosedRange<Date>
+    ) -> Alignment {
+        let span = domain.upperBound.timeIntervalSince(domain.lowerBound)
+        guard span > 0 else { return .center }
+
+        let progress = marker.timestamp.timeIntervalSince(domain.lowerBound) / span
+
+        if progress >= 0.88 {
+            return .trailing
+        }
+
+        if progress <= 0.12 {
+            return .leading
+        }
+
+        return .center
     }
 }
 

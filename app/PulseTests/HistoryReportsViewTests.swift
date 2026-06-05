@@ -61,4 +61,76 @@ final class HistoryReportsViewTests: XCTestCase {
         XCTAssertFalse(HistoryReportsView.shouldShowMetadataMarkers(for: "All Sites"))
         XCTAssertTrue(HistoryReportsView.shouldShowMetadataMarkers(for: "Site A"))
     }
+
+    func testChartXAxisLabelStyleUsesTimeFor24Hours() {
+        XCTAssertEqual(
+            HistoryReportsView.chartXAxisLabelStyle(for: .last24h),
+            .hourMinute
+        )
+    }
+
+    func testChartXAxisLabelStyleUsesDateForLongerRanges() {
+        XCTAssertEqual(
+            HistoryReportsView.chartXAxisLabelStyle(for: .last7d),
+            .monthDay
+        )
+        XCTAssertEqual(
+            HistoryReportsView.chartXAxisLabelStyle(for: .last30d),
+            .monthDay
+        )
+        XCTAssertEqual(
+            HistoryReportsView.chartXAxisLabelStyle(for: .last90d),
+            .monthDay
+        )
+    }
+
+    func testMetadataMarkerAnnotationAlignmentUsesTrailingNearRightEdge() {
+        let marker = HistoryViewModel.MetadataMarker(
+            timestamp: Date(timeIntervalSince1970: 190),
+            label: "Version",
+            value: "2.6.0"
+        )
+        let domain = Date(timeIntervalSince1970: 100)...Date(timeIntervalSince1970: 200)
+
+        XCTAssertEqual(
+            HistoryReportsView.metadataMarkerAnnotationAlignment(for: marker, in: domain),
+            .trailing
+        )
+    }
+
+    func testMetadataMarkerAnnotationAlignmentUsesLeadingNearLeftEdge() {
+        let marker = HistoryViewModel.MetadataMarker(
+            timestamp: Date(timeIntervalSince1970: 110),
+            label: "Version",
+            value: "2.6.0"
+        )
+        let domain = Date(timeIntervalSince1970: 100)...Date(timeIntervalSince1970: 200)
+
+        XCTAssertEqual(
+            HistoryReportsView.metadataMarkerAnnotationAlignment(for: marker, in: domain),
+            .leading
+        )
+    }
+
+    func testMetadataMarkerAnnotationAlignmentUsesCenterAwayFromEdges() {
+        let marker = HistoryViewModel.MetadataMarker(
+            timestamp: Date(timeIntervalSince1970: 150),
+            label: "Version",
+            value: "2.6.0"
+        )
+        let domain = Date(timeIntervalSince1970: 100)...Date(timeIntervalSince1970: 200)
+
+        XCTAssertEqual(
+            HistoryReportsView.metadataMarkerAnnotationAlignment(for: marker, in: domain),
+            .center
+        )
+    }
+
+    func testMetadataMarkerAnnotationVerticalOffsetKeepsBalloonLowerInChart() {
+        XCTAssertEqual(HistoryReportsView.metadataMarkerAnnotationYOffset, 18)
+    }
+
+    func testMetadataMarkerBackgroundOpacityIsSemiTransparent() {
+        XCTAssertEqual(HistoryReportsView.metadataMarkerBackgroundOpacity, 0.78, accuracy: 0.001)
+    }
 }
