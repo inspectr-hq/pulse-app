@@ -43,7 +43,7 @@ Pulse helps you:
 
 ### 1. Download Pulse
 
-1. Open the [GitHub Releases](https://github.com/inspectr-hq/pulse/releases) page.
+1. Open the [GitHub Releases](https://github.com/inspectr-hq/pulse-app/releases) page.
 2. Download the latest macOS release zip file.
 3. Extract it and move `Pulse.app` to your `Applications` folder.
 
@@ -67,15 +67,15 @@ If Finder still blocks it, use:
 Alternative Terminal path:
 
 ```bash
-xattr -dr com.apple.quarantine /path/to/Pulse.app
-open /path/to/Pulse.app
+xattr -dr com.apple.quarantine /Applications/Pulse.app
+open /Applications/Pulse.app
 ```
 
 If needed, remove all extended attributes and try again:
 
 ```bash
-xattr -cr /path/to/Pulse.app
-open /path/to/Pulse.app
+xattr -cr /Applications/Pulse.app
+open /Applications/Pulse.app
 ```
 
 ### 3. Add Your First Site
