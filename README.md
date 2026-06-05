@@ -1,4 +1,4 @@
-# Pulse
+# Pulse Mac App
 
 Pulse is a lightweight macOS menu bar uptime checker.
 
@@ -7,8 +7,8 @@ It gives you a fast, always-available way to monitor APIs, MCP servers, websites
 ![Dashboard](./content/inspectr-pulse-dashboard.png)
 
 ![macOS](https://img.shields.io/badge/platform-macOS-lightgrey)
-![Latest Release](https://img.shields.io/github/v/release/inspectr-hq/pulse?label=Latest%20Release)
-![Total Downloads](https://img.shields.io/github/downloads/inspectr-hq/pulse/total?label=Total%20Downloads)
+![Latest Release](https://img.shields.io/github/v/release/inspectr-hq/pulse-app?label=Latest%20Release)
+![Total Downloads](https://img.shields.io/github/downloads/inspectr-hq/pulse-app/total?label=Total%20Downloads)
 
 ## Pulse Features
 
