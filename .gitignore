@@ -47,3 +47,4 @@ fastlane/test_output/
 .agents
 skills-lock.json
 .DerivedData
+app/.cache

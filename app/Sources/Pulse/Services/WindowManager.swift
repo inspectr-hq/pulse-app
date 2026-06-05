@@ -91,7 +91,7 @@ final class WindowManager {
             graphRange: graphRange
         ).environmentObject(appVM)
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 940, height: 560),
+            contentRect: historyWindowFrame(),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
             defer: false
@@ -237,4 +237,8 @@ func windowCenteredOrigin(frame: NSRect, visibleFrame: NSRect, topEdge: CGFloat?
         x: visibleFrame.midX - frame.width / 2,
         y: top - frame.height
     )
+}
+
+func historyWindowFrame() -> NSRect {
+    NSRect(x: 0, y: 0, width: 1_120, height: 560)
 }

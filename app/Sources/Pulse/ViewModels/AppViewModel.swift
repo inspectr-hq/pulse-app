@@ -262,13 +262,39 @@ final class AppViewModel: ObservableObject {
 
         if case .up(let code, let duration, let checkedAt) = result.status {
             historyStore.append(
-                HistoryEvent(timestamp: checkedAt, monitorID: monitor.id, monitorName: monitor.nameOrHost, url: monitor.url.absoluteString, method: result.methodUsed.rawValue, status: "OK", statusCode: code, durationMs: duration, reason: nil, trigger: trigger),
+                HistoryEvent(
+                    timestamp: checkedAt,
+                    monitorID: monitor.id,
+                    monitorName: monitor.nameOrHost,
+                    url: monitor.url.absoluteString,
+                    method: result.methodUsed.rawValue,
+                    status: "OK",
+                    statusCode: code,
+                    durationMs: duration,
+                    reason: nil,
+                    trigger: trigger,
+                    metadataLabel: result.metadataLabel,
+                    metadataValue: result.metadataValue
+                ),
                 retentionPolicy: settings.historyRetentionPolicy,
                 maxEvents: settings.historyRetentionMaxEvents
             )
         } else if case .down(let reason, let code, let duration, let checkedAt) = result.status {
             historyStore.append(
-                HistoryEvent(timestamp: checkedAt, monitorID: monitor.id, monitorName: monitor.nameOrHost, url: monitor.url.absoluteString, method: result.methodUsed.rawValue, status: "Down", statusCode: code, durationMs: duration, reason: reason, trigger: trigger),
+                HistoryEvent(
+                    timestamp: checkedAt,
+                    monitorID: monitor.id,
+                    monitorName: monitor.nameOrHost,
+                    url: monitor.url.absoluteString,
+                    method: result.methodUsed.rawValue,
+                    status: "Down",
+                    statusCode: code,
+                    durationMs: duration,
+                    reason: reason,
+                    trigger: trigger,
+                    metadataLabel: result.metadataLabel,
+                    metadataValue: result.metadataValue
+                ),
                 retentionPolicy: settings.historyRetentionPolicy,
                 maxEvents: settings.historyRetentionMaxEvents
             )

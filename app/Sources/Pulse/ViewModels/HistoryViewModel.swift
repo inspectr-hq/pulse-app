@@ -86,6 +86,13 @@ final class HistoryViewModel: ObservableObject {
         let maxMs: Int
     }
 
+    struct MetadataMarker: Identifiable {
+        let id = UUID()
+        let timestamp: Date
+        let label: String
+        let value: String
+    }
+
     @Published var events: [HistoryEvent] = []
     @Published var search = ""
     @Published var selectedMonitor: UUID?
@@ -181,6 +188,12 @@ final class HistoryViewModel: ObservableObject {
             .sorted(by: { $0.timestamp < $1.timestamp })
     }
 
+    func graphDateDomain(referenceDate: Date = Date()) -> ClosedRange<Date> {
+        let end = referenceDate
+        let start = end.addingTimeInterval(-graphRange.duration)
+        return start...end
+    }
+
     var latencyPoints: [LatencyPoint] {
         graphEvents.compactMap { event in
             guard let ms = event.durationMs else { return nil }
@@ -251,6 +264,37 @@ final class HistoryViewModel: ObservableObject {
             let timestamp = start.addingTimeInterval((Double(index) + 0.5) * span)
             return PerformanceSample(timestamp: timestamp, minMs: minMs, avgMs: avgMs, maxMs: maxMs)
         }
+    }
+
+    var metadataMarkers: [MetadataMarker] {
+        guard graphSite != "All Sites" else { return [] }
+
+        var markers: [MetadataMarker] = []
+        var previousValue: String?
+
+        for event in graphEvents {
+            guard let rawValue = event.metadataValue?.trimmingCharacters(in: .whitespacesAndNewlines),
+                  !rawValue.isEmpty else {
+                continue
+            }
+
+            guard rawValue != previousValue else {
+                continue
+            }
+
+            let label = event.metadataLabel?.trimmingCharacters(in: .whitespacesAndNewlines)
+            let resolvedLabel = label.flatMap { $0.isEmpty ? nil : $0 } ?? "Tracked Value"
+            markers.append(
+                MetadataMarker(
+                    timestamp: event.timestamp,
+                    label: resolvedLabel,
+                    value: rawValue
+                )
+            )
+            previousValue = rawValue
+        }
+
+        return markers
     }
 
     func uptimeBlocks(thresholdMs: Int) -> [UptimeBlockStatus] {
@@ -342,9 +386,9 @@ final class HistoryViewModel: ObservableObject {
     }
 
     func exportCSV() -> String {
-        let header = "timestamp,monitor_name,trigger,method,url,status,status_code,duration_ms,reason"
+        let header = "timestamp,monitor_name,trigger,method,url,status,status_code,duration_ms,reason,metadata_label,metadata_value"
         let rows = filteredEvents.map {
-            "\($0.timestamp.ISO8601Format()),\($0.monitorName),\($0.trigger.rawValue),\($0.method),\($0.url),\($0.status),\($0.statusCode.map(String.init) ?? ""),\($0.durationMs.map(String.init) ?? ""),\($0.reason ?? "")"
+            "\($0.timestamp.ISO8601Format()),\($0.monitorName),\($0.trigger.rawValue),\($0.method),\($0.url),\($0.status),\($0.statusCode.map(String.init) ?? ""),\($0.durationMs.map(String.init) ?? ""),\($0.reason ?? ""),\($0.metadataLabel ?? ""),\($0.metadataValue ?? "")"
         }
         return ([header] + rows).joined(separator: "\n")
     }

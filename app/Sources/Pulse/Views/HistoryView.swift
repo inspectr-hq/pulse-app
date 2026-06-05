@@ -1,6 +1,9 @@
 import SwiftUI
 
 struct HistoryView: View {
+    static let refreshButtonSymbolName = "arrow.clockwise"
+    static let refreshButtonHelpText = "Refresh history"
+
     @StateObject private var historyVM: HistoryViewModel
     @EnvironmentObject var appVM: AppViewModel
 
@@ -54,6 +57,12 @@ struct HistoryView: View {
                     }
                 }
                 Button("Clear") { historyVM.clear() }
+                Button {
+                    historyVM.reload()
+                } label: {
+                    Image(systemName: Self.refreshButtonSymbolName)
+                }
+                .help(Self.refreshButtonHelpText)
             }
             .padding()
 
@@ -73,6 +82,13 @@ struct HistoryView: View {
                 }
                 .width(80)
                 TableColumn("Duration") { Text($0.durationMs.map { "\($0) ms" } ?? "-") }
+                    .width(80)
+                TableColumn("Tracked Value") { event in
+                    Text(Self.metadataText(for: event))
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                }
+                .width(min: 120, ideal: 180)
                 TableColumn("") { event in
                     Button {
                         historyVM.delete(eventID: event.id)
@@ -102,5 +118,16 @@ struct HistoryView: View {
         formatter.timeZone = .current
         formatter.dateFormat = "yyyy-MM-dd"
         return "pulse-history-\(formatter.string(from: Date())).csv"
+    }
+
+    static func metadataText(for event: HistoryEvent) -> String {
+        let label = event.metadataLabel?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let value = event.metadataValue?.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard let value, !value.isEmpty else { return "-" }
+        if let label, !label.isEmpty {
+            return "\(label): \(value)"
+        }
+        return value
     }
 }

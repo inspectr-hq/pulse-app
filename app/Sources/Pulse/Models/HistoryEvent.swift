@@ -17,6 +17,8 @@ struct HistoryEvent: Identifiable, Codable, Equatable {
     let durationMs: Int?
     let reason: String?
     let trigger: HistoryTrigger
+    let metadataLabel: String?
+    let metadataValue: String?
 
     init(
         id: UUID = UUID(),
@@ -29,7 +31,9 @@ struct HistoryEvent: Identifiable, Codable, Equatable {
         statusCode: Int?,
         durationMs: Int?,
         reason: String?,
-        trigger: HistoryTrigger
+        trigger: HistoryTrigger,
+        metadataLabel: String? = nil,
+        metadataValue: String? = nil
     ) {
         self.id = id
         self.timestamp = timestamp
@@ -42,5 +46,7 @@ struct HistoryEvent: Identifiable, Codable, Equatable {
         self.durationMs = durationMs
         self.reason = reason
         self.trigger = trigger
+        self.metadataLabel = metadataLabel
+        self.metadataValue = metadataValue
     }
 }
