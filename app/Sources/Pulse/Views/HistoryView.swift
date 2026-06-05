@@ -1,6 +1,9 @@
 import SwiftUI
 
 struct HistoryView: View {
+    static let refreshButtonSymbolName = "arrow.clockwise"
+    static let refreshButtonHelpText = "Refresh history"
+
     @StateObject private var historyVM: HistoryViewModel
     @EnvironmentObject var appVM: AppViewModel
 
@@ -54,6 +57,12 @@ struct HistoryView: View {
                     }
                 }
                 Button("Clear") { historyVM.clear() }
+                Button {
+                    historyVM.reload()
+                } label: {
+                    Image(systemName: Self.refreshButtonSymbolName)
+                }
+                .help(Self.refreshButtonHelpText)
             }
             .padding()
 

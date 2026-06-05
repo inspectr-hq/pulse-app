@@ -38,6 +38,14 @@ final class HistoryReportsViewTests: XCTestCase {
         XCTAssertEqual(HistoryView.metadataText(for: event), "-")
     }
 
+    func testHistoryRefreshButtonUsesExpectedSymbol() {
+        XCTAssertEqual(HistoryView.refreshButtonSymbolName, "arrow.clockwise")
+    }
+
+    func testHistoryRefreshButtonUsesExpectedHelpText() {
+        XCTAssertEqual(HistoryView.refreshButtonHelpText, "Refresh history")
+    }
+
     func testTooltipIsBelowForFirstRow() {
         XCTAssertTrue(HistoryReportsView.tooltipShouldRenderBelow(rowIndex: 0))
     }
