@@ -41,10 +41,27 @@ Pulse helps you:
 
 ## Get Started
 
-### 1. Download Pulse
+### 1. Install Pulse
+
+Choose one of these installation paths:
+
+#### Option A: Homebrew
+
+```bash
+brew tap inspectr-hq/inspectr
+brew install --cask pulse
+```
+
+#### Option B: DMG
 
 1. Open the [GitHub Releases](https://github.com/inspectr-hq/pulse-app/releases) page.
-2. Download the latest macOS release zip file.
+2. Download the latest `Pulse-<version>.dmg`.
+3. Open the DMG and drag `Pulse.app` into your `Applications` folder.
+
+#### Option C: ZIP
+
+1. Open the [GitHub Releases](https://github.com/inspectr-hq/pulse-app/releases) page.
+2. Download the latest `Pulse-<version>.zip`.
 3. Extract it and move `Pulse.app` to your `Applications` folder.
 
 ### 2. First Launch on macOS
@@ -57,8 +74,9 @@ On first launch, macOS may show:
 
 To run it anyway:
 
-1. In Finder, right-click `Pulse.app` and choose `Open`.
-2. Click `Open` again in the warning dialog.
+1. Open `Pulse.app` from `Applications`.
+2. If macOS blocks it, right-click `Pulse.app` and choose `Open`.
+3. Click `Open` again in the warning dialog.
 
 If Finder still blocks it, use:
 
