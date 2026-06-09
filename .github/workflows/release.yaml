@@ -11,6 +11,9 @@ permissions:
 jobs:
   build-release:
     runs-on: macos-latest
+    outputs:
+      tag: ${{ steps.release_meta.outputs.tag }}
+      version: ${{ steps.release_meta.outputs.version }}
     defaults:
       run:
         working-directory: app
@@ -18,6 +21,16 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Set version from tag
+        id: release_meta
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          VERSION="${TAG#v}"
+          echo "TAG=$TAG" >> "$GITHUB_ENV"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
@@ -27,7 +40,6 @@ jobs:
 
       - name: Build Pulse
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
           echo "Building marketing version: $VERSION"
           xcodebuild \
             -project Pulse.xcodeproj \
@@ -49,10 +61,102 @@ jobs:
           codesign --verify --deep --strict "$APP_PATH"
 
           mkdir -p dist
-          ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" "dist/Pulse-${GITHUB_REF_NAME}.zip"
+          ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" "dist/Pulse-${VERSION}.zip"
+          echo "ZIP_PATH=app/dist/Pulse-${VERSION}.zip" >> "$GITHUB_ENV"
+
+      - name: Create DMG
+        run: |
+          APP_PATH=$(find build/DerivedData/Build/Products/Release -name "Pulse.app" -maxdepth 1)
+          echo "Found app at: $APP_PATH"
+
+          STAGING="build/dmg-stage"
+          rm -rf "$STAGING"
+          mkdir -p "$STAGING"
+
+          cp -R "$APP_PATH" "$STAGING/Pulse.app"
+          ln -s /Applications "$STAGING/Applications"
+
+          hdiutil create \
+            -volname "Pulse ${VERSION}" \
+            -srcfolder "$STAGING" \
+            -ov -format UDZO \
+            "dist/Pulse-${VERSION}.dmg"
+
+          echo "DMG_PATH=app/dist/Pulse-${VERSION}.dmg" >> "$GITHUB_ENV"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: app/dist/Pulse-${{ github.ref_name }}.zip
+          files: |
+            ${{ env.ZIP_PATH }}
+            ${{ env.DMG_PATH }}
           generate_release_notes: true
+
+  update-cask:
+    runs-on: ubuntu-latest
+    needs: build-release
+    permissions:
+      contents: read
+    env:
+      TAG: ${{ needs.build-release.outputs.tag }}
+      VERSION: ${{ needs.build-release.outputs.version }}
+
+    steps:
+      - name: Download DMG from the release
+        env:
+          GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+
+          gh release download "$TAG" \
+            --repo "${{ github.repository }}" \
+            --pattern "Pulse-${VERSION}.dmg" \
+            --dir dist
+
+      - name: Compute SHA256
+        run: |
+          set -euo pipefail
+          DMG="dist/Pulse-${VERSION}.dmg"
+          SHA="$(sha256sum "$DMG" | awk '{print $1}')"
+          echo "DMG_SHA256=$SHA" >> "$GITHUB_ENV"
+
+      - name: Checkout Homebrew tap repo
+        uses: actions/checkout@v4
+        with:
+          repository: inspectr-hq/homebrew-inspectr
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          path: homebrew-inspectr
+
+      - name: Update pulse cask
+        run: |
+          set -euo pipefail
+
+          CASK_FILE="homebrew-inspectr/Casks/pulse.rb"
+          RELEASE_URL="https://github.com/inspectr-hq/pulse-app/releases/download/${TAG}/Pulse-${VERSION}.dmg"
+
+          if [ ! -f "$CASK_FILE" ]; then
+            echo "Cask file not found at $CASK_FILE"
+            exit 1
+          fi
+
+          sed -i -E "s|^  version \".*\"|  version \"${VERSION}\"|" "$CASK_FILE"
+          sed -i -E "s|^  sha256 \".*\"|  sha256 \"${DMG_SHA256}\"|" "$CASK_FILE"
+          sed -i -E "s|^  url \".*\"|  url \"${RELEASE_URL}\"|" "$CASK_FILE"
+
+      - name: Commit and push cask update
+        run: |
+          set -euo pipefail
+          cd homebrew-inspectr
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          if git diff --quiet -- Casks/pulse.rb; then
+            echo "No cask changes detected; skipping commit."
+            exit 0
+          fi
+
+          git add Casks/pulse.rb
+          git commit -m "pulse: update to ${VERSION}"
+          git push origin HEAD:main
