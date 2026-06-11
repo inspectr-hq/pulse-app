@@ -18,9 +18,22 @@ final class WindowManager {
 
     private init() {}
 
+    private var hasOpenWindows: Bool {
+        [
+            siteManagerWindow,
+            historyWindow,
+            historyReportsWindow,
+            settingsWindow
+        ].contains { $0 != nil }
+    }
+
+    private func updateActivationPolicy() {
+        NSApp.setActivationPolicy(activationPolicy(hasOpenWindows: hasOpenWindows))
+    }
+
     func showSiteManager(appVM: AppViewModel) {
         logger.info("showSiteManager called")
-        NSApp.setActivationPolicy(.regular)
+        updateActivationPolicy()
         if let window = siteManagerWindow {
             logger.info("showSiteManager reusing existing window")
             if window.isMiniaturized {
@@ -46,10 +59,12 @@ final class WindowManager {
         let delegate = WindowStateDelegate { [weak self] in
             self?.siteManagerWindow = nil
             self?.siteManagerDelegate = nil
+            self?.updateActivationPolicy()
         }
         siteManagerDelegate = delegate
         window.delegate = delegate
         siteManagerWindow = window
+        updateActivationPolicy()
         window.center()
         window.orderFrontRegardless()
         window.makeKeyAndOrderFront(nil)
@@ -65,7 +80,7 @@ final class WindowManager {
         graphRange: HistoryViewModel.GraphRange? = nil
     ) {
         logger.info("showHistory called")
-        NSApp.setActivationPolicy(.regular)
+        updateActivationPolicy()
         if let window = historyWindow {
             logger.info("showHistory reusing existing window")
             window.contentView = NSHostingView(rootView: HistoryView(
@@ -102,10 +117,12 @@ final class WindowManager {
         let delegate = WindowStateDelegate { [weak self] in
             self?.historyWindow = nil
             self?.historyDelegate = nil
+            self?.updateActivationPolicy()
         }
         historyDelegate = delegate
         window.delegate = delegate
         historyWindow = window
+        updateActivationPolicy()
         window.center()
         window.orderFrontRegardless()
         window.makeKeyAndOrderFront(nil)
@@ -115,7 +132,7 @@ final class WindowManager {
 
     func showHistoryReports(appVM: AppViewModel) {
         logger.info("showHistoryReports called")
-        NSApp.setActivationPolicy(.regular)
+        updateActivationPolicy()
         if let window = historyReportsWindow {
             logger.info("showHistoryReports reusing existing window")
             if window.isMiniaturized {
@@ -141,10 +158,12 @@ final class WindowManager {
         let delegate = WindowStateDelegate { [weak self] in
             self?.historyReportsWindow = nil
             self?.historyReportsDelegate = nil
+            self?.updateActivationPolicy()
         }
         historyReportsDelegate = delegate
         window.delegate = delegate
         historyReportsWindow = window
+        updateActivationPolicy()
         window.center()
         window.orderFrontRegardless()
         window.makeKeyAndOrderFront(nil)
@@ -154,7 +173,7 @@ final class WindowManager {
 
     func showSettings(appVM: AppViewModel) {
         logger.info("showSettings called")
-        NSApp.setActivationPolicy(.regular)
+        updateActivationPolicy()
         if let window = settingsWindow {
             logger.info("showSettings reusing existing window")
             if window.isMiniaturized {
@@ -181,16 +200,22 @@ final class WindowManager {
         let delegate = WindowStateDelegate(onClose: { [weak self] in
             self?.settingsWindow = nil
             self?.settingsDelegate = nil
+            self?.updateActivationPolicy()
         }, preserveTopOnResize: true)
         settingsDelegate = delegate
         window.delegate = delegate
         settingsWindow = window
+        updateActivationPolicy()
         window.center()
         window.orderFrontRegardless()
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
         logger.info("showSettings created and opened window")
     }
+}
+
+func activationPolicy(hasOpenWindows: Bool) -> NSApplication.ActivationPolicy {
+    hasOpenWindows ? .regular : .accessory
 }
 
 private func centerHorizontally(_ window: NSWindow, topEdge: CGFloat? = nil) {

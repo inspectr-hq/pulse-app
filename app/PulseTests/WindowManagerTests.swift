@@ -3,6 +3,14 @@ import AppKit
 @testable import Pulse
 
 final class WindowManagerTests: XCTestCase {
+    func testActivationPolicyUsesRegularWhenAWindowIsOpen() {
+        XCTAssertEqual(activationPolicy(hasOpenWindows: true), .regular)
+    }
+
+    func testActivationPolicyUsesAccessoryWhenAllWindowsAreClosed() {
+        XCTAssertEqual(activationPolicy(hasOpenWindows: false), .accessory)
+    }
+
     func testHistoryWindowFrameUsesWiderDefaultSize() {
         let frame = historyWindowFrame()
 
