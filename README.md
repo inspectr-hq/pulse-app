@@ -1,6 +1,6 @@
 # Pulse Mac App
 
-![Inspectr Pulse Logo](./app/Sources/Pulse/Resources/Assets.xcassets/Applcon.appiconset/pulse-64.png)
+![Inspectr Pulse Logo](./app/Sources/Pulse/Resources/Assets.xcassets/AppIcon.appiconset/pulse-128.png)
 
 Pulse is a lightweight macOS menu bar uptime checker.
 
