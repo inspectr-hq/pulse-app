@@ -1,5 +1,7 @@
 # Pulse Mac App
 
+![Inspectr Pulse Logo](./app/Sources/Pulse/Resources/Assets.xcassets/Applcon.appiconset/pulse-64.png)
+
 Pulse is a lightweight macOS menu bar uptime checker.
 
 It gives you a fast, always-available way to monitor APIs, MCP servers, websites, and health endpoints from your Mac menu bar.
