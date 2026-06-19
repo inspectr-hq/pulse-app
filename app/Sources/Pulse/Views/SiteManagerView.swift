@@ -15,65 +15,51 @@ struct SiteManagerView: View {
     private let urlWidth: CGFloat = 240
     private let methodWidth: CGFloat = 56
     private let actionsWidth: CGFloat = 280
-    private let panelCornerRadius: CGFloat = 16
 
     var body: some View {
-        ZStack {
-            Color(nsColor: .windowBackgroundColor)
-                .ignoresSafeArea()
-
-            VStack(spacing: 14) {
-                HStack {
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text("Site Manager")
-                            .font(.title3)
-                            .fontWeight(.semibold)
-                        Text(summaryLine)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                    Button(action: { showAdd = true }) { Image(systemName: "plus") }
-                    Button(action: { Task { await vm.checkAll(autoOnly: false) } }) { Image(systemName: "arrow.clockwise") }
+        VStack(spacing: 0) {
+            HStack {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Site Manager")
+                        .font(.title3)
+                        .fontWeight(.semibold)
+                    Text(summaryLine)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
                 }
-                .padding(.horizontal, 18)
-                .padding(.vertical, 14)
-                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: panelCornerRadius, style: .continuous))
-                .overlay {
-                    RoundedRectangle(cornerRadius: panelCornerRadius, style: .continuous)
-                        .strokeBorder(Color.separator.opacity(0.35))
-                }
+                Spacer()
+                Button(action: { showAdd = true }) { Image(systemName: "plus") }
+                Button(action: { Task { await vm.checkAll(autoOnly: false) } }) { Image(systemName: "arrow.clockwise") }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(Color(NSColor.windowBackgroundColor))
+            Divider()
 
-                VStack(spacing: 0) {
-                    headerRow
-                    Divider()
+            VStack(spacing: 0) {
+                headerRow
+                Divider()
 
-                    ScrollView {
-                        LazyVStack(spacing: 0) {
-                            ForEach(Array(vm.monitors.enumerated()), id: \.element.id) { index, monitor in
-                                siteRow(monitor: monitor, rowIndex: index)
-                            }
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        ForEach(Array(vm.monitors.enumerated()), id: \.element.id) { index, monitor in
+                            siteRow(monitor: monitor, rowIndex: index)
                         }
                     }
                 }
-                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: panelCornerRadius, style: .continuous))
-                .overlay {
-                    RoundedRectangle(cornerRadius: panelCornerRadius, style: .continuous)
-                        .strokeBorder(Color.separator.opacity(0.28))
-                }
-                .sheet(item: $editing) { item in
-                    MonitorFormView(mode: .edit, monitor: item) { draft, rawURL in
-                        guard let normalizedURL = URLInput.normalize(rawURL), normalizedURL.host != nil else {
-                            return "Please enter a valid URL."
-                        }
-                        var updated = draft
-                        updated.url = normalizedURL
-                        vm.updateMonitor(updated)
-                        return nil
+                .background(Color(nsColor: .textBackgroundColor))
+            }
+            .sheet(item: $editing) { item in
+                MonitorFormView(mode: .edit, monitor: item) { draft, rawURL in
+                    guard let normalizedURL = URLInput.normalize(rawURL), normalizedURL.host != nil else {
+                        return "Please enter a valid URL."
                     }
+                    var updated = draft
+                    updated.url = normalizedURL
+                    vm.updateMonitor(updated)
+                    return nil
                 }
             }
-            .padding(16)
         }
         .sheet(isPresented: $showAdd) {
             MonitorFormView(
@@ -182,7 +168,7 @@ struct SiteManagerView: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 8)
-        .background(isDragging ? Color.accentColor.opacity(0.08) : (rowIndex.isMultiple(of: 2) ? Color.primary.opacity(0.02) : Color.clear))
+        .background(isDragging ? Color.accentColor.opacity(0.08) : (rowIndex.isMultiple(of: 2) ? Color.secondary.opacity(0.03) : Color.clear))
         .contentShape(Rectangle())
         .onDrag {
             draggingMonitorID = monitor.id
