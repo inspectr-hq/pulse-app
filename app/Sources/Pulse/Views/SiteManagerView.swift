@@ -5,6 +5,7 @@ struct SiteManagerView: View {
     @EnvironmentObject var vm: AppViewModel
     @State private var showAdd = false
     @State private var editing: SiteMonitor?
+    @State private var pendingRemoval: SiteMonitor?
     @State private var draggingMonitorID: UUID?
 
     private let dragHandleWidth: CGFloat = 20
@@ -79,6 +80,31 @@ struct SiteManagerView: View {
                 vm.addMonitor(draft, rawURL: rawURL)
             }
         }
+        .confirmationDialog(
+            Self.removeConfirmationTitle,
+            isPresented: Binding(
+                get: { pendingRemoval != nil },
+                set: { isPresented in
+                    if !isPresented {
+                        pendingRemoval = nil
+                    }
+                }
+            ),
+            presenting: pendingRemoval
+        ) { monitor in
+            Button("Remove", role: .destructive) {
+                vm.removeMonitor(id: monitor.id)
+                pendingRemoval = nil
+            }
+        } message: { monitor in
+            Text(Self.removeConfirmationMessage(for: monitor))
+        }
+    }
+
+    static let removeConfirmationTitle = "Remove Site?"
+
+    static func removeConfirmationMessage(for monitor: SiteMonitor) -> String {
+        "Are you sure you want to remove \"\(monitor.nameOrHost)\"? This cannot be undone."
     }
 
     private var headerRow: some View {
@@ -158,7 +184,7 @@ struct SiteManagerView: View {
                 Button("Check") {
                     Task { await vm.checkMonitor(id: monitor.id) }
                 }
-                Button("Remove") { vm.removeMonitor(id: monitor.id) }
+                Button("Remove") { pendingRemoval = monitor }
                     .foregroundStyle(.secondary)
             }
             .buttonStyle(.plain)
