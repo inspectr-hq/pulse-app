@@ -119,6 +119,56 @@ final class AppViewModelBehaviorTests: XCTestCase {
         XCTAssertEqual(store.savedMonitorsCalls, 1)
     }
 
+    func testDuplicateMonitorCreatesDisabledCopyWithPrefixedName() {
+        let monitor = SiteMonitor(
+            url: URL(string: "https://a.com/health")!,
+            displayName: "Alpha",
+            isEnabled: true,
+            method: .post,
+            body: "{\"ping\":true}",
+            headers: [HeaderEntry(name: "X-Test", value: "1")],
+            allowInsecureSSL: true,
+            thresholdMs: 3456,
+            keyword: "pong",
+            responseMetadataExtraction: ResponseMetadataExtraction(
+                isEnabled: true,
+                label: "Version",
+                mode: .regex,
+                pattern: "version=(.*)"
+            ),
+            createdAt: Date(timeIntervalSince1970: 1_700_000_000)
+        )
+        let store = SpyMonitorStore(monitors: [monitor])
+        let vm = AppViewModel(
+            checker: StaticChecker(.up(statusCode: 200, responseTimeMs: 10, checkedAt: Date())),
+            monitorStore: store,
+            historyStore: SpyHistoryStore(),
+            webhookDispatcher: SpyWebhookDispatcher(),
+            launchAtLogin: SpyLaunchAtLogin(),
+            notifications: SpyNotifications()
+        )
+
+        vm.duplicateMonitor(id: monitor.id)
+
+        XCTAssertEqual(vm.monitors.count, 2)
+        let duplicate = try? XCTUnwrap(vm.monitors.last)
+        XCTAssertNotNil(duplicate)
+        XCTAssertEqual(duplicate?.displayName, "Copy of Alpha")
+        XCTAssertEqual(duplicate?.url, monitor.url)
+        XCTAssertEqual(duplicate?.isEnabled, false)
+        XCTAssertEqual(duplicate?.method, monitor.method)
+        XCTAssertEqual(duplicate?.body, monitor.body)
+        XCTAssertEqual(duplicate?.headers, monitor.headers)
+        XCTAssertEqual(duplicate?.allowInsecureSSL, monitor.allowInsecureSSL)
+        XCTAssertEqual(duplicate?.thresholdMs, monitor.thresholdMs)
+        XCTAssertEqual(duplicate?.keyword, monitor.keyword)
+        XCTAssertEqual(duplicate?.responseMetadataExtraction, monitor.responseMetadataExtraction)
+        XCTAssertNotEqual(duplicate?.createdAt, monitor.createdAt)
+        XCTAssertNotEqual(duplicate?.id, monitor.id)
+        XCTAssertEqual(store.savedMonitorsCalls, 1)
+        XCTAssertEqual(vm.statuses[duplicate!.id], .paused)
+    }
+
     func testRemoveMonitorDeletesStateAndPersists() {
         let monitor = SiteMonitor(url: URL(string: "https://a.com")!, displayName: "A")
         let store = SpyMonitorStore(monitors: [monitor])
@@ -222,6 +272,26 @@ final class AppViewModelBehaviorTests: XCTestCase {
         XCTAssertEqual(event.status, "Down")
         XCTAssertEqual(event.statusCode, 500)
         XCTAssertEqual(event.trigger, .automatic)
+    }
+
+    func testCheckMonitorUsesManualTrigger() async throws {
+        let monitor = SiteMonitor(url: URL(string: "https://a.com")!, displayName: "A", isEnabled: true, method: .get)
+        let historySpy = SpyHistoryStore()
+        let checker = CountingChecker(.up(statusCode: 200, responseTimeMs: 44, checkedAt: Date()))
+        let vm = AppViewModel(
+            checker: checker,
+            monitorStore: SpyMonitorStore(monitors: [monitor]),
+            historyStore: historySpy,
+            webhookDispatcher: SpyWebhookDispatcher(),
+            launchAtLogin: SpyLaunchAtLogin(),
+            notifications: SpyNotifications()
+        )
+
+        await vm.checkMonitor(id: monitor.id)
+
+        XCTAssertEqual(checker.calls, 1)
+        XCTAssertEqual(historySpy.events.count, 1)
+        XCTAssertEqual(historySpy.events.first?.trigger, .manual)
     }
 
     func testCheckPersistsExtractedMetadataInHistoryEvent() async throws {

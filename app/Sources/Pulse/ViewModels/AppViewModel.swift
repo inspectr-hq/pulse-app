@@ -146,6 +146,35 @@ final class AppViewModel: ObservableObject {
         return nil
     }
 
+    func duplicateMonitor(id: UUID) {
+        guard let sourceIndex = monitors.firstIndex(where: { $0.id == id }) else { return }
+
+        let source = monitors[sourceIndex]
+        let duplicate = SiteMonitor(
+            id: UUID(),
+            url: source.url,
+            displayName: "Copy of \(source.nameOrHost)",
+            isEnabled: false,
+            method: source.method,
+            body: source.body,
+            headers: source.headers,
+            allowInsecureSSL: source.allowInsecureSSL,
+            thresholdMs: source.thresholdMs,
+            keyword: source.keyword,
+            responseMetadataExtraction: source.responseMetadataExtraction,
+            createdAt: Date()
+        )
+
+        monitors.insert(duplicate, at: sourceIndex + 1)
+        statuses[duplicate.id] = .paused
+        persistMonitors()
+        updateDockBadge()
+    }
+
+    func checkMonitor(id: UUID) async {
+        await check(monitorID: id, allowPaused: true, trigger: .manual)
+    }
+
     func updateMonitor(_ updated: SiteMonitor) {
         guard let idx = monitors.firstIndex(where: { $0.id == updated.id }) else { return }
         monitors[idx] = updated

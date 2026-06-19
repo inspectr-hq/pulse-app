@@ -5,6 +5,7 @@ struct SiteManagerView: View {
     @EnvironmentObject var vm: AppViewModel
     @State private var showAdd = false
     @State private var editing: SiteMonitor?
+    @State private var pendingRemoval: SiteMonitor?
     @State private var draggingMonitorID: UUID?
 
     private let dragHandleWidth: CGFloat = 20
@@ -14,7 +15,7 @@ struct SiteManagerView: View {
     private let nameWidth: CGFloat = 180
     private let urlWidth: CGFloat = 240
     private let methodWidth: CGFloat = 56
-    private let actionsWidth: CGFloat = 150
+    private let actionsWidth: CGFloat = 280
 
     var body: some View {
         VStack(spacing: 0) {
@@ -47,6 +48,7 @@ struct SiteManagerView: View {
                         }
                     }
                 }
+                .background(Color(nsColor: .textBackgroundColor))
             }
             .sheet(item: $editing) { item in
                 MonitorFormView(mode: .edit, monitor: item) { draft, rawURL in
@@ -78,6 +80,31 @@ struct SiteManagerView: View {
                 vm.addMonitor(draft, rawURL: rawURL)
             }
         }
+        .confirmationDialog(
+            Self.removeConfirmationTitle,
+            isPresented: Binding(
+                get: { pendingRemoval != nil },
+                set: { isPresented in
+                    if !isPresented {
+                        pendingRemoval = nil
+                    }
+                }
+            ),
+            presenting: pendingRemoval
+        ) { monitor in
+            Button("Remove", role: .destructive) {
+                vm.removeMonitor(id: monitor.id)
+                pendingRemoval = nil
+            }
+        } message: { monitor in
+            Text(Self.removeConfirmationMessage(for: monitor))
+        }
+    }
+
+    static let removeConfirmationTitle = "Remove Site?"
+
+    static func removeConfirmationMessage(for monitor: SiteMonitor) -> String {
+        "Are you sure you want to remove \"\(monitor.nameOrHost)\"? This cannot be undone."
     }
 
     private var headerRow: some View {
@@ -153,7 +180,11 @@ struct SiteManagerView: View {
 
             HStack(spacing: 10) {
                 Button("Edit") { editing = monitor }
-                Button("Remove") { vm.removeMonitor(id: monitor.id) }
+                Button("Duplicate") { vm.duplicateMonitor(id: monitor.id) }
+                Button("Check") {
+                    Task { await vm.checkMonitor(id: monitor.id) }
+                }
+                Button("Remove") { pendingRemoval = monitor }
                     .foregroundStyle(.secondary)
             }
             .buttonStyle(.plain)
