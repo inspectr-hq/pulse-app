@@ -45,10 +45,12 @@ final class SiteManagerViewTests: XCTestCase {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         let export = try decoder.decode(SiteManagerView.ConfigurationExport.self, from: data)
+        let jsonString = String(decoding: data, as: UTF8.self)
 
         XCTAssertEqual(export.appName, "Pulse")
         XCTAssertEqual(export.exportedAt, exportedAt)
         XCTAssertEqual(export.monitors, [monitor])
         XCTAssertEqual(export.settings.defaultThresholdMs, 1500)
+        XCTAssertFalse(jsonString.contains("\\/"))
     }
 }

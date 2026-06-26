@@ -132,8 +132,12 @@ struct SiteManagerView: View {
         )
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        return try encoder.encode(export)
+        let encoded = try encoder.encode(export)
+        let jsonObject = try JSONSerialization.jsonObject(with: encoded, options: [])
+        return try JSONSerialization.data(
+            withJSONObject: jsonObject,
+            options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
+        )
     }
 
     static func removeConfirmationMessage(for monitor: SiteMonitor) -> String {
