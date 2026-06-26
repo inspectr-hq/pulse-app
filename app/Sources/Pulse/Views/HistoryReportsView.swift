@@ -7,14 +7,17 @@ struct HistoryReportsView: View {
         case monthDay
     }
 
+    static let metadataMarkersEnabledByDefault = true
     static let metadataMarkerAnnotationYOffset: CGFloat = 18
     static let metadataMarkerBackgroundOpacity: Double = 0.78
 
     @StateObject private var historyVM = HistoryViewModel()
+    @State private var showsMetadataMarkers = Self.metadataMarkersEnabledByDefault
     @EnvironmentObject var appVM: AppViewModel
 
     var body: some View {
         let graphDateDomain = historyVM.graphDateDomain()
+        let metadataMarkerToggleEnabled = Self.shouldShowMetadataMarkers(for: historyVM.graphSite)
 
         VStack(alignment: .leading, spacing: 12) {
             HStack {
@@ -34,6 +37,9 @@ struct HistoryReportsView: View {
                     }
                 }
                 .frame(width: 100)
+                Toggle("Markers", isOn: $showsMetadataMarkers)
+                    .toggleStyle(.switch)
+                    .disabled(!metadataMarkerToggleEnabled)
                 Button("Refresh") { historyVM.reload() }
             }
             .padding(.horizontal, 14)
@@ -91,7 +97,10 @@ struct HistoryReportsView: View {
                             .foregroundStyle(Color.blue.opacity(0.85))
                             }
 
-                            if Self.shouldShowMetadataMarkers(for: historyVM.graphSite) {
+                            if Self.shouldRenderMetadataMarkers(
+                                for: historyVM.graphSite,
+                                isEnabled: showsMetadataMarkers
+                            ) {
                                 ForEach(historyVM.metadataMarkers) { marker in
                                 RuleMark(x: .value("Metadata Change", marker.timestamp))
                                     .foregroundStyle(Color.orange.opacity(0.9))
@@ -323,6 +332,10 @@ struct HistoryReportsView: View {
 
     static func shouldShowMetadataMarkers(for graphSite: String) -> Bool {
         graphSite != "All Sites"
+    }
+
+    static func shouldRenderMetadataMarkers(for graphSite: String, isEnabled: Bool) -> Bool {
+        isEnabled && shouldShowMetadataMarkers(for: graphSite)
     }
 
     static func chartXAxisLabelStyle(for range: HistoryViewModel.GraphRange) -> ChartXAxisLabelStyle {

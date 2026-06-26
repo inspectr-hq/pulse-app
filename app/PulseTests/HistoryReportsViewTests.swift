@@ -70,6 +70,37 @@ final class HistoryReportsViewTests: XCTestCase {
         XCTAssertTrue(HistoryReportsView.shouldShowMetadataMarkers(for: "Site A"))
     }
 
+    func testMetadataMarkersAreEnabledByDefault() {
+        XCTAssertTrue(HistoryReportsView.metadataMarkersEnabledByDefault)
+    }
+
+    func testMetadataMarkersRenderWhenToggleIsOnForSingleSiteSelection() {
+        XCTAssertTrue(
+            HistoryReportsView.shouldRenderMetadataMarkers(
+                for: "Site A",
+                isEnabled: true
+            )
+        )
+    }
+
+    func testMetadataMarkersDoNotRenderWhenToggleIsOff() {
+        XCTAssertFalse(
+            HistoryReportsView.shouldRenderMetadataMarkers(
+                for: "Site A",
+                isEnabled: false
+            )
+        )
+    }
+
+    func testMetadataMarkersDoNotRenderForAllSitesWhenToggleIsOn() {
+        XCTAssertFalse(
+            HistoryReportsView.shouldRenderMetadataMarkers(
+                for: "All Sites",
+                isEnabled: true
+            )
+        )
+    }
+
     func testChartXAxisLabelStyleUsesTimeFor24Hours() {
         XCTAssertEqual(
             HistoryReportsView.chartXAxisLabelStyle(for: .last24h),
