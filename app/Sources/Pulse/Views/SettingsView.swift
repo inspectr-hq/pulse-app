@@ -282,7 +282,7 @@ struct SettingsView: View {
             }
             .buttonStyle(.bordered)
 
-            Link(destination: Self.inspectrURL) {
+            VStack(spacing: 8) {
                 HStack(spacing: 8) {
                     Image("InspectrLogo")
                         .resizable()
@@ -293,8 +293,12 @@ struct SettingsView: View {
                         .font(.caption)
                 }
                 .foregroundStyle(.secondary)
+
+                Link(destination: Self.inspectrURL) {
+                    Label("Visit inspectr.dev", systemImage: "arrow.up.right.square")
+                }
+                .buttonStyle(.bordered)
             }
-            .buttonStyle(.plain)
         }
         .frame(maxWidth: .infinity, minHeight: 360, alignment: .center)
         .padding(.top, 24)
