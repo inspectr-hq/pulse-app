@@ -6,6 +6,7 @@ struct SettingsView: View {
         case general = "General"
         case menuBar = "Menu Bar"
         case webhooks = "Webhooks"
+        case about = "About"
         
         var id: String { rawValue }
         
@@ -14,9 +15,14 @@ struct SettingsView: View {
             case .general: return "gearshape"
             case .menuBar: return "menubar.rectangle"
             case .webhooks: return "link"
+            case .about: return "info.circle"
             }
         }
     }
+
+    static let appDisplayName = "Pulse"
+    static let githubURL = URL(string: "https://github.com/inspectr-hq/pulse-app")!
+    static let inspectrURL = URL(string: "https://inspectr.dev")!
     
     @EnvironmentObject var vm: AppViewModel
     @State private var selectedTab: Tab = .general
@@ -67,6 +73,8 @@ struct SettingsView: View {
                         menuBarTab
                     case .webhooks:
                         webhooksTab
+                    case .about:
+                        aboutTab
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .topLeading)
@@ -250,6 +258,46 @@ struct SettingsView: View {
                 selectedWebhookID = vm.settings.webhookConfigs.first?.id
             }
         }
+    }
+
+    private var aboutTab: some View {
+        VStack(alignment: .center, spacing: 18) {
+            if let appIcon = NSImage(named: "AppIcon") {
+                Image(nsImage: appIcon)
+                    .resizable()
+                    .frame(width: 112, height: 112)
+                    .clipShape(.rect(cornerRadius: 24))
+            }
+
+            VStack(spacing: 6) {
+                Text(Self.appDisplayName)
+                    .font(.largeTitle.weight(.semibold))
+                Text("Site monitoring from the menu bar.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
+
+            Link(destination: Self.githubURL) {
+                Label("View on GitHub", systemImage: "arrow.up.right.square")
+            }
+            .buttonStyle(.bordered)
+
+            Link(destination: Self.inspectrURL) {
+                HStack(spacing: 8) {
+                    Image("InspectrLogo")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 18, height: 18)
+                        .opacity(0.72)
+                    Text("A project by Inspectr")
+                        .font(.caption)
+                }
+                .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.plain)
+        }
+        .frame(maxWidth: .infinity, minHeight: 360, alignment: .center)
+        .padding(.top, 24)
     }
 
     private var webhookOverviewPane: some View {
