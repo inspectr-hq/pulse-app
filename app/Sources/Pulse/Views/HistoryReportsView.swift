@@ -57,11 +57,11 @@ struct HistoryReportsView: View {
                 GroupBox("Performance Trend (ms)") {
                     VStack(alignment: .leading, spacing: 10) {
                         HStack(spacing: 0) {
-                            compactMetric(title: "HIGHEST", value: historyVM.peakLatencyMs, tint: Color.blue)
+                            compactMetric(title: "HIGHEST", value: historyVM.peakLatencyMs, tint: Color.red)
                             compactMetric(title: "LOWEST", value: historyVM.performanceSamples.map(\.minMs).min() ?? 0, tint: Color.green)
                             compactMetric(title: "AVERAGE", value: historyVM.averageLatencyMs, tint: Color.purple)
-                            compactMetric(title: "P95", value: historyVM.p95LatencyMs, tint: Color.orange)
-                            compactMetric(title: "P99", value: historyVM.p99LatencyMs, tint: Color.red)
+                            compactMetric(title: "P95", value: historyVM.p95LatencyMs, tint: Color.teal)
+                            compactMetric(title: "P99", value: historyVM.p99LatencyMs, tint: Color.blue)
                         }
                         .background(
                             RoundedRectangle(cornerRadius: 10)
@@ -197,6 +197,40 @@ struct HistoryReportsView: View {
                                     graphRange: historyVM.graphRange
                                 )
                             }
+                        }
+                    }
+                }
+
+                if Self.shouldShowTrackingTimeline(for: historyVM.graphSite) {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Tracking Timeline")
+                            .font(.headline)
+                            .foregroundStyle(.primary)
+
+                        GroupBox {
+                            VStack(alignment: .leading, spacing: 10) {
+                                if historyVM.trackingTimelineEntries.isEmpty {
+                                    Text("No tracked values recorded.")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                } else {
+                                    ForEach(historyVM.trackingTimelineEntries) { entry in
+                                        HStack(alignment: .firstTextBaseline, spacing: 10) {
+                                            Circle()
+                                                .fill(Color.orange)
+                                                .frame(width: 8, height: 8)
+                                            Text("\(entry.label) \(entry.value)")
+                                                .font(.subheadline.weight(.semibold))
+                                            Spacer()
+                                            Text(entry.firstDetectedAt.formatted(date: .abbreviated, time: .shortened))
+                                                .font(.caption)
+                                                .foregroundStyle(.secondary)
+                                        }
+                                    }
+                                }
+                            }
+                            .padding(.vertical, 4)
                         }
                     }
                 }
@@ -338,6 +372,10 @@ struct HistoryReportsView: View {
 
     static func shouldRenderMetadataMarkers(for graphSite: String, isEnabled: Bool) -> Bool {
         isEnabled && shouldShowMetadataMarkers(for: graphSite)
+    }
+
+    static func shouldShowTrackingTimeline(for graphSite: String) -> Bool {
+        graphSite != "All Sites"
     }
 
     static func chartXAxisLabelStyle(for range: HistoryViewModel.GraphRange) -> ChartXAxisLabelStyle {

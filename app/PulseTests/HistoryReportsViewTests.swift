@@ -101,6 +101,11 @@ final class HistoryReportsViewTests: XCTestCase {
         )
     }
 
+    func testTrackingTimelineShowsOnlyForSingleSiteSelection() {
+        XCTAssertFalse(HistoryReportsView.shouldShowTrackingTimeline(for: "All Sites"))
+        XCTAssertTrue(HistoryReportsView.shouldShowTrackingTimeline(for: "Site A"))
+    }
+
     func testChartXAxisLabelStyleUsesTimeFor24Hours() {
         XCTAssertEqual(
             HistoryReportsView.chartXAxisLabelStyle(for: .last24h),
