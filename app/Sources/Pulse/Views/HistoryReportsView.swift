@@ -7,14 +7,17 @@ struct HistoryReportsView: View {
         case monthDay
     }
 
-    static let metadataMarkerAnnotationYOffset: CGFloat = 18
+    static let metadataMarkersEnabledByDefault = true
+    static let metadataMarkerAnnotationYOffset: CGFloat = 32
     static let metadataMarkerBackgroundOpacity: Double = 0.78
 
     @StateObject private var historyVM = HistoryViewModel()
+    @State private var showsMetadataMarkers = Self.metadataMarkersEnabledByDefault
     @EnvironmentObject var appVM: AppViewModel
 
     var body: some View {
         let graphDateDomain = historyVM.graphDateDomain()
+        let metadataMarkerToggleEnabled = Self.shouldShowMetadataMarkers(for: historyVM.graphSite)
 
         VStack(alignment: .leading, spacing: 12) {
             HStack {
@@ -34,6 +37,9 @@ struct HistoryReportsView: View {
                     }
                 }
                 .frame(width: 100)
+                Toggle("Markers", isOn: $showsMetadataMarkers)
+                    .toggleStyle(.switch)
+                    .disabled(!metadataMarkerToggleEnabled)
                 Button("Refresh") { historyVM.reload() }
             }
             .padding(.horizontal, 14)
@@ -48,20 +54,41 @@ struct HistoryReportsView: View {
                     metricCard(title: "Samples", value: "\(historyVM.graphEvents.count)", tint: .secondary)
                 }
 
-                GroupBox("Performance Trend (ms)") {
-                    VStack(alignment: .leading, spacing: 10) {
-                        HStack(spacing: 0) {
-                            compactMetric(title: "HIGHEST", value: historyVM.peakLatencyMs, tint: Color.blue)
-                            compactMetric(title: "LOWEST", value: historyVM.performanceSamples.map(\.minMs).min() ?? 0, tint: Color.green)
-                            compactMetric(title: "AVERAGE", value: historyVM.averageLatencyMs, tint: Color.purple)
-                        }
-                        .background(
-                            RoundedRectangle(cornerRadius: 10)
-                                .fill(Color.secondary.opacity(0.08))
-                        )
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Performance Trend (ms)")
+                        .font(.headline)
+                        .foregroundStyle(.primary)
 
-                        Chart {
-                            ForEach(historyVM.performanceSamples) { sample in
+                    GroupBox {
+                        VStack(alignment: .leading, spacing: 10) {
+                            let visibility = appVM.settings.performanceTrendMetricVisibility
+
+                            if visibility.hasVisibleMetric {
+                                HStack(spacing: 0) {
+                                    if visibility.showHighest {
+                                        compactMetric(title: "HIGHEST", value: historyVM.peakLatencyMs, tint: Color.red)
+                                    }
+                                    if visibility.showLowest {
+                                        compactMetric(title: "LOWEST", value: historyVM.performanceSamples.map(\.minMs).min() ?? 0, tint: Color.green)
+                                    }
+                                    if visibility.showAverage {
+                                        compactMetric(title: "AVERAGE", value: historyVM.averageLatencyMs, tint: Color.purple)
+                                    }
+                                    if visibility.showP95 {
+                                        compactMetric(title: "P95", value: historyVM.p95LatencyMs, tint: Color.teal)
+                                    }
+                                    if visibility.showP99 {
+                                        compactMetric(title: "P99", value: historyVM.p99LatencyMs, tint: Color.blue)
+                                    }
+                                }
+                                .background(
+                                    RoundedRectangle(cornerRadius: 10)
+                                        .fill(Color.secondary.opacity(0.08))
+                                )
+                            }
+
+                            Chart {
+                                ForEach(historyVM.performanceSamples) { sample in
                             AreaMark(
                                 x: .value("Time", sample.timestamp),
                                 y: .value("Average ms", sample.avgMs)
@@ -89,10 +116,13 @@ struct HistoryReportsView: View {
                             )
                             .symbolSize(14)
                             .foregroundStyle(Color.blue.opacity(0.85))
-                            }
+                                }
 
-                            if Self.shouldShowMetadataMarkers(for: historyVM.graphSite) {
-                                ForEach(historyVM.metadataMarkers) { marker in
+                                if Self.shouldRenderMetadataMarkers(
+                                    for: historyVM.graphSite,
+                                    isEnabled: showsMetadataMarkers
+                                ) {
+                                    ForEach(historyVM.metadataMarkers) { marker in
                                 RuleMark(x: .value("Metadata Change", marker.timestamp))
                                     .foregroundStyle(Color.orange.opacity(0.9))
                                     .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [4, 3]))
@@ -116,35 +146,36 @@ struct HistoryReportsView: View {
                                         )
                                         .offset(y: Self.metadataMarkerAnnotationYOffset)
                                     }
-                                }
-                            }
-                        }
-                        .chartYAxis {
-                            AxisMarks(position: .leading) { value in
-                                AxisGridLine(stroke: StrokeStyle(lineWidth: 1))
-                                    .foregroundStyle(.quaternary)
-                                AxisValueLabel {
-                                    if let ms = value.as(Int.self) {
-                                        Text("\(ms)ms")
                                     }
                                 }
                             }
-                        }
-                        .chartXAxis {
-                            AxisMarks(values: .automatic(desiredCount: 6)) { value in
-                                AxisGridLine(stroke: StrokeStyle(lineWidth: 1))
-                                    .foregroundStyle(.quaternary)
-                                switch Self.chartXAxisLabelStyle(for: historyVM.graphRange) {
-                                case .hourMinute:
-                                    AxisValueLabel(format: .dateTime.hour().minute())
-                                case .monthDay:
-                                    AxisValueLabel(format: .dateTime.day().month(.abbreviated))
+                            .chartYAxis {
+                                AxisMarks(position: .leading) { value in
+                                    AxisGridLine(stroke: StrokeStyle(lineWidth: 1))
+                                        .foregroundStyle(.quaternary)
+                                    AxisValueLabel {
+                                        if let ms = value.as(Int.self) {
+                                            Text("\(ms)ms")
+                                        }
+                                    }
                                 }
                             }
+                            .chartXAxis {
+                                AxisMarks(values: .automatic(desiredCount: 6)) { value in
+                                    AxisGridLine(stroke: StrokeStyle(lineWidth: 1))
+                                        .foregroundStyle(.quaternary)
+                                    switch Self.chartXAxisLabelStyle(for: historyVM.graphRange) {
+                                    case .hourMinute:
+                                        AxisValueLabel(format: .dateTime.hour().minute())
+                                    case .monthDay:
+                                        AxisValueLabel(format: .dateTime.day().month(.abbreviated))
+                                    }
+                                }
+                            }
+                            .chartXScale(domain: graphDateDomain)
+                            .chartLegend(.hidden)
+                            .frame(height: 260)
                         }
-                        .chartXScale(domain: graphDateDomain)
-                        .chartLegend(.hidden)
-                        .frame(height: 260)
                     }
                 }
 
@@ -186,6 +217,40 @@ struct HistoryReportsView: View {
                                     graphRange: historyVM.graphRange
                                 )
                             }
+                        }
+                    }
+                }
+
+                if Self.shouldShowTrackingTimeline(for: historyVM.graphSite) {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Tracking Timeline")
+                            .font(.headline)
+                            .foregroundStyle(.primary)
+
+                        GroupBox {
+                            VStack(alignment: .leading, spacing: 10) {
+                                if historyVM.trackingTimelineEntries.isEmpty {
+                                    Text("No tracked values recorded.")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                } else {
+                                    ForEach(historyVM.trackingTimelineEntries) { entry in
+                                        HStack(alignment: .firstTextBaseline, spacing: 10) {
+                                            Circle()
+                                                .fill(Color.orange)
+                                                .frame(width: 8, height: 8)
+                                            Text("\(entry.label) \(entry.value)")
+                                                .font(.subheadline.weight(.semibold))
+                                            Spacer()
+                                            Text(entry.firstDetectedAt.formatted(date: .abbreviated, time: .shortened))
+                                                .font(.caption)
+                                                .foregroundStyle(.secondary)
+                                        }
+                                    }
+                                }
+                            }
+                            .padding(.vertical, 4)
                         }
                     }
                 }
@@ -322,6 +387,14 @@ struct HistoryReportsView: View {
     }
 
     static func shouldShowMetadataMarkers(for graphSite: String) -> Bool {
+        graphSite != "All Sites"
+    }
+
+    static func shouldRenderMetadataMarkers(for graphSite: String, isEnabled: Bool) -> Bool {
+        isEnabled && shouldShowMetadataMarkers(for: graphSite)
+    }
+
+    static func shouldShowTrackingTimeline(for graphSite: String) -> Bool {
         graphSite != "All Sites"
     }
 

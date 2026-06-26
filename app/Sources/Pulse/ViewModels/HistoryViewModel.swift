@@ -93,6 +93,13 @@ final class HistoryViewModel: ObservableObject {
         let value: String
     }
 
+    struct TrackingTimelineEntry: Identifiable {
+        let id: String
+        let firstDetectedAt: Date
+        let label: String
+        let value: String
+    }
+
     @Published var events: [HistoryEvent] = []
     @Published var search = ""
     @Published var selectedMonitor: UUID?
@@ -134,7 +141,13 @@ final class HistoryViewModel: ObservableObject {
     var filteredEvents: [HistoryEvent] {
         let now = Date()
         return events.filter { event in
-            let bySearch = search.isEmpty || event.url.localizedCaseInsensitiveContains(search) || event.monitorName.localizedCaseInsensitiveContains(search)
+            let metadataLabel = event.metadataLabel ?? ""
+            let metadataValue = event.metadataValue ?? ""
+            let bySearch = search.isEmpty ||
+                event.url.localizedCaseInsensitiveContains(search) ||
+                event.monitorName.localizedCaseInsensitiveContains(search) ||
+                metadataLabel.localizedCaseInsensitiveContains(search) ||
+                metadataValue.localizedCaseInsensitiveContains(search)
             let byMonitor = selectedMonitor == nil || event.monitorID == selectedMonitor
             let byName = selectedName == "All Names" || event.monitorName == selectedName
             let byStatus: Bool
@@ -228,6 +241,13 @@ final class HistoryViewModel: ObservableObject {
         return values[idx]
     }
 
+    var p99LatencyMs: Int {
+        let values = latencyPoints.map(\.ms).sorted()
+        guard !values.isEmpty else { return 0 }
+        let idx = min(values.count - 1, Int(Double(values.count) * 0.99))
+        return values[idx]
+    }
+
     var peakLatencyMs: Int {
         latencyPoints.map(\.ms).max() ?? 0
     }
@@ -269,10 +289,21 @@ final class HistoryViewModel: ObservableObject {
     var metadataMarkers: [MetadataMarker] {
         guard graphSite != "All Sites" else { return [] }
 
-        var markers: [MetadataMarker] = []
-        var previousValue: String?
+        let cutoff = Date().addingTimeInterval(-graphRange.duration)
+        let siteEvents = events
+            .filter { $0.monitorName == graphSite }
+            .sorted(by: { $0.timestamp < $1.timestamp })
 
-        for event in graphEvents {
+        var markers: [MetadataMarker] = []
+        var previousValue = siteEvents
+            .last(where: { event in
+                event.timestamp < cutoff &&
+                !(event.metadataValue?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
+            })?
+            .metadataValue?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        for event in siteEvents where event.timestamp >= cutoff {
             guard let rawValue = event.metadataValue?.trimmingCharacters(in: .whitespacesAndNewlines),
                   !rawValue.isEmpty else {
                 continue
@@ -295,6 +326,43 @@ final class HistoryViewModel: ObservableObject {
         }
 
         return markers
+    }
+
+    var trackingTimelineEntries: [TrackingTimelineEntry] {
+        guard graphSite != "All Sites" else { return [] }
+
+        let siteEvents = events
+            .filter { $0.monitorName == graphSite }
+            .sorted(by: { $0.timestamp < $1.timestamp })
+
+        var seen = Set<String>()
+        var entries: [TrackingTimelineEntry] = []
+
+        for event in siteEvents {
+            guard let rawValue = event.metadataValue?.trimmingCharacters(in: .whitespacesAndNewlines),
+                  !rawValue.isEmpty else {
+                continue
+            }
+
+            let label = event.metadataLabel?.trimmingCharacters(in: .whitespacesAndNewlines)
+            let resolvedLabel = label.flatMap { $0.isEmpty ? nil : $0 } ?? "Tracked Value"
+            let id = "\(resolvedLabel)\t\(rawValue)"
+
+            guard seen.insert(id).inserted else {
+                continue
+            }
+
+            entries.append(
+                TrackingTimelineEntry(
+                    id: id,
+                    firstDetectedAt: event.timestamp,
+                    label: resolvedLabel,
+                    value: rawValue
+                )
+            )
+        }
+
+        return entries.sorted { $0.firstDetectedAt > $1.firstDetectedAt }
     }
 
     func uptimeBlocks(thresholdMs: Int) -> [UptimeBlockStatus] {

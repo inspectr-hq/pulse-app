@@ -6,6 +6,7 @@ struct SettingsView: View {
         case general = "General"
         case menuBar = "Menu Bar"
         case webhooks = "Webhooks"
+        case about = "About"
         
         var id: String { rawValue }
         
@@ -14,9 +15,14 @@ struct SettingsView: View {
             case .general: return "gearshape"
             case .menuBar: return "menubar.rectangle"
             case .webhooks: return "link"
+            case .about: return "info.circle"
             }
         }
     }
+
+    static let appDisplayName = "Pulse"
+    static let githubURL = URL(string: "https://github.com/inspectr-hq/pulse-app")!
+    static let inspectrURL = URL(string: "https://inspectr.dev")!
     
     @EnvironmentObject var vm: AppViewModel
     @State private var selectedTab: Tab = .general
@@ -67,6 +73,8 @@ struct SettingsView: View {
                         menuBarTab
                     case .webhooks:
                         webhooksTab
+                    case .about:
+                        aboutTab
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .topLeading)
@@ -167,6 +175,22 @@ struct SettingsView: View {
                 .pickerStyle(.menu)
                 .frame(width: 120, alignment: .leading)
             }
+
+            Divider()
+                .frame(width: 427)
+                .frame(maxWidth: .infinity, alignment: .center)
+
+            alignedRow("Performance Trend:") {
+                VStack(alignment: .leading, spacing: 8) {
+                    Toggle("Highest", isOn: $vm.settings.performanceTrendMetricVisibility.showHighest)
+                    Toggle("Lowest", isOn: $vm.settings.performanceTrendMetricVisibility.showLowest)
+                    Toggle("Average", isOn: $vm.settings.performanceTrendMetricVisibility.showAverage)
+                    Toggle("P95", isOn: $vm.settings.performanceTrendMetricVisibility.showP95)
+                    Toggle("P99", isOn: $vm.settings.performanceTrendMetricVisibility.showP99)
+                }
+                .toggleStyle(.checkbox)
+                .help("Controls which summary metrics appear in the Performance Trend card.")
+            }
         }
         .padding(.top, 6)
     }
@@ -250,6 +274,53 @@ struct SettingsView: View {
                 selectedWebhookID = vm.settings.webhookConfigs.first?.id
             }
         }
+    }
+
+    private var aboutTab: some View {
+        VStack(alignment: .center, spacing: 18) {
+            if let appIcon = NSImage(named: "AppIcon") {
+                Image(nsImage: appIcon)
+                    .resizable()
+                    .frame(width: 112, height: 112)
+                    .clipShape(.rect(cornerRadius: 24))
+            }
+
+            VStack(spacing: 6) {
+                Text(Self.appDisplayName)
+                    .font(.largeTitle.weight(.semibold))
+                Text("Version \(AppUpdateChecker.currentAppVersion())")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Text("Site monitoring from the menu bar.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
+
+            Link(destination: Self.githubURL) {
+                Label("View on GitHub", systemImage: "arrow.up.right.square")
+            }
+            .buttonStyle(.bordered)
+
+            VStack(spacing: 8) {
+                HStack(spacing: 8) {
+                    Image("InspectrLogo")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 18, height: 18)
+                        .opacity(0.72)
+                    Text("A project by Inspectr")
+                        .font(.caption)
+                }
+                .foregroundStyle(.secondary)
+
+                Link(destination: Self.inspectrURL) {
+                    Label("Visit inspectr.dev", systemImage: "arrow.up.right.square")
+                }
+                .buttonStyle(.bordered)
+            }
+        }
+        .frame(maxWidth: .infinity, minHeight: 360, alignment: .center)
+        .padding(.top, 24)
     }
 
     private var webhookOverviewPane: some View {

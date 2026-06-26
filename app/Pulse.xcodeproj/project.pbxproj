@@ -34,6 +34,7 @@
 		B00100010000000000000019 /* HTTPTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00100010000000000000019 /* HTTPTransport.swift */; };
 		B0010001000000000000001A /* WebhookEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0010001000000000000001A /* WebhookEngine.swift */; };
 		B0010001000000000000001B /* HistoryReportsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0010001000000000000001B /* HistoryReportsView.swift */; };
+		B0010001000000000000001C /* AppUpdateChecker.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0010001000000000000001C /* AppUpdateChecker.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -76,6 +77,7 @@
 		F00100010000000000000019 /* HTTPTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTTPTransport.swift; sourceTree = "<group>"; };
 		F0010001000000000000001A /* WebhookEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebhookEngine.swift; sourceTree = "<group>"; };
 		F0010001000000000000001B /* HistoryReportsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryReportsView.swift; sourceTree = "<group>"; };
+		F0010001000000000000001C /* AppUpdateChecker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppUpdateChecker.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -153,6 +155,7 @@
 				F0010001000000000000000A /* MonitorStore.swift */,
 				F0010001000000000000000B /* SiteChecker.swift */,
 				F0010001000000000000000C /* WindowManager.swift */,
+				F0010001000000000000001C /* AppUpdateChecker.swift */,
 				F00100010000000000000019 /* HTTPTransport.swift */,
 				F0010001000000000000001A /* WebhookEngine.swift */,
 			);
@@ -337,6 +340,7 @@
 				B00100010000000000000019 /* HTTPTransport.swift in Sources */,
 				B0010001000000000000001A /* WebhookEngine.swift in Sources */,
 				B0010001000000000000001B /* HistoryReportsView.swift in Sources */,
+				B0010001000000000000001C /* AppUpdateChecker.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

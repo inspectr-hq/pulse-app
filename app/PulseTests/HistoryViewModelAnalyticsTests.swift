@@ -36,6 +36,34 @@ final class HistoryViewModelAnalyticsTests: XCTestCase {
         XCTAssertEqual(filtered.first?.url, "https://a.dev/outage")
     }
 
+    func testSearchMatchesTrackedValue() {
+        let now = Date()
+        let monitor = UUID()
+        let events: [HistoryEvent] = [
+            HistoryEvent(timestamp: now, monitorID: monitor, monitorName: "Site A", url: "https://a.dev", method: "GET", status: "OK", statusCode: 200, durationMs: 120, reason: nil, trigger: .automatic, metadataLabel: "Version", metadataValue: "2.6.0"),
+            HistoryEvent(timestamp: now.addingTimeInterval(-60), monitorID: monitor, monitorName: "Site B", url: "https://b.dev", method: "GET", status: "OK", statusCode: 200, durationMs: 90, reason: nil, trigger: .automatic, metadataLabel: "Build", metadataValue: "abc123")
+        ]
+
+        let vm = HistoryViewModel(store: StubHistoryStore(events: events))
+        vm.search = "2.6"
+
+        XCTAssertEqual(vm.filteredEvents.map(\.monitorName), ["Site A"])
+    }
+
+    func testSearchMatchesTrackedValueLabel() {
+        let now = Date()
+        let monitor = UUID()
+        let events: [HistoryEvent] = [
+            HistoryEvent(timestamp: now, monitorID: monitor, monitorName: "Site A", url: "https://a.dev", method: "GET", status: "OK", statusCode: 200, durationMs: 120, reason: nil, trigger: .automatic, metadataLabel: "Version", metadataValue: "2.6.0"),
+            HistoryEvent(timestamp: now.addingTimeInterval(-60), monitorID: monitor, monitorName: "Site B", url: "https://b.dev", method: "GET", status: "OK", statusCode: 200, durationMs: 90, reason: nil, trigger: .automatic, metadataLabel: "Build", metadataValue: "abc123")
+        ]
+
+        let vm = HistoryViewModel(store: StubHistoryStore(events: events))
+        vm.search = "build"
+
+        XCTAssertEqual(vm.filteredEvents.map(\.monitorName), ["Site B"])
+    }
+
     func testClearDeletesOnlyFilteredEventsWhenFiltersAreActive() {
         let now = Date()
         let firstMonitor = UUID()
@@ -185,6 +213,32 @@ final class HistoryViewModelAnalyticsTests: XCTestCase {
             XCTAssertLessThanOrEqual(sample.minMs, sample.avgMs)
             XCTAssertLessThanOrEqual(sample.avgMs, sample.maxMs)
         }
+    }
+
+    func testLatencyPercentilesUseSortedLatencyPoints() {
+        let now = Date()
+        let monitor = UUID()
+        let latencies = [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000]
+        let events = latencies.enumerated().map { idx, ms in
+            HistoryEvent(
+                timestamp: now.addingTimeInterval(TimeInterval(-idx * 60)),
+                monitorID: monitor,
+                monitorName: "Site A",
+                url: "https://a.dev",
+                method: "GET",
+                status: "OK",
+                statusCode: 200,
+                durationMs: ms,
+                reason: nil,
+                trigger: .automatic
+            )
+        }
+
+        let vm = HistoryViewModel(store: StubHistoryStore(events: events))
+        vm.graphRange = .last24h
+
+        XCTAssertEqual(vm.p95LatencyMs, 1000)
+        XCTAssertEqual(vm.p99LatencyMs, 1000)
     }
 
     func testUptimeBucketsExposePeriodAndUptimePercentage() {
@@ -341,6 +395,95 @@ final class HistoryViewModelAnalyticsTests: XCTestCase {
         vm.graphSite = "All Sites"
 
         XCTAssertTrue(vm.metadataMarkers.isEmpty)
+    }
+
+    func testMetadataMarkersDoNotInventTransitionAtStartOfSelectedRange() {
+        let now = Date()
+        let monitor = UUID()
+        let events: [HistoryEvent] = [
+            HistoryEvent(
+                timestamp: now.addingTimeInterval(-8 * 86_400),
+                monitorID: monitor,
+                monitorName: "Site A",
+                url: "https://a.dev",
+                method: "GET",
+                status: "OK",
+                statusCode: 200,
+                durationMs: 120,
+                reason: nil,
+                trigger: .automatic,
+                metadataLabel: "Version",
+                metadataValue: "0.5.4"
+            ),
+            HistoryEvent(
+                timestamp: now.addingTimeInterval(-6 * 86_400),
+                monitorID: monitor,
+                monitorName: "Site A",
+                url: "https://a.dev",
+                method: "GET",
+                status: "OK",
+                statusCode: 200,
+                durationMs: 118,
+                reason: nil,
+                trigger: .automatic,
+                metadataLabel: "Version",
+                metadataValue: "0.5.4"
+            ),
+            HistoryEvent(
+                timestamp: now.addingTimeInterval(-1 * 86_400),
+                monitorID: monitor,
+                monitorName: "Site A",
+                url: "https://a.dev",
+                method: "GET",
+                status: "OK",
+                statusCode: 200,
+                durationMs: 115,
+                reason: nil,
+                trigger: .automatic,
+                metadataLabel: "Version",
+                metadataValue: "0.5.5"
+            )
+        ]
+
+        let vm = HistoryViewModel(store: StubHistoryStore(events: events))
+        vm.graphRange = .last7d
+        vm.graphSite = "Site A"
+
+        XCTAssertEqual(vm.metadataMarkers.map(\.value), ["0.5.5"])
+    }
+
+    func testTrackingTimelineShowsNewestFirstDetectionPerTrackedValueForSelectedSite() {
+        let now = Date()
+        let siteA = UUID()
+        let siteB = UUID()
+        let firstVersionTime = now.addingTimeInterval(-4 * 86_400)
+        let secondVersionTime = now.addingTimeInterval(-2 * 86_400)
+        let events: [HistoryEvent] = [
+            HistoryEvent(timestamp: firstVersionTime, monitorID: siteA, monitorName: "Site A", url: "https://a.dev", method: "GET", status: "OK", statusCode: 200, durationMs: 120, reason: nil, trigger: .automatic, metadataLabel: "Version", metadataValue: "1.0.0"),
+            HistoryEvent(timestamp: now.addingTimeInterval(-3 * 86_400), monitorID: siteA, monitorName: "Site A", url: "https://a.dev", method: "GET", status: "OK", statusCode: 200, durationMs: 118, reason: nil, trigger: .automatic, metadataLabel: "Version", metadataValue: "1.0.0"),
+            HistoryEvent(timestamp: secondVersionTime, monitorID: siteA, monitorName: "Site A", url: "https://a.dev", method: "GET", status: "OK", statusCode: 200, durationMs: 115, reason: nil, trigger: .automatic, metadataLabel: "Version", metadataValue: "1.1.0"),
+            HistoryEvent(timestamp: now.addingTimeInterval(-1 * 86_400), monitorID: siteB, monitorName: "Site B", url: "https://b.dev", method: "GET", status: "OK", statusCode: 200, durationMs: 110, reason: nil, trigger: .automatic, metadataLabel: "Version", metadataValue: "9.9.9")
+        ]
+
+        let vm = HistoryViewModel(store: StubHistoryStore(events: events))
+        vm.graphSite = "Site A"
+
+        XCTAssertEqual(vm.trackingTimelineEntries.map(\.value), ["1.1.0", "1.0.0"])
+        XCTAssertEqual(vm.trackingTimelineEntries.map(\.label), ["Version", "Version"])
+        XCTAssertEqual(vm.trackingTimelineEntries.map(\.firstDetectedAt), [secondVersionTime, firstVersionTime])
+    }
+
+    func testTrackingTimelineHiddenForAllSitesSelection() {
+        let now = Date()
+        let monitor = UUID()
+        let events: [HistoryEvent] = [
+            HistoryEvent(timestamp: now, monitorID: monitor, monitorName: "Site A", url: "https://a.dev", method: "GET", status: "OK", statusCode: 200, durationMs: 120, reason: nil, trigger: .automatic, metadataLabel: "Version", metadataValue: "1.0.0")
+        ]
+
+        let vm = HistoryViewModel(store: StubHistoryStore(events: events))
+        vm.graphSite = "All Sites"
+
+        XCTAssertTrue(vm.trackingTimelineEntries.isEmpty)
     }
 
     func testExportCSVIncludesMetadataLabelAndValueColumns() {
