@@ -8,7 +8,7 @@ struct HistoryReportsView: View {
     }
 
     static let metadataMarkersEnabledByDefault = true
-    static let metadataMarkerAnnotationYOffset: CGFloat = 18
+    static let metadataMarkerAnnotationYOffset: CGFloat = 32
     static let metadataMarkerBackgroundOpacity: Double = 0.78
 
     @StateObject private var historyVM = HistoryViewModel()
@@ -60,6 +60,8 @@ struct HistoryReportsView: View {
                             compactMetric(title: "HIGHEST", value: historyVM.peakLatencyMs, tint: Color.blue)
                             compactMetric(title: "LOWEST", value: historyVM.performanceSamples.map(\.minMs).min() ?? 0, tint: Color.green)
                             compactMetric(title: "AVERAGE", value: historyVM.averageLatencyMs, tint: Color.purple)
+                            compactMetric(title: "P95", value: historyVM.p95LatencyMs, tint: Color.orange)
+                            compactMetric(title: "P99", value: historyVM.p99LatencyMs, tint: Color.red)
                         }
                         .background(
                             RoundedRectangle(cornerRadius: 10)

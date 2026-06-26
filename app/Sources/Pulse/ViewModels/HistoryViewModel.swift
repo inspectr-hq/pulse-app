@@ -228,6 +228,13 @@ final class HistoryViewModel: ObservableObject {
         return values[idx]
     }
 
+    var p99LatencyMs: Int {
+        let values = latencyPoints.map(\.ms).sorted()
+        guard !values.isEmpty else { return 0 }
+        let idx = min(values.count - 1, Int(Double(values.count) * 0.99))
+        return values[idx]
+    }
+
     var peakLatencyMs: Int {
         latencyPoints.map(\.ms).max() ?? 0
     }

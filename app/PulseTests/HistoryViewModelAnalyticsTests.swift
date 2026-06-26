@@ -187,6 +187,32 @@ final class HistoryViewModelAnalyticsTests: XCTestCase {
         }
     }
 
+    func testLatencyPercentilesUseSortedLatencyPoints() {
+        let now = Date()
+        let monitor = UUID()
+        let latencies = [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000]
+        let events = latencies.enumerated().map { idx, ms in
+            HistoryEvent(
+                timestamp: now.addingTimeInterval(TimeInterval(-idx * 60)),
+                monitorID: monitor,
+                monitorName: "Site A",
+                url: "https://a.dev",
+                method: "GET",
+                status: "OK",
+                statusCode: 200,
+                durationMs: ms,
+                reason: nil,
+                trigger: .automatic
+            )
+        }
+
+        let vm = HistoryViewModel(store: StubHistoryStore(events: events))
+        vm.graphRange = .last24h
+
+        XCTAssertEqual(vm.p95LatencyMs, 1000)
+        XCTAssertEqual(vm.p99LatencyMs, 1000)
+    }
+
     func testUptimeBucketsExposePeriodAndUptimePercentage() {
         let referenceDate = Date()
         let monitor = UUID()

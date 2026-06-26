@@ -166,7 +166,7 @@ final class HistoryReportsViewTests: XCTestCase {
     }
 
     func testMetadataMarkerAnnotationVerticalOffsetKeepsBalloonLowerInChart() {
-        XCTAssertEqual(HistoryReportsView.metadataMarkerAnnotationYOffset, 18)
+        XCTAssertEqual(HistoryReportsView.metadataMarkerAnnotationYOffset, 32)
     }
 
     func testMetadataMarkerBackgroundOpacityIsSemiTransparent() {
