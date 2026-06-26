@@ -343,6 +343,61 @@ final class HistoryViewModelAnalyticsTests: XCTestCase {
         XCTAssertTrue(vm.metadataMarkers.isEmpty)
     }
 
+    func testMetadataMarkersDoNotInventTransitionAtStartOfSelectedRange() {
+        let now = Date()
+        let monitor = UUID()
+        let events: [HistoryEvent] = [
+            HistoryEvent(
+                timestamp: now.addingTimeInterval(-8 * 86_400),
+                monitorID: monitor,
+                monitorName: "Site A",
+                url: "https://a.dev",
+                method: "GET",
+                status: "OK",
+                statusCode: 200,
+                durationMs: 120,
+                reason: nil,
+                trigger: .automatic,
+                metadataLabel: "Version",
+                metadataValue: "0.5.4"
+            ),
+            HistoryEvent(
+                timestamp: now.addingTimeInterval(-6 * 86_400),
+                monitorID: monitor,
+                monitorName: "Site A",
+                url: "https://a.dev",
+                method: "GET",
+                status: "OK",
+                statusCode: 200,
+                durationMs: 118,
+                reason: nil,
+                trigger: .automatic,
+                metadataLabel: "Version",
+                metadataValue: "0.5.4"
+            ),
+            HistoryEvent(
+                timestamp: now.addingTimeInterval(-1 * 86_400),
+                monitorID: monitor,
+                monitorName: "Site A",
+                url: "https://a.dev",
+                method: "GET",
+                status: "OK",
+                statusCode: 200,
+                durationMs: 115,
+                reason: nil,
+                trigger: .automatic,
+                metadataLabel: "Version",
+                metadataValue: "0.5.5"
+            )
+        ]
+
+        let vm = HistoryViewModel(store: StubHistoryStore(events: events))
+        vm.graphRange = .last7d
+        vm.graphSite = "Site A"
+
+        XCTAssertEqual(vm.metadataMarkers.map(\.value), ["0.5.5"])
+    }
+
     func testExportCSVIncludesMetadataLabelAndValueColumns() {
         let now = Date()
         let monitor = UUID()

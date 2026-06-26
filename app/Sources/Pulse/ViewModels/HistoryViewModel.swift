@@ -269,10 +269,21 @@ final class HistoryViewModel: ObservableObject {
     var metadataMarkers: [MetadataMarker] {
         guard graphSite != "All Sites" else { return [] }
 
-        var markers: [MetadataMarker] = []
-        var previousValue: String?
+        let cutoff = Date().addingTimeInterval(-graphRange.duration)
+        let siteEvents = events
+            .filter { $0.monitorName == graphSite }
+            .sorted(by: { $0.timestamp < $1.timestamp })
 
-        for event in graphEvents {
+        var markers: [MetadataMarker] = []
+        var previousValue = siteEvents
+            .last(where: { event in
+                event.timestamp < cutoff &&
+                !(event.metadataValue?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
+            })?
+            .metadataValue?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        for event in siteEvents where event.timestamp >= cutoff {
             guard let rawValue = event.metadataValue?.trimmingCharacters(in: .whitespacesAndNewlines),
                   !rawValue.isEmpty else {
                 continue
