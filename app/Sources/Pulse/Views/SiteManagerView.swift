@@ -2,6 +2,14 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct SiteManagerView: View {
+    struct ConfigurationExport: Codable, Equatable {
+        var appName: String
+        var appVersion: String
+        var exportedAt: Date
+        var monitors: [SiteMonitor]
+        var settings: AppSettings
+    }
+
     @EnvironmentObject var vm: AppViewModel
     @State private var showAdd = false
     @State private var editing: SiteMonitor?
@@ -29,7 +37,14 @@ struct SiteManagerView: View {
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
-                Button(action: { showAdd = true }) { Image(systemName: "plus") }
+                Button("Export JSON") {
+                    exportConfiguration()
+                }
+                Button {
+                    showAdd = true
+                } label: {
+                    Label("Add site", systemImage: "plus")
+                }
                 Button(action: { Task { await vm.checkAll(autoOnly: false) } }) { Image(systemName: "arrow.clockwise") }
             }
             .padding(.horizontal, 16)
@@ -102,6 +117,24 @@ struct SiteManagerView: View {
     }
 
     static let removeConfirmationTitle = "Remove Site?"
+
+    static func configurationExportData(
+        monitors: [SiteMonitor],
+        settings: AppSettings,
+        exportedAt: Date = Date()
+    ) throws -> Data {
+        let export = ConfigurationExport(
+            appName: SettingsView.appDisplayName,
+            appVersion: AppUpdateChecker.currentAppVersion(),
+            exportedAt: exportedAt,
+            monitors: monitors,
+            settings: settings
+        )
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        return try encoder.encode(export)
+    }
 
     static func removeConfirmationMessage(for monitor: SiteMonitor) -> String {
         "Are you sure you want to remove \"\(monitor.nameOrHost)\"? This cannot be undone."
@@ -237,6 +270,31 @@ struct SiteManagerView: View {
         case .paused: return "Paused"
         case .unknown: return "--"
         }
+    }
+
+    private func exportConfiguration() {
+        let panel = NSSavePanel()
+        panel.nameFieldStringValue = defaultJSONFileName()
+        panel.allowedContentTypes = [.json]
+        panel.canCreateDirectories = true
+
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+
+        do {
+            let data = try Self.configurationExportData(
+                monitors: vm.monitors,
+                settings: vm.settings
+            )
+            try data.write(to: url, options: .atomic)
+        } catch {
+            NSSound.beep()
+        }
+    }
+
+    private func defaultJSONFileName() -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        return "pulse-config-\(formatter.string(from: Date())).json"
     }
 }
 

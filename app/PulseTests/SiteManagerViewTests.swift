@@ -22,4 +22,33 @@ final class SiteManagerViewTests: XCTestCase {
         XCTAssertEqual(MonitorFormView.patternPlaceholder(for: .header), "X-Version")
         XCTAssertEqual(MonitorFormView.patternPlaceholder(for: .regex), "version=(.*)")
     }
+
+    func testConfigurationExportIncludesMonitorsAndSettings() throws {
+        let monitor = SiteMonitor(
+            id: UUID(uuidString: "00000000-0000-0000-0000-000000000001")!,
+            url: URL(string: "https://inspectr.dev")!,
+            displayName: "Inspectr",
+            method: .get,
+            thresholdMs: 1500,
+            createdAt: Date(timeIntervalSince1970: 1_782_464_400)
+        )
+        var settings = AppSettings()
+        settings.defaultThresholdMs = 1500
+        let exportedAt = Date(timeIntervalSince1970: 1_782_550_800)
+
+        let data = try SiteManagerView.configurationExportData(
+            monitors: [monitor],
+            settings: settings,
+            exportedAt: exportedAt
+        )
+
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let export = try decoder.decode(SiteManagerView.ConfigurationExport.self, from: data)
+
+        XCTAssertEqual(export.appName, "Pulse")
+        XCTAssertEqual(export.exportedAt, exportedAt)
+        XCTAssertEqual(export.monitors, [monitor])
+        XCTAssertEqual(export.settings.defaultThresholdMs, 1500)
+    }
 }
