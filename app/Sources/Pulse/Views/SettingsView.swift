@@ -27,10 +27,6 @@ struct SettingsView: View {
     @EnvironmentObject var vm: AppViewModel
     @State private var selectedTab: Tab = .general
     @State private var selectedWebhookID: UUID?
-    @State private var isCheckingForUpdates = false
-    @State private var updateCheckMessage: String?
-    @State private var updateCheckReleaseURL: URL?
-    @State private var updateCheckFailed = false
     private let compactWindowSize = NSSize(width: 720, height: 620)
     private let webhooksWindowSize = NSSize(width: 840, height: 760)
     
@@ -300,38 +296,10 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
             }
 
-            HStack(spacing: 8) {
-                Link(destination: Self.githubURL) {
-                    Label("View on GitHub", systemImage: "arrow.up.right.square")
-                }
-                .buttonStyle(.bordered)
-
-                Button {
-                    Task { await checkForUpdates() }
-                } label: {
-                    Label(
-                        isCheckingForUpdates ? "Checking..." : "Check for Updates",
-                        systemImage: "arrow.clockwise"
-                    )
-                }
-                .buttonStyle(.bordered)
-                .disabled(isCheckingForUpdates)
+            Link(destination: Self.githubURL) {
+                Label("View on GitHub", systemImage: "arrow.up.right.square")
             }
-
-            if let updateCheckMessage {
-                VStack(spacing: 6) {
-                    Text(updateCheckMessage)
-                        .font(.caption)
-                        .foregroundStyle(updateCheckFailed ? Color.red : Color.secondary)
-
-                    if let updateCheckReleaseURL {
-                        Link(destination: updateCheckReleaseURL) {
-                            Label("Open latest release", systemImage: "arrow.up.right.square")
-                        }
-                        .font(.caption)
-                    }
-                }
-            }
+            .buttonStyle(.bordered)
 
             VStack(spacing: 8) {
                 HStack(spacing: 8) {
@@ -353,30 +321,6 @@ struct SettingsView: View {
         }
         .frame(maxWidth: .infinity, minHeight: 360, alignment: .center)
         .padding(.top, 24)
-    }
-
-    @MainActor
-    private func checkForUpdates() async {
-        isCheckingForUpdates = true
-        updateCheckMessage = nil
-        updateCheckReleaseURL = nil
-        updateCheckFailed = false
-
-        do {
-            let outcome = try await AppUpdateChecker().checkForUpdates()
-            switch outcome {
-            case let .updateAvailable(currentVersion, latestVersion, releaseURL):
-                updateCheckMessage = "Update available: \(latestVersion) (current \(currentVersion))"
-                updateCheckReleaseURL = releaseURL
-            case let .upToDate(version):
-                updateCheckMessage = "You are up to date: \(version)"
-            }
-        } catch {
-            updateCheckMessage = "Could not check for updates."
-            updateCheckFailed = true
-        }
-
-        isCheckingForUpdates = false
     }
 
     private var webhookOverviewPane: some View {
