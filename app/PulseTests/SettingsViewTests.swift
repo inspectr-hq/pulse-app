@@ -45,4 +45,17 @@ final class SettingsViewTests: XCTestCase {
         XCTAssertTrue(settings.performanceTrendMetricVisibility.showP95)
         XCTAssertTrue(settings.performanceTrendMetricVisibility.showP99)
     }
+
+    func testUpdateCheckerComparesSemanticVersions() {
+        XCTAssertEqual(AppUpdateChecker.compareVersions("0.5.5", "1.0.0"), .orderedAscending)
+        XCTAssertEqual(AppUpdateChecker.compareVersions("1.0.0", "0.5.5"), .orderedDescending)
+        XCTAssertEqual(AppUpdateChecker.compareVersions("1.0", "1.0.0"), .orderedSame)
+        XCTAssertEqual(AppUpdateChecker.compareVersions("v1.0.0", "1.0.0"), .orderedSame)
+    }
+
+    func testUpdateCheckerNormalizesGitHubTagVersions() {
+        XCTAssertEqual(AppUpdateChecker.normalizedVersion("v0.5.5"), "0.5.5")
+        XCTAssertEqual(AppUpdateChecker.normalizedVersion("1.0.0"), "1.0.0")
+        XCTAssertEqual(AppUpdateChecker.normalizedVersion("v1.0.0-beta.1"), "1.0.0")
+    }
 }
