@@ -175,6 +175,22 @@ struct SettingsView: View {
                 .pickerStyle(.menu)
                 .frame(width: 120, alignment: .leading)
             }
+
+            Divider()
+                .frame(width: 427)
+                .frame(maxWidth: .infinity, alignment: .center)
+
+            alignedRow("Performance Trend:") {
+                VStack(alignment: .leading, spacing: 8) {
+                    Toggle("Highest", isOn: $vm.settings.performanceTrendMetricVisibility.showHighest)
+                    Toggle("Lowest", isOn: $vm.settings.performanceTrendMetricVisibility.showLowest)
+                    Toggle("Average", isOn: $vm.settings.performanceTrendMetricVisibility.showAverage)
+                    Toggle("P95", isOn: $vm.settings.performanceTrendMetricVisibility.showP95)
+                    Toggle("P99", isOn: $vm.settings.performanceTrendMetricVisibility.showP99)
+                }
+                .toggleStyle(.checkbox)
+                .help("Controls which summary metrics appear in the Performance Trend card.")
+            }
         }
         .padding(.top, 6)
     }

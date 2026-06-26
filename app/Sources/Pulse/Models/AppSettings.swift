@@ -102,6 +102,18 @@ enum HistoryRetentionPolicy: String, Codable, CaseIterable, Identifiable {
     }
 }
 
+struct PerformanceTrendMetricVisibility: Codable, Equatable {
+    var showHighest: Bool = true
+    var showLowest: Bool = true
+    var showAverage: Bool = true
+    var showP95: Bool = true
+    var showP99: Bool = true
+
+    var hasVisibleMetric: Bool {
+        showHighest || showLowest || showAverage || showP95 || showP99
+    }
+}
+
 struct AppSettings: Codable, Equatable {
     var pingIntervalSeconds: Int = 900
     var launchAtLogin: Bool = false
@@ -143,6 +155,83 @@ struct AppSettings: Codable, Equatable {
     var webhookInitialBackoffSeconds: Double = 1.0
     var webhookConfigs: [WebhookConfig] = []
     var historyRetentionPolicy: HistoryRetentionPolicy = .oneMonth
+    var performanceTrendMetricVisibility = PerformanceTrendMetricVisibility()
     // Legacy fallback cap retained for compatibility with old persisted settings.
     var historyRetentionMaxEvents: Int = 5000
+
+    init() {}
+
+    private enum CodingKeys: String, CodingKey {
+        case pingIntervalSeconds
+        case launchAtLogin
+        case showAlertBadgeOnDockIcon
+        case pausePingWhen
+        case staggerRequestsSeconds
+        case failuresToAlert
+        case defaultThresholdMs
+        case defaultMethod
+        case statusColorUp
+        case statusColorSlow
+        case statusColorFailure
+        case statusColorOffline
+        case menuMaxItems
+        case showMethodInMenu
+        case showResponseTimeInMenu
+        case showLastCheckedInMenu
+        case showStatusCodeInMenu
+        case hidePausedSitesInMenuBar
+        case showMenuIconStatusColor
+        case menuBarIconColorMode
+        case webhookEnabled
+        case webhookURL
+        case webhookMethod
+        case webhookSendOn
+        case webhookPayloadTemplate
+        case webhookMaxRetries
+        case webhookInitialBackoffSeconds
+        case webhookConfigs
+        case historyRetentionPolicy
+        case performanceTrendMetricVisibility
+        case historyRetentionMaxEvents
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.init()
+
+        pingIntervalSeconds = try container.decodeIfPresent(Int.self, forKey: .pingIntervalSeconds) ?? pingIntervalSeconds
+        launchAtLogin = try container.decodeIfPresent(Bool.self, forKey: .launchAtLogin) ?? launchAtLogin
+        showAlertBadgeOnDockIcon = try container.decodeIfPresent(Bool.self, forKey: .showAlertBadgeOnDockIcon) ?? showAlertBadgeOnDockIcon
+        pausePingWhen = try container.decodeIfPresent(PausePingMode.self, forKey: .pausePingWhen) ?? pausePingWhen
+        staggerRequestsSeconds = try container.decodeIfPresent(Int.self, forKey: .staggerRequestsSeconds) ?? staggerRequestsSeconds
+        failuresToAlert = try container.decodeIfPresent(Int.self, forKey: .failuresToAlert) ?? failuresToAlert
+        defaultThresholdMs = try container.decodeIfPresent(Int.self, forKey: .defaultThresholdMs) ?? defaultThresholdMs
+        defaultMethod = try container.decodeIfPresent(HTTPMethod.self, forKey: .defaultMethod) ?? defaultMethod
+        statusColorUp = try container.decodeIfPresent(CodableColor.self, forKey: .statusColorUp) ?? statusColorUp
+        statusColorSlow = try container.decodeIfPresent(CodableColor.self, forKey: .statusColorSlow) ?? statusColorSlow
+        statusColorFailure = try container.decodeIfPresent(CodableColor.self, forKey: .statusColorFailure) ?? statusColorFailure
+        statusColorOffline = try container.decodeIfPresent(CodableColor.self, forKey: .statusColorOffline) ?? statusColorOffline
+        menuMaxItems = try container.decodeIfPresent(Int.self, forKey: .menuMaxItems) ?? menuMaxItems
+        showMethodInMenu = try container.decodeIfPresent(Bool.self, forKey: .showMethodInMenu) ?? showMethodInMenu
+        showResponseTimeInMenu = try container.decodeIfPresent(Bool.self, forKey: .showResponseTimeInMenu) ?? showResponseTimeInMenu
+        showLastCheckedInMenu = try container.decodeIfPresent(Bool.self, forKey: .showLastCheckedInMenu) ?? showLastCheckedInMenu
+        showStatusCodeInMenu = try container.decodeIfPresent(Bool.self, forKey: .showStatusCodeInMenu) ?? showStatusCodeInMenu
+        hidePausedSitesInMenuBar = try container.decodeIfPresent(Bool.self, forKey: .hidePausedSitesInMenuBar) ?? hidePausedSitesInMenuBar
+        showMenuIconStatusColor = try container.decodeIfPresent(Bool.self, forKey: .showMenuIconStatusColor) ?? showMenuIconStatusColor
+        menuBarIconColorMode = try container.decodeIfPresent(MenuBarIconColorMode.self, forKey: .menuBarIconColorMode) ?? menuBarIconColorMode
+        webhookEnabled = try container.decodeIfPresent(Bool.self, forKey: .webhookEnabled) ?? webhookEnabled
+        webhookURL = try container.decodeIfPresent(String.self, forKey: .webhookURL) ?? webhookURL
+        webhookMethod = try container.decodeIfPresent(HTTPMethod.self, forKey: .webhookMethod) ?? webhookMethod
+        webhookSendOn = try container.decodeIfPresent(WebhookSendOn.self, forKey: .webhookSendOn) ?? webhookSendOn
+        webhookPayloadTemplate = try container.decodeIfPresent(String.self, forKey: .webhookPayloadTemplate) ?? webhookPayloadTemplate
+        webhookMaxRetries = try container.decodeIfPresent(Int.self, forKey: .webhookMaxRetries) ?? webhookMaxRetries
+        webhookInitialBackoffSeconds = try container.decodeIfPresent(Double.self, forKey: .webhookInitialBackoffSeconds) ?? webhookInitialBackoffSeconds
+        webhookConfigs = try container.decodeIfPresent([WebhookConfig].self, forKey: .webhookConfigs) ?? webhookConfigs
+        historyRetentionPolicy = try container.decodeIfPresent(HistoryRetentionPolicy.self, forKey: .historyRetentionPolicy) ?? historyRetentionPolicy
+        performanceTrendMetricVisibility = try container.decodeIfPresent(
+            PerformanceTrendMetricVisibility.self,
+            forKey: .performanceTrendMetricVisibility
+        ) ?? performanceTrendMetricVisibility
+        historyRetentionMaxEvents = try container.decodeIfPresent(Int.self, forKey: .historyRetentionMaxEvents) ?? historyRetentionMaxEvents
+    }
 }

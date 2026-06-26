@@ -54,22 +54,41 @@ struct HistoryReportsView: View {
                     metricCard(title: "Samples", value: "\(historyVM.graphEvents.count)", tint: .secondary)
                 }
 
-                GroupBox("Performance Trend (ms)") {
-                    VStack(alignment: .leading, spacing: 10) {
-                        HStack(spacing: 0) {
-                            compactMetric(title: "HIGHEST", value: historyVM.peakLatencyMs, tint: Color.red)
-                            compactMetric(title: "LOWEST", value: historyVM.performanceSamples.map(\.minMs).min() ?? 0, tint: Color.green)
-                            compactMetric(title: "AVERAGE", value: historyVM.averageLatencyMs, tint: Color.purple)
-                            compactMetric(title: "P95", value: historyVM.p95LatencyMs, tint: Color.teal)
-                            compactMetric(title: "P99", value: historyVM.p99LatencyMs, tint: Color.blue)
-                        }
-                        .background(
-                            RoundedRectangle(cornerRadius: 10)
-                                .fill(Color.secondary.opacity(0.08))
-                        )
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Performance Trend (ms)")
+                        .font(.headline)
+                        .foregroundStyle(.primary)
 
-                        Chart {
-                            ForEach(historyVM.performanceSamples) { sample in
+                    GroupBox {
+                        VStack(alignment: .leading, spacing: 10) {
+                            let visibility = appVM.settings.performanceTrendMetricVisibility
+
+                            if visibility.hasVisibleMetric {
+                                HStack(spacing: 0) {
+                                    if visibility.showHighest {
+                                        compactMetric(title: "HIGHEST", value: historyVM.peakLatencyMs, tint: Color.red)
+                                    }
+                                    if visibility.showLowest {
+                                        compactMetric(title: "LOWEST", value: historyVM.performanceSamples.map(\.minMs).min() ?? 0, tint: Color.green)
+                                    }
+                                    if visibility.showAverage {
+                                        compactMetric(title: "AVERAGE", value: historyVM.averageLatencyMs, tint: Color.purple)
+                                    }
+                                    if visibility.showP95 {
+                                        compactMetric(title: "P95", value: historyVM.p95LatencyMs, tint: Color.teal)
+                                    }
+                                    if visibility.showP99 {
+                                        compactMetric(title: "P99", value: historyVM.p99LatencyMs, tint: Color.blue)
+                                    }
+                                }
+                                .background(
+                                    RoundedRectangle(cornerRadius: 10)
+                                        .fill(Color.secondary.opacity(0.08))
+                                )
+                            }
+
+                            Chart {
+                                ForEach(historyVM.performanceSamples) { sample in
                             AreaMark(
                                 x: .value("Time", sample.timestamp),
                                 y: .value("Average ms", sample.avgMs)
@@ -97,13 +116,13 @@ struct HistoryReportsView: View {
                             )
                             .symbolSize(14)
                             .foregroundStyle(Color.blue.opacity(0.85))
-                            }
+                                }
 
-                            if Self.shouldRenderMetadataMarkers(
-                                for: historyVM.graphSite,
-                                isEnabled: showsMetadataMarkers
-                            ) {
-                                ForEach(historyVM.metadataMarkers) { marker in
+                                if Self.shouldRenderMetadataMarkers(
+                                    for: historyVM.graphSite,
+                                    isEnabled: showsMetadataMarkers
+                                ) {
+                                    ForEach(historyVM.metadataMarkers) { marker in
                                 RuleMark(x: .value("Metadata Change", marker.timestamp))
                                     .foregroundStyle(Color.orange.opacity(0.9))
                                     .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [4, 3]))
@@ -127,35 +146,36 @@ struct HistoryReportsView: View {
                                         )
                                         .offset(y: Self.metadataMarkerAnnotationYOffset)
                                     }
-                                }
-                            }
-                        }
-                        .chartYAxis {
-                            AxisMarks(position: .leading) { value in
-                                AxisGridLine(stroke: StrokeStyle(lineWidth: 1))
-                                    .foregroundStyle(.quaternary)
-                                AxisValueLabel {
-                                    if let ms = value.as(Int.self) {
-                                        Text("\(ms)ms")
                                     }
                                 }
                             }
-                        }
-                        .chartXAxis {
-                            AxisMarks(values: .automatic(desiredCount: 6)) { value in
-                                AxisGridLine(stroke: StrokeStyle(lineWidth: 1))
-                                    .foregroundStyle(.quaternary)
-                                switch Self.chartXAxisLabelStyle(for: historyVM.graphRange) {
-                                case .hourMinute:
-                                    AxisValueLabel(format: .dateTime.hour().minute())
-                                case .monthDay:
-                                    AxisValueLabel(format: .dateTime.day().month(.abbreviated))
+                            .chartYAxis {
+                                AxisMarks(position: .leading) { value in
+                                    AxisGridLine(stroke: StrokeStyle(lineWidth: 1))
+                                        .foregroundStyle(.quaternary)
+                                    AxisValueLabel {
+                                        if let ms = value.as(Int.self) {
+                                            Text("\(ms)ms")
+                                        }
+                                    }
                                 }
                             }
+                            .chartXAxis {
+                                AxisMarks(values: .automatic(desiredCount: 6)) { value in
+                                    AxisGridLine(stroke: StrokeStyle(lineWidth: 1))
+                                        .foregroundStyle(.quaternary)
+                                    switch Self.chartXAxisLabelStyle(for: historyVM.graphRange) {
+                                    case .hourMinute:
+                                        AxisValueLabel(format: .dateTime.hour().minute())
+                                    case .monthDay:
+                                        AxisValueLabel(format: .dateTime.day().month(.abbreviated))
+                                    }
+                                }
+                            }
+                            .chartXScale(domain: graphDateDomain)
+                            .chartLegend(.hidden)
+                            .frame(height: 260)
                         }
-                        .chartXScale(domain: graphDateDomain)
-                        .chartLegend(.hidden)
-                        .frame(height: 260)
                     }
                 }
 
