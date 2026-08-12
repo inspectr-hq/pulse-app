@@ -29,25 +29,25 @@ final class MenuBarContentViewTests: XCTestCase {
     func testAccessoryActionUsesBrowserForGetMonitors() {
         let monitor = SiteMonitor(url: URL(string: "https://example.com")!, displayName: "Example", method: .get)
 
-        let action = MenuBarContentView.accessoryAction(for: monitor)
+        let actions = MenuBarContentView.accessoryActions(for: monitor)
 
-        XCTAssertEqual(action, .openURL)
+        XCTAssertEqual(actions, [.openDashboard, .openURL])
     }
 
     func testAccessoryActionUsesCurlForPostMonitors() {
         let monitor = SiteMonitor(url: URL(string: "https://example.com/webhook")!, displayName: "Webhook", method: .post)
 
-        let action = MenuBarContentView.accessoryAction(for: monitor)
+        let actions = MenuBarContentView.accessoryActions(for: monitor)
 
-        XCTAssertEqual(action, .copyCurl)
+        XCTAssertEqual(actions, [.openDashboard, .copyCurl])
     }
 
     func testAccessoryActionUsesCurlForHeadMonitors() {
         let monitor = SiteMonitor(url: URL(string: "https://example.com/health")!, displayName: "Health", method: .head)
 
-        let action = MenuBarContentView.accessoryAction(for: monitor)
+        let actions = MenuBarContentView.accessoryActions(for: monitor)
 
-        XCTAssertEqual(action, .copyCurl)
+        XCTAssertEqual(actions, [.openDashboard, .copyCurl])
     }
 
     func testCurlCommandIncludesMethodHeadersBodyAndURL() {
