@@ -3,6 +3,38 @@ import XCTest
 
 @MainActor
 final class HistoryViewModelAnalyticsTests: XCTestCase {
+    func testDashboardDefaultsToLast30Days() {
+        let vm = HistoryViewModel(store: StubHistoryStore(events: []))
+
+        XCTAssertEqual(vm.graphRange, .last30d)
+    }
+
+    func testTimeRangesExposeGranularDurations() {
+        XCTAssertEqual(HistoryViewModel.TimeFilter.last1h.duration, 3_600)
+        XCTAssertEqual(HistoryViewModel.TimeFilter.last2h.duration, 7_200)
+        XCTAssertEqual(HistoryViewModel.TimeFilter.last6h.duration, 21_600)
+        XCTAssertEqual(HistoryViewModel.TimeFilter.last12h.duration, 43_200)
+        XCTAssertEqual(HistoryViewModel.TimeFilter.last48h.duration, 172_800)
+        XCTAssertEqual(HistoryViewModel.TimeFilter.last3d.duration, 259_200)
+        XCTAssertEqual(HistoryViewModel.TimeFilter.last5d.duration, 432_000)
+        XCTAssertEqual(HistoryViewModel.TimeFilter.last14d.duration, 1_209_600)
+        XCTAssertEqual(HistoryViewModel.TimeFilter.last60d.duration, 5_184_000)
+    }
+
+    func testFilteredEventsCanBeLimitedToLastHour() {
+        let now = Date()
+        let monitor = UUID()
+        let events: [HistoryEvent] = [
+            HistoryEvent(timestamp: now.addingTimeInterval(-30 * 60), monitorID: monitor, monitorName: "Site A", url: "https://a.dev/recent", method: "GET", status: "OK", statusCode: 200, durationMs: 120, reason: nil, trigger: .automatic),
+            HistoryEvent(timestamp: now.addingTimeInterval(-90 * 60), monitorID: monitor, monitorName: "Site A", url: "https://a.dev/old", method: "GET", status: "OK", statusCode: 200, durationMs: 120, reason: nil, trigger: .automatic)
+        ]
+
+        let vm = HistoryViewModel(store: StubHistoryStore(events: events))
+        vm.timeFilter = .last1h
+
+        XCTAssertEqual(vm.filteredEvents.map(\.url), ["https://a.dev/recent"])
+    }
+
     func testFilteredEventsCanBeLimitedToUpStatus() {
         let now = Date()
         let monitor = UUID()

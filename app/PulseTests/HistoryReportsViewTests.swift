@@ -111,6 +111,10 @@ final class HistoryReportsViewTests: XCTestCase {
             HistoryReportsView.chartXAxisLabelStyle(for: .last24h),
             .hourMinute
         )
+        XCTAssertEqual(
+            HistoryReportsView.chartXAxisLabelStyle(for: .last1h),
+            .hourMinute
+        )
     }
 
     func testChartXAxisLabelStyleUsesDateForLongerRanges() {
@@ -124,6 +128,10 @@ final class HistoryReportsViewTests: XCTestCase {
         )
         XCTAssertEqual(
             HistoryReportsView.chartXAxisLabelStyle(for: .last90d),
+            .monthDay
+        )
+        XCTAssertEqual(
+            HistoryReportsView.chartXAxisLabelStyle(for: .last60d),
             .monthDay
         )
     }

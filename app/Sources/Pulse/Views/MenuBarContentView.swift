@@ -71,7 +71,7 @@ struct MenuBarContentView: View {
                         }
                     }
                     
-                    if let monitorAction = Self.accessoryAction(for: monitor) {
+                    ForEach(Self.accessoryActions(for: monitor), id: \.self) { monitorAction in
                         Button {
                             performAccessoryAction(for: monitor, action: monitorAction)
                         } label: {
@@ -205,12 +205,14 @@ struct MenuBarContentView: View {
         return formatter.string(from: date)
     }
 
-    enum MenuBarAccessoryAction {
+    enum MenuBarAccessoryAction: Hashable {
+        case openDashboard
         case openURL
         case copyCurl
 
         var iconName: String {
             switch self {
+            case .openDashboard: return "chart.xyaxis.line"
             case .openURL: return "safari"
             case .copyCurl: return "terminal"
             }
@@ -218,23 +220,28 @@ struct MenuBarContentView: View {
 
         var helpText: String {
             switch self {
+            case .openDashboard: return "Open dashboard for this site"
             case .openURL: return "Open in browser"
             case .copyCurl: return "Copy curl command"
             }
         }
     }
 
-    static func accessoryAction(for monitor: SiteMonitor) -> MenuBarAccessoryAction? {
+    static func accessoryActions(for monitor: SiteMonitor) -> [MenuBarAccessoryAction] {
+        let webAction: MenuBarAccessoryAction
         switch monitor.method {
         case .get:
-            return .openURL
+            webAction = .openURL
         case .post, .head:
-            return .copyCurl
+            webAction = .copyCurl
         }
+        return [.openDashboard, webAction]
     }
 
     private func performAccessoryAction(for monitor: SiteMonitor, action: MenuBarAccessoryAction) {
         switch action {
+        case .openDashboard:
+            WindowManager.shared.showHistoryReports(appVM: vm, graphSite: monitor.nameOrHost)
         case .openURL:
             NSWorkspace.shared.open(monitor.url)
         case .copyCurl:
