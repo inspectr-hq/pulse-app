@@ -4,12 +4,40 @@ import Foundation
 final class HistoryViewModel: ObservableObject {
     enum TimeFilter: String, CaseIterable, Identifiable {
         case allTime = "All Time"
+        case last1h = "Last 1h"
+        case last2h = "Last 2h"
+        case last6h = "Last 6h"
+        case last12h = "Last 12h"
         case last24h = "Last 24h"
+        case last48h = "Last 48h"
+        case last3d = "Last 3d"
+        case last5d = "Last 5d"
         case last7d = "Last 7d"
+        case last14d = "Last 14d"
         case last30d = "Last 30d"
+        case last60d = "Last 60d"
         case last90d = "Last 90d"
 
         var id: String { rawValue }
+
+        var duration: TimeInterval? {
+            switch self {
+            case .allTime: return nil
+            case .last1h: return 3_600
+            case .last2h: return 7_200
+            case .last6h: return 21_600
+            case .last12h: return 43_200
+            case .last24h: return 86_400
+            case .last48h: return 172_800
+            case .last3d: return 259_200
+            case .last5d: return 432_000
+            case .last7d: return 604_800
+            case .last14d: return 1_209_600
+            case .last30d: return 2_592_000
+            case .last60d: return 5_184_000
+            case .last90d: return 7_776_000
+            }
+        }
     }
 
     enum StatusFilter: String, CaseIterable, Identifiable {
@@ -21,18 +49,36 @@ final class HistoryViewModel: ObservableObject {
     }
 
     enum GraphRange: String, CaseIterable, Identifiable {
+        case last1h = "1h"
+        case last2h = "2h"
+        case last6h = "6h"
+        case last12h = "12h"
         case last24h = "24h"
+        case last48h = "48h"
+        case last3d = "3d"
+        case last5d = "5d"
         case last7d = "7d"
+        case last14d = "14d"
         case last30d = "30d"
+        case last60d = "60d"
         case last90d = "90d"
 
         var id: String { rawValue }
 
         var duration: TimeInterval {
             switch self {
+            case .last1h: return 3_600
+            case .last2h: return 7_200
+            case .last6h: return 21_600
+            case .last12h: return 43_200
             case .last24h: return 86_400
+            case .last48h: return 172_800
+            case .last3d: return 259_200
+            case .last5d: return 432_000
             case .last7d: return 604_800
+            case .last14d: return 1_209_600
             case .last30d: return 2_592_000
+            case .last60d: return 5_184_000
             case .last90d: return 7_776_000
             }
         }
@@ -159,10 +205,7 @@ final class HistoryViewModel: ObservableObject {
             let byTime: Bool
             switch timeFilter {
             case .allTime: byTime = true
-            case .last24h: byTime = event.timestamp >= now.addingTimeInterval(-86400)
-            case .last7d: byTime = event.timestamp >= now.addingTimeInterval(-604800)
-            case .last30d: byTime = event.timestamp >= now.addingTimeInterval(-2592000)
-            case .last90d: byTime = event.timestamp >= now.addingTimeInterval(-7776000)
+            default: byTime = event.timestamp >= now.addingTimeInterval(-(timeFilter.duration ?? 0))
             }
             return bySearch && byMonitor && byName && byStatus && byTime
         }
@@ -258,10 +301,10 @@ final class HistoryViewModel: ObservableObject {
 
         let bucketCount: Int
         switch graphRange {
-        case .last24h: bucketCount = 36
-        case .last7d: bucketCount = 56
-        case .last30d: bucketCount = 72
-        case .last90d: bucketCount = 90
+        case .last1h, .last2h, .last6h, .last12h, .last24h: bucketCount = 36
+        case .last48h, .last3d, .last5d, .last7d: bucketCount = 56
+        case .last14d, .last30d: bucketCount = 72
+        case .last60d, .last90d: bucketCount = 90
         }
 
         let end = Date()
@@ -397,10 +440,10 @@ final class HistoryViewModel: ObservableObject {
     private func uptimeBuckets(from events: [HistoryEvent], thresholdMs: Int, referenceDate: Date) -> [UptimeBucket] {
         let blockCount: Int
         switch graphRange {
-        case .last24h: blockCount = 24
-        case .last7d: blockCount = 42
-        case .last30d: blockCount = 60
-        case .last90d: blockCount = 90
+        case .last1h, .last2h, .last6h, .last12h, .last24h: blockCount = 24
+        case .last48h, .last3d, .last5d, .last7d: blockCount = 42
+        case .last14d, .last30d: blockCount = 60
+        case .last60d, .last90d: blockCount = 90
         }
 
         let timeline = events.sorted(by: { $0.timestamp < $1.timestamp })

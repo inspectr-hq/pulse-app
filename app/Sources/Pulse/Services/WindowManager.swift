@@ -130,11 +130,14 @@ final class WindowManager {
         logger.info("showHistory created and opened window")
     }
 
-    func showHistoryReports(appVM: AppViewModel) {
+    func showHistoryReports(appVM: AppViewModel, graphSite: String? = nil) {
         logger.info("showHistoryReports called")
         updateActivationPolicy()
         if let window = historyReportsWindow {
             logger.info("showHistoryReports reusing existing window")
+            if let graphSite {
+                window.contentView = NSHostingView(rootView: HistoryReportsView(graphSite: graphSite).environmentObject(appVM))
+            }
             if window.isMiniaturized {
                 window.deminiaturize(nil)
             }
@@ -142,10 +145,11 @@ final class WindowManager {
             window.makeKeyAndOrderFront(nil)
             NSApp.unhide(nil)
             NSApp.activate(ignoringOtherApps: true)
+            refocusDashboardWindow(window)
             return
         }
 
-        let view = HistoryReportsView().environmentObject(appVM)
+        let view = HistoryReportsView(graphSite: graphSite).environmentObject(appVM)
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 1040, height: 640),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
@@ -168,7 +172,18 @@ final class WindowManager {
         window.orderFrontRegardless()
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+        refocusDashboardWindow(window)
         logger.info("showHistoryReports created and opened window")
+    }
+
+    private func refocusDashboardWindow(_ window: NSWindow) {
+        DispatchQueue.main.async { [weak window] in
+            guard let window else { return }
+            NSApp.unhide(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            window.orderFrontRegardless()
+            window.makeKeyAndOrderFront(nil)
+        }
     }
 
     func showSettings(appVM: AppViewModel) {

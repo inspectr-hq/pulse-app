@@ -15,6 +15,14 @@ struct HistoryReportsView: View {
     @State private var showsMetadataMarkers = Self.metadataMarkersEnabledByDefault
     @EnvironmentObject var appVM: AppViewModel
 
+    init(graphSite: String? = nil) {
+        let viewModel = HistoryViewModel()
+        if let graphSite {
+            viewModel.graphSite = graphSite
+        }
+        _historyVM = StateObject(wrappedValue: viewModel)
+    }
+
     var body: some View {
         let graphDateDomain = historyVM.graphDateDomain()
         let metadataMarkerToggleEnabled = Self.shouldShowMetadataMarkers(for: historyVM.graphSite)
@@ -356,19 +364,23 @@ struct HistoryReportsView: View {
     }
 
     private var rangeStartLabel: String {
-        switch historyVM.graphRange {
-        case .last24h: return "24h ago"
-        case .last7d: return "7d ago"
-        case .last30d: return "30d ago"
-        case .last90d: return "90d ago"
-        }
+        "\(historyVM.graphRange.rawValue) ago"
     }
 
     private func historyTimeFilter(for range: HistoryViewModel.GraphRange) -> HistoryViewModel.TimeFilter {
         switch range {
+        case .last1h: return .last1h
+        case .last2h: return .last2h
+        case .last6h: return .last6h
+        case .last12h: return .last12h
         case .last24h: return .last24h
+        case .last48h: return .last48h
+        case .last3d: return .last3d
+        case .last5d: return .last5d
         case .last7d: return .last7d
+        case .last14d: return .last14d
         case .last30d: return .last30d
+        case .last60d: return .last60d
         case .last90d: return .last90d
         }
     }
@@ -400,9 +412,9 @@ struct HistoryReportsView: View {
 
     static func chartXAxisLabelStyle(for range: HistoryViewModel.GraphRange) -> ChartXAxisLabelStyle {
         switch range {
-        case .last24h:
+        case .last1h, .last2h, .last6h, .last12h, .last24h:
             return .hourMinute
-        case .last7d, .last30d, .last90d:
+        case .last48h, .last3d, .last5d, .last7d, .last14d, .last30d, .last60d, .last90d:
             return .monthDay
         }
     }
@@ -592,10 +604,10 @@ private struct UptimeTimelineRow: View {
     private func bucketPeriodLabel(_ bucket: HistoryViewModel.UptimeBucket, range: HistoryViewModel.GraphRange) -> String {
         let formatter = DateFormatter()
         switch range {
-        case .last24h:
+        case .last1h, .last2h, .last6h, .last12h, .last24h:
             formatter.dateStyle = .none
             formatter.timeStyle = .short
-        case .last7d, .last30d, .last90d:
+        case .last48h, .last3d, .last5d, .last7d, .last14d, .last30d, .last60d, .last90d:
             formatter.dateStyle = .medium
             formatter.timeStyle = .none
         }
