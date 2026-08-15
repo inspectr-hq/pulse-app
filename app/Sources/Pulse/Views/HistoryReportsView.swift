@@ -10,6 +10,7 @@ struct HistoryReportsView: View {
     static let metadataMarkersEnabledByDefault = true
     static let metadataMarkerAnnotationYOffset: CGFloat = 32
     static let metadataMarkerBackgroundOpacity: Double = 0.78
+    static let rangePickerWidth: CGFloat = 120
 
     @StateObject private var historyVM = HistoryViewModel()
     @State private var showsMetadataMarkers = Self.metadataMarkersEnabledByDefault
@@ -44,7 +45,7 @@ struct HistoryReportsView: View {
                         Text(range.rawValue).tag(range)
                     }
                 }
-                .frame(width: 100)
+                .frame(width: Self.rangePickerWidth)
                 Toggle("Markers", isOn: $showsMetadataMarkers)
                     .toggleStyle(.switch)
                     .disabled(!metadataMarkerToggleEnabled)

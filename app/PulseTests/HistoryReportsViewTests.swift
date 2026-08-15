@@ -2,6 +2,10 @@ import XCTest
 @testable import Pulse
 
 final class HistoryReportsViewTests: XCTestCase {
+    func testRangePickerHasRoomForRangeLabels() {
+        XCTAssertEqual(HistoryReportsView.rangePickerWidth, 120)
+    }
+
     func testHistoryMetadataTextCombinesLabelAndValue() {
         let event = HistoryEvent(
             timestamp: Date(timeIntervalSince1970: 1_700_000_000),
