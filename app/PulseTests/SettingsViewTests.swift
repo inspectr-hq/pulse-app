@@ -25,6 +25,18 @@ final class SettingsViewTests: XCTestCase {
         XCTAssertTrue(settings.performanceTrendMetricVisibility.hasVisibleMetric)
     }
 
+    func testHistoryRetentionMaxEventsUsesGenerousDefault() {
+        XCTAssertEqual(AppSettings().historyRetentionMaxEvents, 100_000)
+    }
+
+    func testHistoryRetentionMaxEventsCanBePersistedInSettings() throws {
+        let json = "{\"historyRetentionMaxEvents\": 250000}"
+
+        let settings = try JSONDecoder().decode(AppSettings.self, from: Data(json.utf8))
+
+        XCTAssertEqual(settings.historyRetentionMaxEvents, 250_000)
+    }
+
     func testAppSettingsDecodesWithoutPerformanceTrendMetricVisibility() throws {
         let json = """
         {

@@ -156,8 +156,8 @@ struct AppSettings: Codable, Equatable {
     var webhookConfigs: [WebhookConfig] = []
     var historyRetentionPolicy: HistoryRetentionPolicy = .oneMonth
     var performanceTrendMetricVisibility = PerformanceTrendMetricVisibility()
-    // Legacy fallback cap retained for compatibility with old persisted settings.
-    var historyRetentionMaxEvents: Int = 5000
+    // Safety cap for the total number of persisted history events.
+    var historyRetentionMaxEvents: Int = 100_000
 
     init() {}
 

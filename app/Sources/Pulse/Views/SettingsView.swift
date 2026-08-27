@@ -151,6 +151,17 @@ struct SettingsView: View {
                 .help("Automatically removes older history events using a rolling time window.")
             }
 
+            alignedRow("History Event Limit:") {
+                HStack(spacing: 8) {
+                    TextField("100000", value: $vm.settings.historyRetentionMaxEvents, format: .number)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 100)
+                    Text("events total")
+                        .foregroundStyle(.secondary)
+                }
+                .help("Keeps the newest events when the history reaches this total limit.")
+            }
+
             Divider()
                 .frame(width: 427)
                 .frame(maxWidth: .infinity, alignment: .center)
