@@ -28,7 +28,8 @@ struct SettingsView: View {
     @EnvironmentObject var vm: AppViewModel
     @State private var selectedTab: Tab = .general
     @State private var selectedWebhookID: UUID?
-    private let compactWindowSize = NSSize(width: 720, height: 720)
+    private let generalWindowSize = NSSize(width: 720, height: 720)
+    private let compactWindowSize = NSSize(width: 720, height: 620)
     private let webhooksWindowSize = NSSize(width: 840, height: 760)
     
     var body: some View {
@@ -86,8 +87,8 @@ struct SettingsView: View {
         }
         .frame(minWidth: 600, minHeight: 620)
         .frame(
-            minWidth: selectedTab == .webhooks ? webhooksWindowSize.width : compactWindowSize.width,
-            minHeight: selectedTab == .webhooks ? webhooksWindowSize.height : compactWindowSize.height
+            minWidth: windowSize(for: selectedTab).width,
+            minHeight: windowSize(for: selectedTab).height
         )
         .onDisappear { vm.saveSettings() }
     }
@@ -761,7 +762,7 @@ struct SettingsView: View {
     }
 
     private func resizeWindow(for tab: Tab) {
-        let targetSize = tab == .webhooks ? webhooksWindowSize : compactWindowSize
+        let targetSize = windowSize(for: tab)
         DispatchQueue.main.async {
             guard let window = NSApp.keyWindow ?? NSApp.mainWindow else { return }
             var frame = window.frame
@@ -773,6 +774,14 @@ struct SettingsView: View {
                 y: topEdge - targetSize.height
             )
             window.setFrame(frame, display: true, animate: true)
+        }
+    }
+
+    private func windowSize(for tab: Tab) -> NSSize {
+        switch tab {
+        case .general: return generalWindowSize
+        case .webhooks: return webhooksWindowSize
+        case .menuBar, .about: return compactWindowSize
         }
     }
 }
