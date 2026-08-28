@@ -39,6 +39,17 @@ final class HistoryViewModelAnalyticsTests: XCTestCase {
         XCTAssertEqual(HistoryViewModel.uptimeTimelineBucketCount(for: .last30d), 30)
     }
 
+    func testUptimeTimelinesExposeDailyBlocksForThirtyDays() {
+        let event = HistoryEvent(
+            timestamp: Date(), monitorID: UUID(), monitorName: "Site A", url: "https://a.dev", method: "GET",
+            status: "OK", statusCode: 200, durationMs: 100, reason: nil, trigger: .automatic
+        )
+        let vm = HistoryViewModel(store: StubHistoryStore(events: [event]))
+        vm.graphRange = .last30d
+
+        XCTAssertEqual(vm.uptimeTimelines(thresholdMs: 2_000).first?.blocks.count, 30)
+    }
+
     func testFilteredEventsCanBeLimitedToLastHour() {
         let now = Date()
         let monitor = UUID()

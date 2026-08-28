@@ -471,13 +471,7 @@ final class HistoryViewModel: ObservableObject {
     }
 
     private func uptimeBuckets(from events: [HistoryEvent], thresholdMs: Int, referenceDate: Date) -> [UptimeBucket] {
-        let blockCount: Int
-        switch graphRange {
-        case .last1h, .last2h, .last6h, .last12h, .last24h: blockCount = 24
-        case .last48h, .last3d, .last5d, .last7d: blockCount = 42
-        case .last14d, .last30d: blockCount = 60
-        case .last60d, .last90d: blockCount = 90
-        }
+        let blockCount = uptimeBlockCount
 
         let timeline = events.sorted(by: { $0.timestamp < $1.timestamp })
 
