@@ -21,6 +21,24 @@ final class HistoryViewModelAnalyticsTests: XCTestCase {
         XCTAssertEqual(HistoryViewModel.TimeFilter.last60d.duration, 5_184_000)
     }
 
+    func testUptimeTimelineUsesPredictableBucketGranularity() {
+        XCTAssertEqual(HistoryViewModel.uptimeTimelineGranularity(for: .last24h), .hour)
+        XCTAssertEqual(HistoryViewModel.uptimeTimelineGranularity(for: .last48h), .sixHours)
+        XCTAssertEqual(HistoryViewModel.uptimeTimelineGranularity(for: .last3d), .sixHours)
+        XCTAssertEqual(HistoryViewModel.uptimeTimelineGranularity(for: .last7d), .sixHours)
+        XCTAssertEqual(HistoryViewModel.uptimeTimelineGranularity(for: .last14d), .day)
+        XCTAssertEqual(HistoryViewModel.uptimeTimelineGranularity(for: .last90d), .day)
+    }
+
+    func testUptimeTimelineUsesExpectedNumberOfBuckets() {
+        XCTAssertEqual(HistoryViewModel.uptimeTimelineBucketCount(for: .last24h), 24)
+        XCTAssertEqual(HistoryViewModel.uptimeTimelineBucketCount(for: .last48h), 8)
+        XCTAssertEqual(HistoryViewModel.uptimeTimelineBucketCount(for: .last3d), 12)
+        XCTAssertEqual(HistoryViewModel.uptimeTimelineBucketCount(for: .last7d), 28)
+        XCTAssertEqual(HistoryViewModel.uptimeTimelineBucketCount(for: .last14d), 14)
+        XCTAssertEqual(HistoryViewModel.uptimeTimelineBucketCount(for: .last30d), 30)
+    }
+
     func testFilteredEventsCanBeLimitedToLastHour() {
         let now = Date()
         let monitor = UUID()

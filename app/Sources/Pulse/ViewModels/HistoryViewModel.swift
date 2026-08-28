@@ -84,6 +84,35 @@ final class HistoryViewModel: ObservableObject {
         }
     }
 
+    enum UptimeTimelineGranularity: Equatable {
+        case hour
+        case sixHours
+        case day
+
+        var duration: TimeInterval {
+            switch self {
+            case .hour: return 3_600
+            case .sixHours: return 21_600
+            case .day: return 86_400
+            }
+        }
+    }
+
+    static func uptimeTimelineGranularity(for range: GraphRange) -> UptimeTimelineGranularity {
+        switch range {
+        case .last1h, .last2h, .last6h, .last12h, .last24h:
+            return .hour
+        case .last48h, .last3d, .last5d, .last7d:
+            return .sixHours
+        case .last14d, .last30d, .last60d, .last90d:
+            return .day
+        }
+    }
+
+    static func uptimeTimelineBucketCount(for range: GraphRange) -> Int {
+        Int(range.duration / uptimeTimelineGranularity(for: range).duration)
+    }
+
     struct LatencyPoint: Identifiable {
         let id = UUID()
         let timestamp: Date
@@ -417,12 +446,7 @@ final class HistoryViewModel: ObservableObject {
     }
 
     private var uptimeBlockCount: Int {
-        switch graphRange {
-        case .last1h, .last2h, .last6h, .last12h, .last24h: return 24
-        case .last48h, .last3d, .last5d, .last7d: return 42
-        case .last14d, .last30d: return 60
-        case .last60d, .last90d: return 90
-        }
+        Self.uptimeTimelineBucketCount(for: graphRange)
     }
 
     private func uptimeBuckets(from aggregates: [HistoryUptimeBucket], referenceDate: Date) -> [UptimeBucket] {

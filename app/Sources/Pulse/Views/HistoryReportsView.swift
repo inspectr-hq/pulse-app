@@ -604,11 +604,14 @@ private struct UptimeTimelineRow: View {
 
     private func bucketPeriodLabel(_ bucket: HistoryViewModel.UptimeBucket, range: HistoryViewModel.GraphRange) -> String {
         let formatter = DateFormatter()
-        switch range {
-        case .last1h, .last2h, .last6h, .last12h, .last24h:
+        switch HistoryViewModel.uptimeTimelineGranularity(for: range) {
+        case .hour:
             formatter.dateStyle = .none
             formatter.timeStyle = .short
-        case .last48h, .last3d, .last5d, .last7d, .last14d, .last30d, .last60d, .last90d:
+        case .sixHours:
+            formatter.dateStyle = .medium
+            formatter.timeStyle = .short
+        case .day:
             formatter.dateStyle = .medium
             formatter.timeStyle = .none
         }
