@@ -3,6 +3,8 @@ import SwiftUI
 struct HistoryView: View {
     static let refreshButtonSymbolName = "arrow.clockwise"
     static let refreshButtonHelpText = "Refresh history"
+    static let namePickerWidth: CGFloat = 220
+    static let searchFieldWidth: CGFloat = 180
 
     @StateObject private var historyVM: HistoryViewModel
     @EnvironmentObject var appVM: AppViewModel
@@ -41,7 +43,7 @@ struct HistoryView: View {
                         Text(name).tag(name)
                     }
                 }
-                .frame(width: 170)
+                .frame(width: Self.namePickerWidth)
                 Picker("Status", selection: $historyVM.statusFilter) {
                     ForEach(HistoryViewModel.StatusFilter.allCases) { status in
                         Text(status.rawValue).tag(status)
@@ -49,6 +51,7 @@ struct HistoryView: View {
                 }
                 .frame(width: 100)
                 TextField("Search", text: $historyVM.search)
+                    .frame(width: Self.searchFieldWidth)
                 Button("Export CSV") {
                     let panel = NSSavePanel()
                     panel.nameFieldStringValue = defaultCSVFileName()

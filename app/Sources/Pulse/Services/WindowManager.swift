@@ -151,7 +151,7 @@ final class WindowManager {
 
         let view = HistoryReportsView(graphSite: graphSite).environmentObject(appVM)
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 1040, height: 640),
+            contentRect: NSRect(x: 0, y: 0, width: 1040, height: 660),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
             defer: false

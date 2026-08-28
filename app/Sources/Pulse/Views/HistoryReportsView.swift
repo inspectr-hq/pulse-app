@@ -215,7 +215,8 @@ struct HistoryReportsView: View {
                                 rangeStartLabel: rangeStartLabel,
                                 upColor: appVM.settings.statusColorUp.color,
                                 downColor: appVM.settings.statusColorFailure.color,
-                                degradedColor: appVM.settings.statusColorSlow.color,
+                                warningColor: appVM.settings.statusColorWarning.color,
+                                degradedColor: appVM.settings.statusColorDegraded.color,
                                 noDataColor: appVM.settings.statusColorOffline.color.opacity(0.35)
                             ) {
                                 WindowManager.shared.showHistory(
@@ -320,7 +321,7 @@ struct HistoryReportsView: View {
         case .down:
             return appVM.settings.statusColorFailure.color
         case .checking:
-            return appVM.settings.statusColorSlow.color
+            return appVM.settings.statusColorWarning.color
         case .paused:
             return appVM.settings.statusColorOffline.color
         case .unknown:
@@ -456,6 +457,7 @@ private struct UptimeTimelineRow: View {
     let rangeStartLabel: String
     let upColor: Color
     let downColor: Color
+    let warningColor: Color
     let degradedColor: Color
     let noDataColor: Color
     let onSelect: () -> Void
@@ -604,11 +606,14 @@ private struct UptimeTimelineRow: View {
 
     private func bucketPeriodLabel(_ bucket: HistoryViewModel.UptimeBucket, range: HistoryViewModel.GraphRange) -> String {
         let formatter = DateFormatter()
-        switch range {
-        case .last1h, .last2h, .last6h, .last12h, .last24h:
+        switch HistoryViewModel.uptimeTimelineGranularity(for: range) {
+        case .fiveMinutes, .tenMinutes, .thirtyMinutes, .hour:
             formatter.dateStyle = .none
             formatter.timeStyle = .short
-        case .last48h, .last3d, .last5d, .last7d, .last14d, .last30d, .last60d, .last90d:
+        case .threeHours, .sixHours:
+            formatter.dateStyle = .medium
+            formatter.timeStyle = .short
+        case .day:
             formatter.dateStyle = .medium
             formatter.timeStyle = .none
         }
@@ -619,6 +624,7 @@ private struct UptimeTimelineRow: View {
         switch status {
         case .up: return "Up"
         case .down: return "Downtime"
+        case .warning: return "Warning"
         case .degraded: return "Degraded"
         case .noData: return "No Data"
         }
@@ -628,6 +634,7 @@ private struct UptimeTimelineRow: View {
         switch status {
         case .up: return "checkmark.circle.fill"
         case .down: return "xmark.octagon.fill"
+        case .warning: return "exclamationmark.circle.fill"
         case .degraded: return "exclamationmark.triangle.fill"
         case .noData: return "questionmark.circle.fill"
         }
@@ -639,6 +646,8 @@ private struct UptimeTimelineRow: View {
             return upColor
         case .down:
             return downColor
+        case .warning:
+            return warningColor
         case .degraded:
             return degradedColor
         case .noData:

@@ -6,6 +6,11 @@ final class HistoryReportsViewTests: XCTestCase {
         XCTAssertEqual(HistoryReportsView.rangePickerWidth, 120)
     }
 
+    func testHistoryFilterWidthsPrioritizeNameOverSearch() {
+        XCTAssertGreaterThan(HistoryView.namePickerWidth, 170)
+        XCTAssertEqual(HistoryView.searchFieldWidth, 180)
+    }
+
     func testHistoryMetadataTextCombinesLabelAndValue() {
         let event = HistoryEvent(
             timestamp: Date(timeIntervalSince1970: 1_700_000_000),

@@ -683,6 +683,10 @@ private final class SpyHistoryStore: HistoryStoreProtocol {
         events.append(event)
     }
 
+    func merge(_ events: [HistoryEvent], retentionPolicy: HistoryRetentionPolicy, maxEvents: Int) {
+        self.events.append(contentsOf: events)
+    }
+
     func replaceAll(with events: [HistoryEvent]) {
         self.events = events
     }

@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import UniformTypeIdentifiers
 
 struct SettingsView: View {
     enum Tab: String, CaseIterable, Identifiable {
@@ -23,10 +24,12 @@ struct SettingsView: View {
     static let appDisplayName = "Pulse"
     static let githubURL = URL(string: "https://github.com/inspectr-hq/pulse-app")!
     static let inspectrURL = URL(string: "https://inspectr.dev")!
+    static let statusColorLabelWidth: CGFloat = 80
     
     @EnvironmentObject var vm: AppViewModel
     @State private var selectedTab: Tab = .general
     @State private var selectedWebhookID: UUID?
+    private let generalWindowSize = NSSize(width: 720, height: 720)
     private let compactWindowSize = NSSize(width: 720, height: 620)
     private let webhooksWindowSize = NSSize(width: 840, height: 760)
     
@@ -85,8 +88,8 @@ struct SettingsView: View {
         }
         .frame(minWidth: 600, minHeight: 620)
         .frame(
-            minWidth: selectedTab == .webhooks ? webhooksWindowSize.width : compactWindowSize.width,
-            minHeight: selectedTab == .webhooks ? webhooksWindowSize.height : compactWindowSize.height
+            minWidth: windowSize(for: selectedTab).width,
+            minHeight: windowSize(for: selectedTab).height
         )
         .onDisappear { vm.saveSettings() }
     }
@@ -138,6 +141,10 @@ struct SettingsView: View {
                 }
                 .frame(width: 220, alignment: .leading)
             }
+
+            Divider()
+                .frame(width: 427)
+                .frame(maxWidth: .infinity, alignment: .center)
 
             alignedRow("History Retention:") {
                 Picker("", selection: $vm.settings.historyRetentionPolicy) {
@@ -202,6 +209,18 @@ struct SettingsView: View {
                 .toggleStyle(.checkbox)
                 .help("Controls which summary metrics appear in the Performance Trend card.")
             }
+
+            Divider()
+                .frame(width: 427)
+                .frame(maxWidth: .infinity, alignment: .center)
+
+            alignedRow("Full Backup:") {
+                HStack(spacing: 10) {
+                    Button("Export Full Backup…") { exportFullBackup() }
+                    Button("Import Full Backup…") { importFullBackup() }
+                }
+                .help("Exports or restores monitors, settings, and complete history.")
+            }
         }
         .padding(.top, 6)
     }
@@ -243,15 +262,19 @@ struct SettingsView: View {
                 .frame(width: 400)
                 .padding(.leading, 80)
 
-            alignedRow("Status Colors:") {
+            alignedRow("Status Colors:", alignment: .top) {
                 VStack(alignment: .leading, spacing: 10) {
                     statusColorPickerRow("Up", color: Binding(
                         get: { vm.settings.statusColorUp.color },
                         set: { vm.settings.statusColorUp = codableColor(from: $0, fallback: vm.settings.statusColorUp) }
                     ))
-                    statusColorPickerRow("Slow", color: Binding(
-                        get: { vm.settings.statusColorSlow.color },
-                        set: { vm.settings.statusColorSlow = codableColor(from: $0, fallback: vm.settings.statusColorSlow) }
+                    statusColorPickerRow("Warning", color: Binding(
+                        get: { vm.settings.statusColorWarning.color },
+                        set: { vm.settings.statusColorWarning = codableColor(from: $0, fallback: vm.settings.statusColorWarning) }
+                    ))
+                    statusColorPickerRow("Degraded", color: Binding(
+                        get: { vm.settings.statusColorDegraded.color },
+                        set: { vm.settings.statusColorDegraded = codableColor(from: $0, fallback: vm.settings.statusColorDegraded) }
                     ))
                     statusColorPickerRow("Failure", color: Binding(
                         get: { vm.settings.statusColorFailure.color },
@@ -544,8 +567,12 @@ struct SettingsView: View {
     }
     
     @ViewBuilder
-    private func alignedRow<Content: View>(_ label: String, @ViewBuilder content: () -> Content) -> some View {
-            HStack(alignment: .center, spacing: 12) {
+    private func alignedRow<Content: View>(
+        _ label: String,
+        alignment: VerticalAlignment = .center,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+            HStack(alignment: alignment, spacing: 12) {
                 Text(label)
                     .frame(width: 110, alignment: .trailing)
                     .foregroundStyle(.secondary)
@@ -560,7 +587,7 @@ struct SettingsView: View {
     private func statusColorPickerRow(_ label: String, color: Binding<Color>) -> some View {
         HStack(spacing: 10) {
             Text(label)
-                .frame(width: 54, alignment: .leading)
+                .frame(width: Self.statusColorLabelWidth, alignment: .leading)
                 .foregroundStyle(.secondary)
             ColorPicker("", selection: color, supportsOpacity: true)
                 .labelsHidden()
@@ -621,6 +648,62 @@ struct SettingsView: View {
             return
         }
         config.wrappedValue.payloadTemplate = output
+    }
+
+    private func exportFullBackup() {
+        let panel = NSSavePanel()
+        panel.nameFieldStringValue = "pulse-full-backup-\(Date().formatted(.iso8601.year().month().day())).json"
+        panel.allowedContentTypes = [.json]
+        panel.canCreateDirectories = true
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+
+        do {
+            let backup = PulseBackup(
+                monitors: vm.monitors,
+                settings: vm.settings,
+                history: vm.historyEventsForBackup()
+            )
+            try backup.encodedData().write(to: url, options: .atomic)
+            showBackupMessage("Full backup exported successfully.")
+        } catch {
+            showBackupMessage("The full backup could not be exported: \(error.localizedDescription)")
+        }
+    }
+
+    private func importFullBackup() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.json]
+        panel.allowsMultipleSelection = false
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+
+        do {
+            let backup = try PulseBackup.decode(Data(contentsOf: url))
+            let alert = NSAlert()
+            alert.messageText = "Restore Full Backup"
+            alert.informativeText = "History will be merged and deduplicated. Choose how to restore monitors and settings."
+            alert.addButton(withTitle: "Replace Configuration")
+            alert.addButton(withTitle: "Merge Monitors")
+            alert.addButton(withTitle: "Cancel")
+            let response = alert.runModal()
+            guard response != .alertThirdButtonReturn else { return }
+
+            let replaceConfiguration = response == .alertFirstButtonReturn
+            vm.mergeHistoryEventsFromBackup(
+                backup.history,
+                using: replaceConfiguration ? backup.settings : nil
+            )
+            vm.restoreConfiguration(from: backup, replaceConfiguration: replaceConfiguration)
+            showBackupMessage("Full backup imported successfully.")
+        } catch {
+            showBackupMessage("The full backup could not be imported: \(error.localizedDescription)")
+        }
+    }
+
+    private func showBackupMessage(_ message: String) {
+        let alert = NSAlert()
+        alert.messageText = "Pulse Backup"
+        alert.informativeText = message
+        alert.runModal()
     }
 
     @ViewBuilder
@@ -692,7 +775,7 @@ struct SettingsView: View {
     }
 
     private func resizeWindow(for tab: Tab) {
-        let targetSize = tab == .webhooks ? webhooksWindowSize : compactWindowSize
+        let targetSize = windowSize(for: tab)
         DispatchQueue.main.async {
             guard let window = NSApp.keyWindow ?? NSApp.mainWindow else { return }
             var frame = window.frame
@@ -704,6 +787,14 @@ struct SettingsView: View {
                 y: topEdge - targetSize.height
             )
             window.setFrame(frame, display: true, animate: true)
+        }
+    }
+
+    private func windowSize(for tab: Tab) -> NSSize {
+        switch tab {
+        case .general: return generalWindowSize
+        case .webhooks: return webhooksWindowSize
+        case .menuBar, .about: return compactWindowSize
         }
     }
 }

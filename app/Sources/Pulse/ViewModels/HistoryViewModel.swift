@@ -84,6 +84,53 @@ final class HistoryViewModel: ObservableObject {
         }
     }
 
+    enum UptimeTimelineGranularity: Equatable {
+        case fiveMinutes
+        case tenMinutes
+        case thirtyMinutes
+        case hour
+        case threeHours
+        case sixHours
+        case day
+
+        var duration: TimeInterval {
+            switch self {
+            case .fiveMinutes: return 300
+            case .tenMinutes: return 600
+            case .thirtyMinutes: return 1_800
+            case .hour: return 3_600
+            case .threeHours: return 10_800
+            case .sixHours: return 21_600
+            case .day: return 86_400
+            }
+        }
+    }
+
+    static func uptimeTimelineGranularity(for range: GraphRange) -> UptimeTimelineGranularity {
+        switch range {
+        case .last1h:
+            return .fiveMinutes
+        case .last2h:
+            return .tenMinutes
+        case .last6h:
+            return .thirtyMinutes
+        case .last12h, .last24h:
+            return .hour
+        case .last48h:
+            return .hour
+        case .last3d:
+            return .threeHours
+        case .last5d, .last7d:
+            return .sixHours
+        case .last14d, .last30d, .last60d, .last90d:
+            return .day
+        }
+    }
+
+    static func uptimeTimelineBucketCount(for range: GraphRange) -> Int {
+        Int(range.duration / uptimeTimelineGranularity(for: range).duration)
+    }
+
     struct LatencyPoint: Identifiable {
         let id = UUID()
         let timestamp: Date
@@ -99,6 +146,7 @@ final class HistoryViewModel: ObservableObject {
     enum UptimeBlockStatus {
         case up
         case down
+        case warning
         case degraded
         case noData
     }
@@ -163,15 +211,16 @@ final class HistoryViewModel: ObservableObject {
     }
 
     func reload() {
-        events = store.loadEvents().sorted(by: { $0.timestamp > $1.timestamp })
+        // The list, graphs, and analytics query SQLite on demand. Keep this compatibility
+        // snapshot empty during normal reloads so opening History does not load the database.
+        events = []
     }
 
     func clear() {
         if hasActiveFilters {
             let filteredIDs = Set(filteredEvents.map(\.id))
-            events.removeAll { filteredIDs.contains($0.id) }
+            events = store.loadEvents().filter { !filteredIDs.contains($0.id) }
             persistCurrentEvents()
-            reload()
             return
         }
 
@@ -185,35 +234,34 @@ final class HistoryViewModel: ObservableObject {
     }
 
     var filteredEvents: [HistoryEvent] {
-        let now = Date()
-        return events.filter { event in
-            let metadataLabel = event.metadataLabel ?? ""
-            let metadataValue = event.metadataValue ?? ""
-            let bySearch = search.isEmpty ||
-                event.url.localizedCaseInsensitiveContains(search) ||
-                event.monitorName.localizedCaseInsensitiveContains(search) ||
-                metadataLabel.localizedCaseInsensitiveContains(search) ||
-                metadataValue.localizedCaseInsensitiveContains(search)
-            let byMonitor = selectedMonitor == nil || event.monitorID == selectedMonitor
-            let byName = selectedName == "All Names" || event.monitorName == selectedName
-            let byStatus: Bool
-            switch statusFilter {
-            case .all: byStatus = true
-            case .up: byStatus = event.status == "OK"
-            case .down: byStatus = event.status != "OK"
-            }
-            let byTime: Bool
-            switch timeFilter {
-            case .allTime: byTime = true
-            default: byTime = event.timestamp >= now.addingTimeInterval(-(timeFilter.duration ?? 0))
-            }
-            return bySearch && byMonitor && byName && byStatus && byTime
+        store.queryEvents(matching: currentHistoryQuery, order: .descending, limit: nil)
+    }
+
+    private var currentHistoryQuery: HistoryQuery {
+        let status: HistoryQuery.Status?
+        switch statusFilter {
+        case .all: status = nil
+        case .up: status = .up
+        case .down: status = .down
         }
+
+        let since: Date?
+        switch timeFilter {
+        case .allTime: since = nil
+        default: since = Date().addingTimeInterval(-(timeFilter.duration ?? 0))
+        }
+
+        return HistoryQuery(
+            search: search.isEmpty ? nil : search,
+            monitorID: selectedMonitor,
+            monitorName: selectedName == "All Names" ? nil : selectedName,
+            status: status,
+            since: since
+        )
     }
 
     var availableNames: [String] {
-        let names = Set(events.map(\.monitorName))
-        return ["All Names"] + names.sorted()
+        ["All Names"] + store.monitorNames()
     }
 
     private var hasActiveFilters: Bool {
@@ -230,18 +278,23 @@ final class HistoryViewModel: ObservableObject {
     }
 
     var availableGraphSites: [String] {
-        let names = Set(events.map(\.monitorName))
-        return ["All Sites"] + names.sorted()
+        ["All Sites"] + store.monitorNames()
     }
 
     var graphEvents: [HistoryEvent] {
-        let cutoff = Date().addingTimeInterval(-graphRange.duration)
-        return events
-            .filter { event in
-                event.timestamp >= cutoff &&
-                (graphSite == "All Sites" || event.monitorName == graphSite)
-            }
-            .sorted(by: { $0.timestamp < $1.timestamp })
+        let end = Date()
+        return store.queryEvents(matching: graphQuery(referenceDate: end),
+            order: .ascending,
+            limit: nil
+        )
+    }
+
+    private func graphQuery(referenceDate: Date = Date()) -> HistoryQuery {
+        HistoryQuery(
+            monitorName: graphSite == "All Sites" ? nil : graphSite,
+            since: referenceDate.addingTimeInterval(-graphRange.duration),
+            until: referenceDate
+        )
     }
 
     func graphDateDomain(referenceDate: Date = Date()) -> ClosedRange<Date> {
@@ -265,40 +318,28 @@ final class HistoryViewModel: ObservableObject {
     }
 
     var uptimePercentage: Double {
-        let points = statusPoints
-        guard !points.isEmpty else { return 0 }
-        let up = points.filter { $0.state == 1 }.count
-        return (Double(up) / Double(points.count)) * 100
+        let aggregate = store.aggregate(matching: graphQuery())
+        guard aggregate.sampleCount > 0 else { return 0 }
+        return (Double(aggregate.successCount) / Double(aggregate.sampleCount)) * 100
     }
 
     var averageLatencyMs: Int {
-        let values = latencyPoints.map(\.ms)
-        guard !values.isEmpty else { return 0 }
-        return values.reduce(0, +) / values.count
+        store.aggregate(matching: graphQuery()).averageLatencyMs
     }
 
     var p95LatencyMs: Int {
-        let values = latencyPoints.map(\.ms).sorted()
-        guard !values.isEmpty else { return 0 }
-        let idx = min(values.count - 1, Int(Double(values.count) * 0.95))
-        return values[idx]
+        store.percentileLatency(0.95, matching: graphQuery()) ?? 0
     }
 
     var p99LatencyMs: Int {
-        let values = latencyPoints.map(\.ms).sorted()
-        guard !values.isEmpty else { return 0 }
-        let idx = min(values.count - 1, Int(Double(values.count) * 0.99))
-        return values[idx]
+        store.percentileLatency(0.99, matching: graphQuery()) ?? 0
     }
 
     var peakLatencyMs: Int {
-        latencyPoints.map(\.ms).max() ?? 0
+        store.aggregate(matching: graphQuery()).peakLatencyMs
     }
 
     var performanceSamples: [PerformanceSample] {
-        let samples = latencyPoints
-        guard !samples.isEmpty else { return [] }
-
         let bucketCount: Int
         switch graphRange {
         case .last1h, .last2h, .last6h, .last12h, .last24h: bucketCount = 36
@@ -310,22 +351,10 @@ final class HistoryViewModel: ObservableObject {
         let end = Date()
         let start = end.addingTimeInterval(-graphRange.duration)
         let span = graphRange.duration / Double(bucketCount)
-        var buckets = Array(repeating: [Int](), count: bucketCount)
-
-        for point in samples {
-            let elapsed = point.timestamp.timeIntervalSince(start)
-            let raw = Int(elapsed / span)
-            let index = max(0, min(bucketCount - 1, raw))
-            buckets[index].append(point.ms)
-        }
-
-        return buckets.enumerated().compactMap { index, values in
-            guard !values.isEmpty else { return nil }
-            let minMs = values.min() ?? 0
-            let maxMs = values.max() ?? 0
-            let avgMs = values.reduce(0, +) / values.count
-            let timestamp = start.addingTimeInterval((Double(index) + 0.5) * span)
-            return PerformanceSample(timestamp: timestamp, minMs: minMs, avgMs: avgMs, maxMs: maxMs)
+        let buckets = store.performanceBuckets(matching: graphQuery(referenceDate: end), start: start, end: end, bucketCount: bucketCount)
+        return buckets.map { bucket in
+            let timestamp = start.addingTimeInterval((Double(bucket.index) + 0.5) * span)
+            return PerformanceSample(timestamp: timestamp, minMs: bucket.minMs, avgMs: bucket.averageMs, maxMs: bucket.maxMs)
         }
     }
 
@@ -333,9 +362,7 @@ final class HistoryViewModel: ObservableObject {
         guard graphSite != "All Sites" else { return [] }
 
         let cutoff = Date().addingTimeInterval(-graphRange.duration)
-        let siteEvents = events
-            .filter { $0.monitorName == graphSite }
-            .sorted(by: { $0.timestamp < $1.timestamp })
+        let siteEvents = metadataEvents(for: graphSite, cutoff: cutoff)
 
         var markers: [MetadataMarker] = []
         var previousValue = siteEvents
@@ -371,41 +398,37 @@ final class HistoryViewModel: ObservableObject {
         return markers
     }
 
+    private func metadataEvents(for siteName: String, cutoff: Date) -> [HistoryEvent] {
+        let predecessor = store.queryEvents(
+            matching: HistoryQuery(monitorName: siteName, until: cutoff),
+            order: .descending,
+            limit: 1
+        )
+        let rangeEvents = store.queryEvents(
+            matching: HistoryQuery(
+                monitorName: siteName,
+                since: cutoff,
+                until: Date()
+            ),
+            order: .ascending,
+            limit: nil
+        )
+        return (predecessor + rangeEvents).sorted { lhs, rhs in
+            lhs.timestamp == rhs.timestamp ? lhs.id.uuidString < rhs.id.uuidString : lhs.timestamp < rhs.timestamp
+        }
+    }
+
     var trackingTimelineEntries: [TrackingTimelineEntry] {
         guard graphSite != "All Sites" else { return [] }
 
-        let siteEvents = events
-            .filter { $0.monitorName == graphSite }
-            .sorted(by: { $0.timestamp < $1.timestamp })
-
-        var seen = Set<String>()
-        var entries: [TrackingTimelineEntry] = []
-
-        for event in siteEvents {
-            guard let rawValue = event.metadataValue?.trimmingCharacters(in: .whitespacesAndNewlines),
-                  !rawValue.isEmpty else {
-                continue
-            }
-
-            let label = event.metadataLabel?.trimmingCharacters(in: .whitespacesAndNewlines)
-            let resolvedLabel = label.flatMap { $0.isEmpty ? nil : $0 } ?? "Tracked Value"
-            let id = "\(resolvedLabel)\t\(rawValue)"
-
-            guard seen.insert(id).inserted else {
-                continue
-            }
-
-            entries.append(
-                TrackingTimelineEntry(
-                    id: id,
-                    firstDetectedAt: event.timestamp,
-                    label: resolvedLabel,
-                    value: rawValue
-                )
+        return store.trackingValues(for: graphSite).map {
+            TrackingTimelineEntry(
+                id: "\($0.label)\t\($0.value)",
+                firstDetectedAt: $0.firstDetectedAt,
+                label: $0.label,
+                value: $0.value
             )
         }
-
-        return entries.sorted { $0.firstDetectedAt > $1.firstDetectedAt }
     }
 
     func uptimeBlocks(thresholdMs: Int) -> [UptimeBlockStatus] {
@@ -425,7 +448,7 @@ final class HistoryViewModel: ObservableObject {
     }
 
     func uptimeBuckets(thresholdMs: Int, referenceDate: Date = Date()) -> [UptimeBucket] {
-        uptimeBuckets(from: graphEvents, thresholdMs: thresholdMs, referenceDate: referenceDate)
+        uptimeBuckets(from: store.uptimeBuckets(matching: graphQuery(referenceDate: referenceDate), start: referenceDate.addingTimeInterval(-graphRange.duration), end: referenceDate, bucketCount: uptimeBlockCount), referenceDate: referenceDate)
     }
 
     func uptimeBuckets(
@@ -433,18 +456,43 @@ final class HistoryViewModel: ObservableObject {
         thresholdMs: Int,
         referenceDate: Date = Date()
     ) -> [UptimeBucket] {
-        let siteEvents = events.filter { $0.monitorName == siteName }
-        return uptimeBuckets(from: siteEvents, thresholdMs: thresholdMs, referenceDate: referenceDate)
+        return uptimeBuckets(from: store.uptimeBuckets(
+            matching: HistoryQuery(monitorName: siteName),
+            start: referenceDate.addingTimeInterval(-graphRange.duration),
+            end: referenceDate,
+            bucketCount: uptimeBlockCount
+        ), referenceDate: referenceDate)
+    }
+
+    private var uptimeBlockCount: Int {
+        Self.uptimeTimelineBucketCount(for: graphRange)
+    }
+
+    private func uptimeBuckets(from aggregates: [HistoryUptimeBucket], referenceDate: Date) -> [UptimeBucket] {
+        let blockCount = uptimeBlockCount
+        let start = referenceDate.addingTimeInterval(-graphRange.duration)
+        let span = graphRange.duration / Double(blockCount)
+        let byIndex = Dictionary(uniqueKeysWithValues: aggregates.map { ($0.index, $0) })
+        return (0..<blockCount).map { index in
+            let bucketStart = start.addingTimeInterval(Double(index) * span)
+            let bucketEnd = bucketStart.addingTimeInterval(span)
+            guard let aggregate = byIndex[index], aggregate.sampleCount > 0 else {
+                return UptimeBucket(id: index, bucketStart: bucketStart, bucketEnd: bucketEnd, status: .noData, sampleCount: 0, successCount: 0)
+            }
+            let status: UptimeBlockStatus
+            if aggregate.successCount == 0 {
+                status = .down
+            } else if aggregate.sampleCount - aggregate.successCount == 1 {
+                status = .warning
+            } else {
+                status = aggregate.successCount < aggregate.sampleCount ? .degraded : .up
+            }
+            return UptimeBucket(id: index, bucketStart: bucketStart, bucketEnd: bucketEnd, status: status, sampleCount: aggregate.sampleCount, successCount: aggregate.successCount)
+        }
     }
 
     private func uptimeBuckets(from events: [HistoryEvent], thresholdMs: Int, referenceDate: Date) -> [UptimeBucket] {
-        let blockCount: Int
-        switch graphRange {
-        case .last1h, .last2h, .last6h, .last12h, .last24h: blockCount = 24
-        case .last48h, .last3d, .last5d, .last7d: blockCount = 42
-        case .last14d, .last30d: blockCount = 60
-        case .last60d, .last90d: blockCount = 90
-        }
+        let blockCount = uptimeBlockCount
 
         let timeline = events.sorted(by: { $0.timestamp < $1.timestamp })
 
@@ -490,7 +538,13 @@ final class HistoryViewModel: ObservableObject {
             }
 
             let degraded = failures > 0
-            buckets.append(UptimeBucket(id: i, bucketStart: bucketStart, bucketEnd: bucketEnd, status: degraded ? .degraded : .up, sampleCount: bucketEvents.count, successCount: successes))
+            let status: UptimeBlockStatus
+            if failures == 1 {
+                status = .warning
+            } else {
+                status = degraded ? .degraded : .up
+            }
+            buckets.append(UptimeBucket(id: i, bucketStart: bucketStart, bucketEnd: bucketEnd, status: status, sampleCount: bucketEvents.count, successCount: successes))
         }
 
         return buckets

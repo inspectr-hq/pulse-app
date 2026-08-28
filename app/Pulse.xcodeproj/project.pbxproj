@@ -35,6 +35,7 @@
 		B0010001000000000000001A /* WebhookEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0010001000000000000001A /* WebhookEngine.swift */; };
 		B0010001000000000000001B /* HistoryReportsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0010001000000000000001B /* HistoryReportsView.swift */; };
 		B0010001000000000000001C /* AppUpdateChecker.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0010001000000000000001C /* AppUpdateChecker.swift */; };
+		B0010001000000000000001D /* PulseBackup.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0010001000000000000001D /* PulseBackup.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -78,6 +79,7 @@
 		F0010001000000000000001A /* WebhookEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebhookEngine.swift; sourceTree = "<group>"; };
 		F0010001000000000000001B /* HistoryReportsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryReportsView.swift; sourceTree = "<group>"; };
 		F0010001000000000000001C /* AppUpdateChecker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppUpdateChecker.swift; sourceTree = "<group>"; };
+		F0010001000000000000001D /* PulseBackup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PulseBackup.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -139,6 +141,7 @@
 			children = (
 				F00100010000000000000002 /* AppSettings.swift */,
 				F00100010000000000000003 /* HistoryEvent.swift */,
+				F0010001000000000000001D /* PulseBackup.swift */,
 				F00100010000000000000004 /* SiteCheckResult.swift */,
 				F00100010000000000000005 /* SiteMonitor.swift */,
 				F00100010000000000000006 /* SiteStatus.swift */,
@@ -341,6 +344,7 @@
 				B0010001000000000000001A /* WebhookEngine.swift in Sources */,
 				B0010001000000000000001B /* HistoryReportsView.swift in Sources */,
 				B0010001000000000000001C /* AppUpdateChecker.swift in Sources */,
+				B0010001000000000000001D /* PulseBackup.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
