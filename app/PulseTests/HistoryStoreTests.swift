@@ -275,4 +275,58 @@ final class HistoryStoreTests: XCTestCase {
 
         XCTAssertEqual(store.monitorNames(), ["Alpha", "Zulu"])
     }
+
+    func testPerformanceBucketsAggregateLatencyInSQLite() {
+        let tempURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("pulse-history-performance-buckets-\(UUID().uuidString).sqlite")
+        let store = HistoryStore(fileURL: tempURL)
+        let monitorID = UUID()
+        let events = [100, 200, 300].enumerated().map { index, duration in
+            HistoryEvent(
+                timestamp: Date(timeIntervalSince1970: 1_000 + Double(index) + 0.1), monitorID: monitorID,
+                monitorName: "Site", url: "https://site.dev", method: "GET", status: "OK",
+                statusCode: 200, durationMs: duration, reason: nil, trigger: .automatic
+            )
+        }
+        store.merge(events, retentionPolicy: .unlimited, maxEvents: 100)
+
+        let buckets = store.performanceBuckets(
+            matching: HistoryQuery(monitorName: "Site"),
+            start: Date(timeIntervalSince1970: 1_000),
+            end: Date(timeIntervalSince1970: 1_003),
+            bucketCount: 2
+        )
+
+        XCTAssertEqual(buckets, [
+            HistoryPerformanceBucket(index: 0, sampleCount: 2, minMs: 100, averageMs: 150, maxMs: 200),
+            HistoryPerformanceBucket(index: 1, sampleCount: 1, minMs: 300, averageMs: 300, maxMs: 300)
+        ])
+    }
+
+    func testUptimeBucketsAggregateStatusInSQLite() {
+        let tempURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("pulse-history-uptime-buckets-\(UUID().uuidString).sqlite")
+        let store = HistoryStore(fileURL: tempURL)
+        let monitorID = UUID()
+        let events = ["OK", "Down", "OK"].enumerated().map { index, status in
+            HistoryEvent(
+                timestamp: Date(timeIntervalSince1970: 1_000 + Double(index) + 0.1), monitorID: monitorID,
+                monitorName: "Site", url: "https://site.dev", method: "GET", status: status,
+                statusCode: status == "OK" ? 200 : nil, durationMs: 100, reason: nil, trigger: .automatic
+            )
+        }
+        store.merge(events, retentionPolicy: .unlimited, maxEvents: 100)
+
+        let buckets = store.uptimeBuckets(
+            matching: HistoryQuery(monitorName: "Site"),
+            start: Date(timeIntervalSince1970: 1_000),
+            end: Date(timeIntervalSince1970: 1_003),
+            bucketCount: 2
+        )
+
+        XCTAssertEqual(buckets, [
+            HistoryUptimeBucket(index: 0, sampleCount: 2, successCount: 1),
+            HistoryUptimeBucket(index: 1, sampleCount: 1, successCount: 1)
+        ])
+    }
 }

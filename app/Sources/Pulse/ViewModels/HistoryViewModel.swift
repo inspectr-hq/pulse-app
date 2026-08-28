@@ -292,9 +292,6 @@ final class HistoryViewModel: ObservableObject {
     }
 
     var performanceSamples: [PerformanceSample] {
-        let samples = latencyPoints
-        guard !samples.isEmpty else { return [] }
-
         let bucketCount: Int
         switch graphRange {
         case .last1h, .last2h, .last6h, .last12h, .last24h: bucketCount = 36
@@ -306,22 +303,10 @@ final class HistoryViewModel: ObservableObject {
         let end = Date()
         let start = end.addingTimeInterval(-graphRange.duration)
         let span = graphRange.duration / Double(bucketCount)
-        var buckets = Array(repeating: [Int](), count: bucketCount)
-
-        for point in samples {
-            let elapsed = point.timestamp.timeIntervalSince(start)
-            let raw = Int(elapsed / span)
-            let index = max(0, min(bucketCount - 1, raw))
-            buckets[index].append(point.ms)
-        }
-
-        return buckets.enumerated().compactMap { index, values in
-            guard !values.isEmpty else { return nil }
-            let minMs = values.min() ?? 0
-            let maxMs = values.max() ?? 0
-            let avgMs = values.reduce(0, +) / values.count
-            let timestamp = start.addingTimeInterval((Double(index) + 0.5) * span)
-            return PerformanceSample(timestamp: timestamp, minMs: minMs, avgMs: avgMs, maxMs: maxMs)
+        let buckets = store.performanceBuckets(matching: graphQuery(referenceDate: end), start: start, end: end, bucketCount: bucketCount)
+        return buckets.map { bucket in
+            let timestamp = start.addingTimeInterval((Double(bucket.index) + 0.5) * span)
+            return PerformanceSample(timestamp: timestamp, minMs: bucket.minMs, avgMs: bucket.averageMs, maxMs: bucket.maxMs)
         }
     }
 
@@ -415,7 +400,7 @@ final class HistoryViewModel: ObservableObject {
     }
 
     func uptimeBuckets(thresholdMs: Int, referenceDate: Date = Date()) -> [UptimeBucket] {
-        uptimeBuckets(from: graphEvents, thresholdMs: thresholdMs, referenceDate: referenceDate)
+        uptimeBuckets(from: store.uptimeBuckets(matching: graphQuery(referenceDate: referenceDate), start: referenceDate.addingTimeInterval(-graphRange.duration), end: referenceDate, bucketCount: uptimeBlockCount), referenceDate: referenceDate)
     }
 
     func uptimeBuckets(
@@ -423,16 +408,42 @@ final class HistoryViewModel: ObservableObject {
         thresholdMs: Int,
         referenceDate: Date = Date()
     ) -> [UptimeBucket] {
-        let siteEvents = store.queryEvents(
-            matching: HistoryQuery(
-                monitorName: siteName,
-                since: referenceDate.addingTimeInterval(-graphRange.duration),
-                until: referenceDate
-            ),
-            order: .ascending,
-            limit: nil
-        )
-        return uptimeBuckets(from: siteEvents, thresholdMs: thresholdMs, referenceDate: referenceDate)
+        return uptimeBuckets(from: store.uptimeBuckets(
+            matching: HistoryQuery(monitorName: siteName),
+            start: referenceDate.addingTimeInterval(-graphRange.duration),
+            end: referenceDate,
+            bucketCount: uptimeBlockCount
+        ), referenceDate: referenceDate)
+    }
+
+    private var uptimeBlockCount: Int {
+        switch graphRange {
+        case .last1h, .last2h, .last6h, .last12h, .last24h: return 24
+        case .last48h, .last3d, .last5d, .last7d: return 42
+        case .last14d, .last30d: return 60
+        case .last60d, .last90d: return 90
+        }
+    }
+
+    private func uptimeBuckets(from aggregates: [HistoryUptimeBucket], referenceDate: Date) -> [UptimeBucket] {
+        let blockCount = uptimeBlockCount
+        let start = referenceDate.addingTimeInterval(-graphRange.duration)
+        let span = graphRange.duration / Double(blockCount)
+        let byIndex = Dictionary(uniqueKeysWithValues: aggregates.map { ($0.index, $0) })
+        return (0..<blockCount).map { index in
+            let bucketStart = start.addingTimeInterval(Double(index) * span)
+            let bucketEnd = bucketStart.addingTimeInterval(span)
+            guard let aggregate = byIndex[index], aggregate.sampleCount > 0 else {
+                return UptimeBucket(id: index, bucketStart: bucketStart, bucketEnd: bucketEnd, status: .noData, sampleCount: 0, successCount: 0)
+            }
+            let status: UptimeBlockStatus
+            if aggregate.successCount == 0 {
+                status = .down
+            } else {
+                status = aggregate.successCount < aggregate.sampleCount ? .degraded : .up
+            }
+            return UptimeBucket(id: index, bucketStart: bucketStart, bucketEnd: bucketEnd, status: status, sampleCount: aggregate.sampleCount, successCount: aggregate.successCount)
+        }
     }
 
     private func uptimeBuckets(from events: [HistoryEvent], thresholdMs: Int, referenceDate: Date) -> [UptimeBucket] {

@@ -59,6 +59,20 @@ struct HistoryTrackingValue: Equatable {
     let firstDetectedAt: Date
 }
 
+struct HistoryPerformanceBucket: Equatable {
+    let index: Int
+    let sampleCount: Int
+    let minMs: Int
+    let averageMs: Int
+    let maxMs: Int
+}
+
+struct HistoryUptimeBucket: Equatable {
+    let index: Int
+    let sampleCount: Int
+    let successCount: Int
+}
+
 protocol HistoryStoreProtocol {
     func loadEvents() -> [HistoryEvent]
     func queryEvents(matching query: HistoryQuery, order: HistoryQuery.Order, limit: Int?) -> [HistoryEvent]
@@ -66,6 +80,8 @@ protocol HistoryStoreProtocol {
     func percentileLatency(_ percentile: Double, matching query: HistoryQuery) -> Int?
     func trackingValues(for monitorName: String) -> [HistoryTrackingValue]
     func monitorNames() -> [String]
+    func performanceBuckets(matching query: HistoryQuery, start: Date, end: Date, bucketCount: Int) -> [HistoryPerformanceBucket]
+    func uptimeBuckets(matching query: HistoryQuery, start: Date, end: Date, bucketCount: Int) -> [HistoryUptimeBucket]
     func append(_ event: HistoryEvent, retentionPolicy: HistoryRetentionPolicy, maxEvents: Int)
     func merge(_ events: [HistoryEvent], retentionPolicy: HistoryRetentionPolicy, maxEvents: Int)
     func replaceAll(with events: [HistoryEvent])
@@ -141,6 +157,45 @@ extension HistoryStoreProtocol {
 
     func monitorNames() -> [String] {
         Set(loadEvents().map(\.monitorName)).sorted()
+    }
+
+    func performanceBuckets(matching query: HistoryQuery, start: Date, end: Date, bucketCount: Int) -> [HistoryPerformanceBucket] {
+        let span = end.timeIntervalSince(start) / Double(bucketCount)
+        guard bucketCount > 0, span > 0 else { return [] }
+        let events = queryEvents(
+            matching: HistoryQuery(search: query.search, monitorID: query.monitorID, monitorName: query.monitorName, status: query.status, since: max(query.since ?? start, start), until: min(query.until ?? end, end)),
+            order: .ascending,
+            limit: nil
+        )
+        var values = Array(repeating: [Int](), count: bucketCount)
+        for event in events {
+            guard let duration = event.durationMs else { continue }
+            let index = max(0, min(bucketCount - 1, Int(event.timestamp.timeIntervalSince(start) / span)))
+            values[index].append(duration)
+        }
+        return values.enumerated().compactMap { index, durations in
+            guard !durations.isEmpty else { return nil }
+            return HistoryPerformanceBucket(index: index, sampleCount: durations.count, minMs: durations.min()!, averageMs: durations.reduce(0, +) / durations.count, maxMs: durations.max()!)
+        }
+    }
+
+    func uptimeBuckets(matching query: HistoryQuery, start: Date, end: Date, bucketCount: Int) -> [HistoryUptimeBucket] {
+        let span = end.timeIntervalSince(start) / Double(bucketCount)
+        guard bucketCount > 0, span > 0 else { return [] }
+        let events = queryEvents(
+            matching: HistoryQuery(search: query.search, monitorID: query.monitorID, monitorName: query.monitorName, status: query.status, since: max(query.since ?? start, start), until: min(query.until ?? end, end)),
+            order: .ascending,
+            limit: nil
+        )
+        var counts = Array(repeating: (sample: 0, success: 0), count: bucketCount)
+        for event in events {
+            let index = max(0, min(bucketCount - 1, Int(event.timestamp.timeIntervalSince(start) / span)))
+            counts[index].sample += 1
+            if event.status == "OK" { counts[index].success += 1 }
+        }
+        return counts.enumerated().compactMap { index, count in
+            count.sample == 0 ? nil : HistoryUptimeBucket(index: index, sampleCount: count.sample, successCount: count.success)
+        }
     }
 }
 
@@ -316,6 +371,48 @@ final class HistoryStore: HistoryStoreProtocol {
             names.append(columnText(statement, 0))
         }
         return names
+    }
+
+    func performanceBuckets(matching query: HistoryQuery, start: Date, end: Date, bucketCount: Int) -> [HistoryPerformanceBucket] {
+        guard let database, bucketCount > 0 else { return [] }
+        let span = end.timeIntervalSince(start) / Double(bucketCount)
+        guard span > 0 else { return [] }
+        let boundedQuery = HistoryQuery(search: query.search, monitorID: query.monitorID, monitorName: query.monitorName, status: query.status, since: max(query.since ?? start, start), until: min(query.until ?? end, end))
+        let (whereSQL, bindings) = querySQL(for: boundedQuery, additionalClause: "duration_ms IS NOT NULL")
+        let sql = """
+        SELECT CAST((timestamp - \(start.timeIntervalSince1970)) / \(span) AS INTEGER),
+               COUNT(duration_ms), MIN(duration_ms), CAST(AVG(duration_ms) AS INTEGER), MAX(duration_ms)
+        FROM events \(whereSQL)
+        GROUP BY 1 ORDER BY 1;
+        """
+        guard let statement = prepare(sql, database: database), bind(bindings, to: statement) else { return [] }
+        defer { sqlite3_finalize(statement) }
+        var buckets: [HistoryPerformanceBucket] = []
+        while sqlite3_step(statement) == SQLITE_ROW {
+            buckets.append(HistoryPerformanceBucket(index: Int(sqlite3_column_int64(statement, 0)), sampleCount: Int(sqlite3_column_int64(statement, 1)), minMs: Int(sqlite3_column_int64(statement, 2)), averageMs: Int(sqlite3_column_int64(statement, 3)), maxMs: Int(sqlite3_column_int64(statement, 4))))
+        }
+        return buckets
+    }
+
+    func uptimeBuckets(matching query: HistoryQuery, start: Date, end: Date, bucketCount: Int) -> [HistoryUptimeBucket] {
+        guard let database, bucketCount > 0 else { return [] }
+        let span = end.timeIntervalSince(start) / Double(bucketCount)
+        guard span > 0 else { return [] }
+        let boundedQuery = HistoryQuery(search: query.search, monitorID: query.monitorID, monitorName: query.monitorName, status: query.status, since: max(query.since ?? start, start), until: min(query.until ?? end, end))
+        let (whereSQL, bindings) = querySQL(for: boundedQuery)
+        let sql = """
+        SELECT CAST((timestamp - \(start.timeIntervalSince1970)) / \(span) AS INTEGER),
+               COUNT(*), SUM(CASE WHEN status = 'OK' THEN 1 ELSE 0 END)
+        FROM events \(whereSQL)
+        GROUP BY 1 ORDER BY 1;
+        """
+        guard let statement = prepare(sql, database: database), bind(bindings, to: statement) else { return [] }
+        defer { sqlite3_finalize(statement) }
+        var buckets: [HistoryUptimeBucket] = []
+        while sqlite3_step(statement) == SQLITE_ROW {
+            buckets.append(HistoryUptimeBucket(index: Int(sqlite3_column_int64(statement, 0)), sampleCount: Int(sqlite3_column_int64(statement, 1)), successCount: Int(sqlite3_column_int64(statement, 2))))
+        }
+        return buckets
     }
 
     func append(_ event: HistoryEvent, retentionPolicy: HistoryRetentionPolicy, maxEvents: Int) {
