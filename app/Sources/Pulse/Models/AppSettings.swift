@@ -124,7 +124,7 @@ struct AppSettings: Codable, Equatable {
     var defaultThresholdMs: Int = 2000
     var defaultMethod: HTTPMethod = .head
     var statusColorUp = CodableColor(red: 0.2, green: 0.75, blue: 0.26, alpha: 1.0)
-    var statusColorSlow = CodableColor(red: 0.95, green: 0.77, blue: 0.05, alpha: 1.0)
+    var statusColorWarning = CodableColor(red: 0.95, green: 0.77, blue: 0.05, alpha: 1.0)
     var statusColorDegraded = CodableColor(red: 1.0, green: 0.5, blue: 0.0, alpha: 1.0)
     var statusColorFailure = CodableColor(red: 0.96, green: 0.24, blue: 0.2, alpha: 1.0)
     var statusColorOffline = CodableColor(red: 0.57, green: 0.59, blue: 0.62, alpha: 1.0)
@@ -172,7 +172,7 @@ struct AppSettings: Codable, Equatable {
         case defaultThresholdMs
         case defaultMethod
         case statusColorUp
-        case statusColorSlow
+        case statusColorWarning
         case statusColorDegraded
         case statusColorFailure
         case statusColorOffline
@@ -197,6 +197,10 @@ struct AppSettings: Codable, Equatable {
         case historyRetentionMaxEvents
     }
 
+    private enum LegacyCodingKeys: String, CodingKey {
+        case statusColorSlow
+    }
+
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.init()
@@ -210,7 +214,10 @@ struct AppSettings: Codable, Equatable {
         defaultThresholdMs = try container.decodeIfPresent(Int.self, forKey: .defaultThresholdMs) ?? defaultThresholdMs
         defaultMethod = try container.decodeIfPresent(HTTPMethod.self, forKey: .defaultMethod) ?? defaultMethod
         statusColorUp = try container.decodeIfPresent(CodableColor.self, forKey: .statusColorUp) ?? statusColorUp
-        statusColorSlow = try container.decodeIfPresent(CodableColor.self, forKey: .statusColorSlow) ?? statusColorSlow
+        let legacyContainer = try decoder.container(keyedBy: LegacyCodingKeys.self)
+        statusColorWarning = try container.decodeIfPresent(CodableColor.self, forKey: .statusColorWarning)
+            ?? legacyContainer.decodeIfPresent(CodableColor.self, forKey: .statusColorSlow)
+            ?? statusColorWarning
         statusColorDegraded = try container.decodeIfPresent(CodableColor.self, forKey: .statusColorDegraded) ?? statusColorDegraded
         statusColorFailure = try container.decodeIfPresent(CodableColor.self, forKey: .statusColorFailure) ?? statusColorFailure
         statusColorOffline = try container.decodeIfPresent(CodableColor.self, forKey: .statusColorOffline) ?? statusColorOffline

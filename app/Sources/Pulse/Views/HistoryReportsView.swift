@@ -215,7 +215,7 @@ struct HistoryReportsView: View {
                                 rangeStartLabel: rangeStartLabel,
                                 upColor: appVM.settings.statusColorUp.color,
                                 downColor: appVM.settings.statusColorFailure.color,
-                                warningColor: appVM.settings.statusColorSlow.color,
+                                warningColor: appVM.settings.statusColorWarning.color,
                                 degradedColor: appVM.settings.statusColorDegraded.color,
                                 noDataColor: appVM.settings.statusColorOffline.color.opacity(0.35)
                             ) {
@@ -321,7 +321,7 @@ struct HistoryReportsView: View {
         case .down:
             return appVM.settings.statusColorFailure.color
         case .checking:
-            return appVM.settings.statusColorSlow.color
+            return appVM.settings.statusColorWarning.color
         case .paused:
             return appVM.settings.statusColorOffline.color
         case .unknown:

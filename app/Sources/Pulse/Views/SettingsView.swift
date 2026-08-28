@@ -24,6 +24,7 @@ struct SettingsView: View {
     static let appDisplayName = "Pulse"
     static let githubURL = URL(string: "https://github.com/inspectr-hq/pulse-app")!
     static let inspectrURL = URL(string: "https://inspectr.dev")!
+    static let statusColorLabelWidth: CGFloat = 80
     
     @EnvironmentObject var vm: AppViewModel
     @State private var selectedTab: Tab = .general
@@ -261,15 +262,15 @@ struct SettingsView: View {
                 .frame(width: 400)
                 .padding(.leading, 80)
 
-            alignedRow("Status Colors:") {
+            alignedRow("Status Colors:", alignment: .top) {
                 VStack(alignment: .leading, spacing: 10) {
                     statusColorPickerRow("Up", color: Binding(
                         get: { vm.settings.statusColorUp.color },
                         set: { vm.settings.statusColorUp = codableColor(from: $0, fallback: vm.settings.statusColorUp) }
                     ))
                     statusColorPickerRow("Warning", color: Binding(
-                        get: { vm.settings.statusColorSlow.color },
-                        set: { vm.settings.statusColorSlow = codableColor(from: $0, fallback: vm.settings.statusColorSlow) }
+                        get: { vm.settings.statusColorWarning.color },
+                        set: { vm.settings.statusColorWarning = codableColor(from: $0, fallback: vm.settings.statusColorWarning) }
                     ))
                     statusColorPickerRow("Degraded", color: Binding(
                         get: { vm.settings.statusColorDegraded.color },
@@ -566,8 +567,12 @@ struct SettingsView: View {
     }
     
     @ViewBuilder
-    private func alignedRow<Content: View>(_ label: String, @ViewBuilder content: () -> Content) -> some View {
-            HStack(alignment: .center, spacing: 12) {
+    private func alignedRow<Content: View>(
+        _ label: String,
+        alignment: VerticalAlignment = .center,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+            HStack(alignment: alignment, spacing: 12) {
                 Text(label)
                     .frame(width: 110, alignment: .trailing)
                     .foregroundStyle(.secondary)
@@ -582,7 +587,7 @@ struct SettingsView: View {
     private func statusColorPickerRow(_ label: String, color: Binding<Color>) -> some View {
         HStack(spacing: 10) {
             Text(label)
-                .frame(width: 54, alignment: .leading)
+                .frame(width: Self.statusColorLabelWidth, alignment: .leading)
                 .foregroundStyle(.secondary)
             ColorPicker("", selection: color, supportsOpacity: true)
                 .labelsHidden()

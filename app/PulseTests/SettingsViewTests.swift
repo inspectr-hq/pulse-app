@@ -61,6 +61,25 @@ final class SettingsViewTests: XCTestCase {
         XCTAssertEqual(legacy.statusColorDegraded, AppSettings().statusColorDegraded)
     }
 
+    func testLegacySlowColorDecodesAsWarningColor() throws {
+        let json = """
+        {
+          "statusColorSlow": {"red": 0.8, "green": 0.7, "blue": 0.1, "alpha": 1.0}
+        }
+        """
+
+        let settings = try JSONDecoder().decode(AppSettings.self, from: Data(json.utf8))
+
+        XCTAssertEqual(
+            settings.statusColorWarning,
+            CodableColor(red: 0.8, green: 0.7, blue: 0.1, alpha: 1.0)
+        )
+    }
+
+    func testSettingsStatusColorLabelsHaveRoomForDegraded() {
+        XCTAssertGreaterThanOrEqual(SettingsView.statusColorLabelWidth, 70)
+    }
+
     func testAppSettingsDecodesWithoutPerformanceTrendMetricVisibility() throws {
         let json = """
         {
