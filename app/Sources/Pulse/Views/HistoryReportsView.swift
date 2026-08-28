@@ -215,6 +215,7 @@ struct HistoryReportsView: View {
                                 rangeStartLabel: rangeStartLabel,
                                 upColor: appVM.settings.statusColorUp.color,
                                 downColor: appVM.settings.statusColorFailure.color,
+                                warningColor: .orange,
                                 degradedColor: appVM.settings.statusColorSlow.color,
                                 noDataColor: appVM.settings.statusColorOffline.color.opacity(0.35)
                             ) {
@@ -456,6 +457,7 @@ private struct UptimeTimelineRow: View {
     let rangeStartLabel: String
     let upColor: Color
     let downColor: Color
+    let warningColor: Color
     let degradedColor: Color
     let noDataColor: Color
     let onSelect: () -> Void
@@ -608,7 +610,7 @@ private struct UptimeTimelineRow: View {
         case .fiveMinutes, .tenMinutes, .thirtyMinutes, .hour:
             formatter.dateStyle = .none
             formatter.timeStyle = .short
-        case .sixHours:
+        case .threeHours, .sixHours:
             formatter.dateStyle = .medium
             formatter.timeStyle = .short
         case .day:
@@ -622,6 +624,7 @@ private struct UptimeTimelineRow: View {
         switch status {
         case .up: return "Up"
         case .down: return "Downtime"
+        case .warning: return "Warning"
         case .degraded: return "Degraded"
         case .noData: return "No Data"
         }
@@ -631,6 +634,7 @@ private struct UptimeTimelineRow: View {
         switch status {
         case .up: return "checkmark.circle.fill"
         case .down: return "xmark.octagon.fill"
+        case .warning: return "exclamationmark.circle.fill"
         case .degraded: return "exclamationmark.triangle.fill"
         case .noData: return "questionmark.circle.fill"
         }
@@ -642,6 +646,8 @@ private struct UptimeTimelineRow: View {
             return upColor
         case .down:
             return downColor
+        case .warning:
+            return warningColor
         case .degraded:
             return degradedColor
         case .noData:

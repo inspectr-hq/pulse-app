@@ -89,6 +89,7 @@ final class HistoryViewModel: ObservableObject {
         case tenMinutes
         case thirtyMinutes
         case hour
+        case threeHours
         case sixHours
         case day
 
@@ -98,6 +99,7 @@ final class HistoryViewModel: ObservableObject {
             case .tenMinutes: return 600
             case .thirtyMinutes: return 1_800
             case .hour: return 3_600
+            case .threeHours: return 10_800
             case .sixHours: return 21_600
             case .day: return 86_400
             }
@@ -114,7 +116,11 @@ final class HistoryViewModel: ObservableObject {
             return .thirtyMinutes
         case .last12h, .last24h:
             return .hour
-        case .last48h, .last3d, .last5d, .last7d:
+        case .last48h:
+            return .hour
+        case .last3d:
+            return .threeHours
+        case .last5d, .last7d:
             return .sixHours
         case .last14d, .last30d, .last60d, .last90d:
             return .day
@@ -140,6 +146,7 @@ final class HistoryViewModel: ObservableObject {
     enum UptimeBlockStatus {
         case up
         case down
+        case warning
         case degraded
         case noData
     }
@@ -475,6 +482,8 @@ final class HistoryViewModel: ObservableObject {
             let status: UptimeBlockStatus
             if aggregate.successCount == 0 {
                 status = .down
+            } else if aggregate.sampleCount - aggregate.successCount == 1 {
+                status = .warning
             } else {
                 status = aggregate.successCount < aggregate.sampleCount ? .degraded : .up
             }
@@ -529,7 +538,13 @@ final class HistoryViewModel: ObservableObject {
             }
 
             let degraded = failures > 0
-            buckets.append(UptimeBucket(id: i, bucketStart: bucketStart, bucketEnd: bucketEnd, status: degraded ? .degraded : .up, sampleCount: bucketEvents.count, successCount: successes))
+            let status: UptimeBlockStatus
+            if failures == 1 {
+                status = .warning
+            } else {
+                status = degraded ? .degraded : .up
+            }
+            buckets.append(UptimeBucket(id: i, bucketStart: bucketStart, bucketEnd: bucketEnd, status: status, sampleCount: bucketEvents.count, successCount: successes))
         }
 
         return buckets

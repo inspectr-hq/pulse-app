@@ -27,8 +27,8 @@ final class HistoryViewModelAnalyticsTests: XCTestCase {
         XCTAssertEqual(HistoryViewModel.uptimeTimelineGranularity(for: .last6h), .thirtyMinutes)
         XCTAssertEqual(HistoryViewModel.uptimeTimelineGranularity(for: .last12h), .hour)
         XCTAssertEqual(HistoryViewModel.uptimeTimelineGranularity(for: .last24h), .hour)
-        XCTAssertEqual(HistoryViewModel.uptimeTimelineGranularity(for: .last48h), .sixHours)
-        XCTAssertEqual(HistoryViewModel.uptimeTimelineGranularity(for: .last3d), .sixHours)
+        XCTAssertEqual(HistoryViewModel.uptimeTimelineGranularity(for: .last48h), .hour)
+        XCTAssertEqual(HistoryViewModel.uptimeTimelineGranularity(for: .last3d), .threeHours)
         XCTAssertEqual(HistoryViewModel.uptimeTimelineGranularity(for: .last7d), .sixHours)
         XCTAssertEqual(HistoryViewModel.uptimeTimelineGranularity(for: .last14d), .day)
         XCTAssertEqual(HistoryViewModel.uptimeTimelineGranularity(for: .last90d), .day)
@@ -40,8 +40,8 @@ final class HistoryViewModelAnalyticsTests: XCTestCase {
         XCTAssertEqual(HistoryViewModel.uptimeTimelineBucketCount(for: .last6h), 12)
         XCTAssertEqual(HistoryViewModel.uptimeTimelineBucketCount(for: .last12h), 12)
         XCTAssertEqual(HistoryViewModel.uptimeTimelineBucketCount(for: .last24h), 24)
-        XCTAssertEqual(HistoryViewModel.uptimeTimelineBucketCount(for: .last48h), 8)
-        XCTAssertEqual(HistoryViewModel.uptimeTimelineBucketCount(for: .last3d), 12)
+        XCTAssertEqual(HistoryViewModel.uptimeTimelineBucketCount(for: .last48h), 48)
+        XCTAssertEqual(HistoryViewModel.uptimeTimelineBucketCount(for: .last3d), 24)
         XCTAssertEqual(HistoryViewModel.uptimeTimelineBucketCount(for: .last7d), 28)
         XCTAssertEqual(HistoryViewModel.uptimeTimelineBucketCount(for: .last14d), 14)
         XCTAssertEqual(HistoryViewModel.uptimeTimelineBucketCount(for: .last30d), 30)
@@ -231,6 +231,7 @@ final class HistoryViewModelAnalyticsTests: XCTestCase {
         let events: [HistoryEvent] = [
             HistoryEvent(timestamp: now.addingTimeInterval(-20 * 60), monitorID: siteA, monitorName: "Site A", url: "https://a.dev", method: "GET", status: "OK", statusCode: 200, durationMs: 120, reason: nil, trigger: .automatic),
             HistoryEvent(timestamp: now.addingTimeInterval(-10 * 60), monitorID: siteA, monitorName: "Site A", url: "https://a.dev", method: "GET", status: "Down", statusCode: nil, durationMs: 80, reason: "timeout", trigger: .automatic),
+            HistoryEvent(timestamp: now.addingTimeInterval(-5 * 60), monitorID: siteA, monitorName: "Site A", url: "https://a.dev", method: "GET", status: "Down", statusCode: nil, durationMs: 80, reason: "timeout", trigger: .automatic),
             HistoryEvent(timestamp: now.addingTimeInterval(-15 * 60), monitorID: siteB, monitorName: "Site B", url: "https://b.dev", method: "GET", status: "Down", statusCode: nil, durationMs: 90, reason: "timeout", trigger: .automatic)
         ]
 
@@ -247,7 +248,7 @@ final class HistoryViewModelAnalyticsTests: XCTestCase {
         }
         XCTAssertEqual(a.blocks.count, 24)
         XCTAssertEqual(b.blocks.count, 24)
-        XCTAssertEqual(a.uptimePercentage, 50, accuracy: 0.001)
+        XCTAssertEqual(a.uptimePercentage, 33.333, accuracy: 0.001)
         XCTAssertEqual(b.uptimePercentage, 0, accuracy: 0.001)
         XCTAssertTrue(a.blocks.contains(.degraded))
         XCTAssertTrue(b.blocks.contains(.down))
@@ -351,9 +352,46 @@ final class HistoryViewModelAnalyticsTests: XCTestCase {
         }
 
         XCTAssertEqual(buckets.count, 24)
-        XCTAssertEqual(bucket.status, .degraded)
+        XCTAssertEqual(String(describing: bucket.status), "warning")
         XCTAssertEqual(bucket.uptimePercentage, 50, accuracy: 0.001)
         XCTAssertEqual(bucket.bucketEnd.timeIntervalSince(bucket.bucketStart), 3600, accuracy: 0.001)
+    }
+
+    func testUptimeBucketsClassifySingleAnomalyAsWarning() throws {
+        let referenceDate = Date()
+        let monitor = UUID()
+        let events = [
+            HistoryEvent(
+                timestamp: referenceDate.addingTimeInterval(-1_800),
+                monitorID: monitor,
+                monitorName: "Site A",
+                url: "https://a.dev",
+                method: "GET",
+                status: "OK",
+                statusCode: 200,
+                durationMs: 120,
+                reason: nil,
+                trigger: .automatic
+            ),
+            HistoryEvent(
+                timestamp: referenceDate.addingTimeInterval(-1_200),
+                monitorID: monitor,
+                monitorName: "Site A",
+                url: "https://a.dev",
+                method: "GET",
+                status: "Down",
+                statusCode: 200,
+                durationMs: 5_944,
+                reason: "Slow response",
+                trigger: .automatic
+            )
+        ]
+
+        let vm = HistoryViewModel(store: StubHistoryStore(events: events))
+        vm.graphRange = .last24h
+        let bucket = try XCTUnwrap(vm.uptimeBuckets(thresholdMs: 2_000, referenceDate: referenceDate).first { $0.sampleCount == 2 })
+
+        XCTAssertEqual(String(describing: bucket.status), "warning")
     }
 
     func testUptimeBucketsCanBeScopedToASingleSite() {
