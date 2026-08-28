@@ -141,6 +141,10 @@ struct SettingsView: View {
                 .frame(width: 220, alignment: .leading)
             }
 
+            Divider()
+                .frame(width: 427)
+                .frame(maxWidth: .infinity, alignment: .center)
+
             alignedRow("History Retention:") {
                 Picker("", selection: $vm.settings.historyRetentionPolicy) {
                     ForEach(HistoryRetentionPolicy.allCases) { policy in
