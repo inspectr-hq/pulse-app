@@ -28,7 +28,7 @@ struct SettingsView: View {
     @EnvironmentObject var vm: AppViewModel
     @State private var selectedTab: Tab = .general
     @State private var selectedWebhookID: UUID?
-    private let compactWindowSize = NSSize(width: 720, height: 620)
+    private let compactWindowSize = NSSize(width: 720, height: 720)
     private let webhooksWindowSize = NSSize(width: 840, height: 760)
     
     var body: some View {
@@ -163,14 +163,6 @@ struct SettingsView: View {
                 .help("Keeps the newest events when the history reaches this total limit.")
             }
 
-            alignedRow("Full Backup:") {
-                HStack(spacing: 10) {
-                    Button("Export Full Backup…") { exportFullBackup() }
-                    Button("Import Full Backup…") { importFullBackup() }
-                }
-                .help("Exports or restores monitors, settings, and complete history.")
-            }
-
             Divider()
                 .frame(width: 427)
                 .frame(maxWidth: .infinity, alignment: .center)
@@ -210,6 +202,18 @@ struct SettingsView: View {
                 }
                 .toggleStyle(.checkbox)
                 .help("Controls which summary metrics appear in the Performance Trend card.")
+            }
+
+            Divider()
+                .frame(width: 427)
+                .frame(maxWidth: .infinity, alignment: .center)
+
+            alignedRow("Full Backup:") {
+                HStack(spacing: 10) {
+                    Button("Export Full Backup…") { exportFullBackup() }
+                    Button("Import Full Backup…") { importFullBackup() }
+                }
+                .help("Exports or restores monitors, settings, and complete history.")
             }
         }
         .padding(.top, 6)
