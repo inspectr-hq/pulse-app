@@ -235,13 +235,19 @@ final class HistoryViewModel: ObservableObject {
     }
 
     var graphEvents: [HistoryEvent] {
-        let cutoff = Date().addingTimeInterval(-graphRange.duration)
-        return events
-            .filter { event in
-                event.timestamp >= cutoff &&
-                (graphSite == "All Sites" || event.monitorName == graphSite)
-            }
-            .sorted(by: { $0.timestamp < $1.timestamp })
+        let end = Date()
+        return store.queryEvents(matching: graphQuery(referenceDate: end),
+            order: .ascending,
+            limit: nil
+        )
+    }
+
+    private func graphQuery(referenceDate: Date = Date()) -> HistoryQuery {
+        HistoryQuery(
+            monitorName: graphSite == "All Sites" ? nil : graphSite,
+            since: referenceDate.addingTimeInterval(-graphRange.duration),
+            until: referenceDate
+        )
     }
 
     func graphDateDomain(referenceDate: Date = Date()) -> ClosedRange<Date> {
@@ -265,34 +271,25 @@ final class HistoryViewModel: ObservableObject {
     }
 
     var uptimePercentage: Double {
-        let points = statusPoints
-        guard !points.isEmpty else { return 0 }
-        let up = points.filter { $0.state == 1 }.count
-        return (Double(up) / Double(points.count)) * 100
+        let aggregate = store.aggregate(matching: graphQuery())
+        guard aggregate.sampleCount > 0 else { return 0 }
+        return (Double(aggregate.successCount) / Double(aggregate.sampleCount)) * 100
     }
 
     var averageLatencyMs: Int {
-        let values = latencyPoints.map(\.ms)
-        guard !values.isEmpty else { return 0 }
-        return values.reduce(0, +) / values.count
+        store.aggregate(matching: graphQuery()).averageLatencyMs
     }
 
     var p95LatencyMs: Int {
-        let values = latencyPoints.map(\.ms).sorted()
-        guard !values.isEmpty else { return 0 }
-        let idx = min(values.count - 1, Int(Double(values.count) * 0.95))
-        return values[idx]
+        store.percentileLatency(0.95, matching: graphQuery()) ?? 0
     }
 
     var p99LatencyMs: Int {
-        let values = latencyPoints.map(\.ms).sorted()
-        guard !values.isEmpty else { return 0 }
-        let idx = min(values.count - 1, Int(Double(values.count) * 0.99))
-        return values[idx]
+        store.percentileLatency(0.99, matching: graphQuery()) ?? 0
     }
 
     var peakLatencyMs: Int {
-        latencyPoints.map(\.ms).max() ?? 0
+        store.aggregate(matching: graphQuery()).peakLatencyMs
     }
 
     var performanceSamples: [PerformanceSample] {
@@ -333,9 +330,7 @@ final class HistoryViewModel: ObservableObject {
         guard graphSite != "All Sites" else { return [] }
 
         let cutoff = Date().addingTimeInterval(-graphRange.duration)
-        let siteEvents = events
-            .filter { $0.monitorName == graphSite }
-            .sorted(by: { $0.timestamp < $1.timestamp })
+        let siteEvents = metadataEvents(for: graphSite, cutoff: cutoff)
 
         var markers: [MetadataMarker] = []
         var previousValue = siteEvents
@@ -371,41 +366,37 @@ final class HistoryViewModel: ObservableObject {
         return markers
     }
 
+    private func metadataEvents(for siteName: String, cutoff: Date) -> [HistoryEvent] {
+        let predecessor = store.queryEvents(
+            matching: HistoryQuery(monitorName: siteName, until: cutoff),
+            order: .descending,
+            limit: 1
+        )
+        let rangeEvents = store.queryEvents(
+            matching: HistoryQuery(
+                monitorName: siteName,
+                since: cutoff,
+                until: Date()
+            ),
+            order: .ascending,
+            limit: nil
+        )
+        return (predecessor + rangeEvents).sorted { lhs, rhs in
+            lhs.timestamp == rhs.timestamp ? lhs.id.uuidString < rhs.id.uuidString : lhs.timestamp < rhs.timestamp
+        }
+    }
+
     var trackingTimelineEntries: [TrackingTimelineEntry] {
         guard graphSite != "All Sites" else { return [] }
 
-        let siteEvents = events
-            .filter { $0.monitorName == graphSite }
-            .sorted(by: { $0.timestamp < $1.timestamp })
-
-        var seen = Set<String>()
-        var entries: [TrackingTimelineEntry] = []
-
-        for event in siteEvents {
-            guard let rawValue = event.metadataValue?.trimmingCharacters(in: .whitespacesAndNewlines),
-                  !rawValue.isEmpty else {
-                continue
-            }
-
-            let label = event.metadataLabel?.trimmingCharacters(in: .whitespacesAndNewlines)
-            let resolvedLabel = label.flatMap { $0.isEmpty ? nil : $0 } ?? "Tracked Value"
-            let id = "\(resolvedLabel)\t\(rawValue)"
-
-            guard seen.insert(id).inserted else {
-                continue
-            }
-
-            entries.append(
-                TrackingTimelineEntry(
-                    id: id,
-                    firstDetectedAt: event.timestamp,
-                    label: resolvedLabel,
-                    value: rawValue
-                )
+        return store.trackingValues(for: graphSite).map {
+            TrackingTimelineEntry(
+                id: "\($0.label)\t\($0.value)",
+                firstDetectedAt: $0.firstDetectedAt,
+                label: $0.label,
+                value: $0.value
             )
         }
-
-        return entries.sorted { $0.firstDetectedAt > $1.firstDetectedAt }
     }
 
     func uptimeBlocks(thresholdMs: Int) -> [UptimeBlockStatus] {
@@ -433,7 +424,15 @@ final class HistoryViewModel: ObservableObject {
         thresholdMs: Int,
         referenceDate: Date = Date()
     ) -> [UptimeBucket] {
-        let siteEvents = events.filter { $0.monitorName == siteName }
+        let siteEvents = store.queryEvents(
+            matching: HistoryQuery(
+                monitorName: siteName,
+                since: referenceDate.addingTimeInterval(-graphRange.duration),
+                until: referenceDate
+            ),
+            order: .ascending,
+            limit: nil
+        )
         return uptimeBuckets(from: siteEvents, thresholdMs: thresholdMs, referenceDate: referenceDate)
     }
 

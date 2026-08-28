@@ -193,4 +193,70 @@ final class HistoryStoreTests: XCTestCase {
             events.reversed()
         )
     }
+
+    func testQuerySupportsUpperTimestampBoundForGraphRanges() {
+        let tempURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("pulse-history-query-range-\(UUID().uuidString).sqlite")
+        let store = HistoryStore(fileURL: tempURL)
+        let events = (0..<3).map { index in
+            HistoryEvent(
+                timestamp: Date(timeIntervalSince1970: 1_700_000_000 + Double(index)), monitorID: UUID(),
+                monitorName: "Site", url: "https://example.com/\(index)", method: "GET", status: "OK",
+                statusCode: 200, durationMs: index, reason: nil, trigger: .automatic
+            )
+        }
+        store.merge(events, retentionPolicy: .unlimited, maxEvents: 100)
+
+        let query = HistoryQuery(
+            monitorName: "Site",
+            since: Date(timeIntervalSince1970: 1_700_000_001),
+            until: Date(timeIntervalSince1970: 1_700_000_001.5)
+        )
+
+        XCTAssertEqual(store.queryEvents(matching: query, order: .ascending, limit: nil), [events[1]])
+    }
+
+    func testAggregateCalculatesStatusAndLatencyMetricsInSQLite() {
+        let tempURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("pulse-history-aggregate-\(UUID().uuidString).sqlite")
+        let store = HistoryStore(fileURL: tempURL)
+        let monitorID = UUID()
+        let events = [
+            HistoryEvent(timestamp: Date(timeIntervalSince1970: 1_700_000_000), monitorID: monitorID, monitorName: "Site", url: "https://site.dev", method: "GET", status: "OK", statusCode: 200, durationMs: 100, reason: nil, trigger: .automatic),
+            HistoryEvent(timestamp: Date(timeIntervalSince1970: 1_700_000_001), monitorID: monitorID, monitorName: "Site", url: "https://site.dev", method: "GET", status: "Down", statusCode: nil, durationMs: 300, reason: "timeout", trigger: .automatic),
+            HistoryEvent(timestamp: Date(timeIntervalSince1970: 1_700_000_002), monitorID: monitorID, monitorName: "Site", url: "https://site.dev", method: "GET", status: "OK", statusCode: 200, durationMs: nil, reason: nil, trigger: .automatic)
+        ]
+        store.merge(events, retentionPolicy: .unlimited, maxEvents: 100)
+
+        let aggregate = store.aggregate(matching: HistoryQuery(monitorName: "Site"))
+
+        XCTAssertEqual(aggregate.sampleCount, 3)
+        XCTAssertEqual(aggregate.successCount, 2)
+        XCTAssertEqual(aggregate.latencySampleCount, 2)
+        XCTAssertEqual(aggregate.averageLatencyMs, 200)
+        XCTAssertEqual(aggregate.peakLatencyMs, 300)
+        XCTAssertEqual(store.percentileLatency(0.95, matching: HistoryQuery(monitorName: "Site")), 300)
+    }
+
+    func testTrackingValuesAreGroupedAndReturnFirstDetectionInSQLite() {
+        let tempURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("pulse-history-tracking-\(UUID().uuidString).sqlite")
+        let store = HistoryStore(fileURL: tempURL)
+        let monitorID = UUID()
+        let first = Date(timeIntervalSince1970: 1_700_000_000)
+        let events = [
+            HistoryEvent(timestamp: first, monitorID: monitorID, monitorName: "Site", url: "https://site.dev", method: "GET", status: "OK", statusCode: 200, durationMs: 100, reason: nil, trigger: .automatic, metadataLabel: "Version", metadataValue: "1.0"),
+            HistoryEvent(timestamp: first.addingTimeInterval(1), monitorID: monitorID, monitorName: "Site", url: "https://site.dev", method: "GET", status: "OK", statusCode: 200, durationMs: 100, reason: nil, trigger: .automatic, metadataLabel: "Version", metadataValue: "1.0"),
+            HistoryEvent(timestamp: first.addingTimeInterval(2), monitorID: monitorID, monitorName: "Site", url: "https://site.dev", method: "GET", status: "OK", statusCode: 200, durationMs: 100, reason: nil, trigger: .automatic, metadataLabel: "Version", metadataValue: "2.0")
+        ]
+        store.merge(events, retentionPolicy: .unlimited, maxEvents: 100)
+
+        XCTAssertEqual(
+            store.trackingValues(for: "Site"),
+            [
+                HistoryTrackingValue(label: "Version", value: "2.0", firstDetectedAt: first.addingTimeInterval(2)),
+                HistoryTrackingValue(label: "Version", value: "1.0", firstDetectedAt: first)
+            ]
+        )
+    }
 }

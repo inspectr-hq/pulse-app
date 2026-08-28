@@ -26,25 +26,45 @@ struct HistoryQuery {
     var monitorName: String?
     var status: Status?
     var since: Date?
+    var until: Date?
 
     init(
         search: String? = nil,
         monitorID: UUID? = nil,
         monitorName: String? = nil,
         status: Status? = nil,
-        since: Date? = nil
+        since: Date? = nil,
+        until: Date? = nil
     ) {
         self.search = search
         self.monitorID = monitorID
         self.monitorName = monitorName
         self.status = status
         self.since = since
+        self.until = until
     }
+}
+
+struct HistoryAggregate: Equatable {
+    let sampleCount: Int
+    let successCount: Int
+    let latencySampleCount: Int
+    let averageLatencyMs: Int
+    let peakLatencyMs: Int
+}
+
+struct HistoryTrackingValue: Equatable {
+    let label: String
+    let value: String
+    let firstDetectedAt: Date
 }
 
 protocol HistoryStoreProtocol {
     func loadEvents() -> [HistoryEvent]
     func queryEvents(matching query: HistoryQuery, order: HistoryQuery.Order, limit: Int?) -> [HistoryEvent]
+    func aggregate(matching query: HistoryQuery) -> HistoryAggregate
+    func percentileLatency(_ percentile: Double, matching query: HistoryQuery) -> Int?
+    func trackingValues(for monitorName: String) -> [HistoryTrackingValue]
     func append(_ event: HistoryEvent, retentionPolicy: HistoryRetentionPolicy, maxEvents: Int)
     func merge(_ events: [HistoryEvent], retentionPolicy: HistoryRetentionPolicy, maxEvents: Int)
     func replaceAll(with events: [HistoryEvent])
@@ -69,8 +89,9 @@ extension HistoryStoreProtocol {
                 case .up: matchesStatus = event.status == "OK"
                 case .down: matchesStatus = event.status != "OK"
                 }
-                let matchesSince = query.since.map { event.timestamp >= $0 } ?? true
-                return matchesSearch && matchesMonitorID && matchesName && matchesStatus && matchesSince
+        let matchesSince = query.since.map { event.timestamp >= $0 } ?? true
+                let matchesUntil = query.until.map { event.timestamp < $0 } ?? true
+                return matchesSearch && matchesMonitorID && matchesName && matchesStatus && matchesSince && matchesUntil
             }
             .sorted { lhs, rhs in
                 switch order {
@@ -81,9 +102,59 @@ extension HistoryStoreProtocol {
             .prefix(limit ?? .max)
             .map { $0 }
     }
+
+    func aggregate(matching query: HistoryQuery) -> HistoryAggregate {
+        let events = queryEvents(matching: query, order: .ascending, limit: nil)
+        let latencies = events.compactMap(\.durationMs)
+        return HistoryAggregate(
+            sampleCount: events.count,
+            successCount: events.filter { $0.status == "OK" }.count,
+            latencySampleCount: latencies.count,
+            averageLatencyMs: latencies.isEmpty ? 0 : latencies.reduce(0, +) / latencies.count,
+            peakLatencyMs: latencies.max() ?? 0
+        )
+    }
+
+    func percentileLatency(_ percentile: Double, matching query: HistoryQuery) -> Int? {
+        let values = queryEvents(matching: query, order: .ascending, limit: nil)
+            .compactMap(\.durationMs)
+            .sorted()
+        guard !values.isEmpty else { return nil }
+        let index = min(values.count - 1, max(0, Int(Double(values.count) * percentile)))
+        return values[index]
+    }
+
+    func trackingValues(for monitorName: String) -> [HistoryTrackingValue] {
+        let grouped = Dictionary(grouping: loadEvents().filter { event in
+            event.monitorName == monitorName && !(event.metadataValue?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
+        }) { event in
+            let label = event.metadataLabel?.trimmingCharacters(in: .whitespacesAndNewlines)
+            return "\(label.flatMap { $0.isEmpty ? nil : $0 } ?? "Tracked Value")\t\(event.metadataValue!.trimmingCharacters(in: .whitespacesAndNewlines))"
+        }
+        return grouped.compactMap { key, events in
+            let components = key.split(separator: "\t", maxSplits: 1).map(String.init)
+            guard components.count == 2, let first = events.min(by: { $0.timestamp < $1.timestamp }) else { return nil }
+            return HistoryTrackingValue(label: components[0], value: components[1], firstDetectedAt: first.timestamp)
+        }.sorted { $0.firstDetectedAt > $1.firstDetectedAt }
+    }
 }
 
 private let sqliteTransient = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
+
+private struct SQLiteBinding {
+    let text: String?
+    let number: Double?
+
+    init(text: String) {
+        self.text = text
+        self.number = nil
+    }
+
+    init(number: Double) {
+        self.text = nil
+        self.number = number
+    }
+}
 
 final class HistoryStore: HistoryStoreProtocol {
     static let databaseFileName = "history.sqlite"
@@ -132,38 +203,8 @@ final class HistoryStore: HistoryStoreProtocol {
     func queryEvents(matching query: HistoryQuery, order: HistoryQuery.Order, limit: Int?) -> [HistoryEvent] {
         guard let database else { return [] }
 
-        var clauses: [String] = []
-        var bindings: [(text: String?, number: Double?)] = []
+        let (whereSQL, bindings) = querySQL(for: query)
 
-        if let search = query.search, !search.isEmpty {
-            clauses.append("(LOWER(url) LIKE LOWER(?) OR LOWER(monitor_name) LIKE LOWER(?) OR LOWER(COALESCE(metadata_label, '')) LIKE LOWER(?) OR LOWER(COALESCE(metadata_value, '')) LIKE LOWER(?))")
-            let pattern = "%\(search)%"
-            bindings.append(contentsOf: [pattern, pattern, pattern, pattern].map { ($0, nil) })
-        }
-        if let monitorID = query.monitorID {
-            clauses.append("monitor_id = ?")
-            bindings.append((monitorID.uuidString, nil))
-        }
-        if let monitorName = query.monitorName {
-            clauses.append("monitor_name = ?")
-            bindings.append((monitorName, nil))
-        }
-        switch query.status {
-        case .none:
-            break
-        case .up:
-            clauses.append("status = ?")
-            bindings.append(("OK", nil))
-        case .down:
-            clauses.append("status != ?")
-            bindings.append(("OK", nil))
-        }
-        if let since = query.since {
-            clauses.append("timestamp >= ?")
-            bindings.append((nil, since.timeIntervalSince1970))
-        }
-
-        let whereSQL = clauses.isEmpty ? "" : "WHERE \(clauses.joined(separator: " AND "))"
         let limitSQL = limit.map { " LIMIT \(max(0, $0))" } ?? ""
         let sql = """
         SELECT id, timestamp, monitor_id, monitor_name, url, method, status,
@@ -191,6 +232,73 @@ final class HistoryStore: HistoryStoreProtocol {
             if let event = decodeEvent(statement) { events.append(event) }
         }
         return events
+    }
+
+    func aggregate(matching query: HistoryQuery) -> HistoryAggregate {
+        guard let database else { return HistoryAggregate(sampleCount: 0, successCount: 0, latencySampleCount: 0, averageLatencyMs: 0, peakLatencyMs: 0) }
+        let (whereSQL, bindings) = querySQL(for: query)
+        let statementSQL = """
+        SELECT COUNT(*), SUM(CASE WHEN status = 'OK' THEN 1 ELSE 0 END),
+               COUNT(duration_ms), AVG(duration_ms), MAX(duration_ms)
+        FROM events \(whereSQL);
+        """
+        guard let statement = prepare(statementSQL, database: database) else { return HistoryAggregate(sampleCount: 0, successCount: 0, latencySampleCount: 0, averageLatencyMs: 0, peakLatencyMs: 0) }
+        defer { sqlite3_finalize(statement) }
+        guard bind(bindings, to: statement), sqlite3_step(statement) == SQLITE_ROW else {
+            return HistoryAggregate(sampleCount: 0, successCount: 0, latencySampleCount: 0, averageLatencyMs: 0, peakLatencyMs: 0)
+        }
+        return HistoryAggregate(
+            sampleCount: Int(sqlite3_column_int64(statement, 0)),
+            successCount: Int(sqlite3_column_int64(statement, 1)),
+            latencySampleCount: Int(sqlite3_column_int64(statement, 2)),
+            averageLatencyMs: sqlite3_column_type(statement, 3) == SQLITE_NULL ? 0 : Int(sqlite3_column_double(statement, 3)),
+            peakLatencyMs: sqlite3_column_type(statement, 4) == SQLITE_NULL ? 0 : Int(sqlite3_column_int64(statement, 4))
+        )
+    }
+
+    func percentileLatency(_ percentile: Double, matching query: HistoryQuery) -> Int? {
+        guard let database else { return nil }
+        let (whereSQL, bindings) = querySQL(for: query, additionalClause: "duration_ms IS NOT NULL")
+        let countSQL = "SELECT COUNT(duration_ms) FROM events \(whereSQL);"
+        guard let countStatement = prepare(countSQL, database: database), bind(bindings, to: countStatement), sqlite3_step(countStatement) == SQLITE_ROW else { return nil }
+        let count = Int(sqlite3_column_int64(countStatement, 0))
+        sqlite3_finalize(countStatement)
+        guard count > 0 else { return nil }
+
+        let index = min(count - 1, max(0, Int(Double(count) * percentile)))
+        let valueSQL = "SELECT duration_ms FROM events \(whereSQL) ORDER BY duration_ms ASC LIMIT 1 OFFSET \(index);"
+        guard let valueStatement = prepare(valueSQL, database: database), bind(bindings, to: valueStatement), sqlite3_step(valueStatement) == SQLITE_ROW else { return nil }
+        defer { sqlite3_finalize(valueStatement) }
+        return Int(sqlite3_column_int64(valueStatement, 0))
+    }
+
+    func trackingValues(for monitorName: String) -> [HistoryTrackingValue] {
+        guard let database else { return [] }
+        let (whereSQL, bindings) = querySQL(
+            for: HistoryQuery(monitorName: monitorName),
+            additionalClause: "TRIM(COALESCE(metadata_value, '')) <> ''"
+        )
+        let sql = """
+        SELECT COALESCE(NULLIF(TRIM(metadata_label), ''), 'Tracked Value'),
+               TRIM(metadata_value), MIN(timestamp)
+        FROM events \(whereSQL)
+        GROUP BY COALESCE(NULLIF(TRIM(metadata_label), ''), 'Tracked Value'), TRIM(metadata_value)
+        ORDER BY MIN(timestamp) DESC;
+        """
+        guard let statement = prepare(sql, database: database), bind(bindings, to: statement) else { return [] }
+        defer { sqlite3_finalize(statement) }
+
+        var values: [HistoryTrackingValue] = []
+        while sqlite3_step(statement) == SQLITE_ROW {
+            values.append(
+                HistoryTrackingValue(
+                    label: columnText(statement, 0),
+                    value: columnText(statement, 1),
+                    firstDetectedAt: Date(timeIntervalSince1970: sqlite3_column_double(statement, 2))
+                )
+            )
+        }
+        return values
     }
 
     func append(_ event: HistoryEvent, retentionPolicy: HistoryRetentionPolicy, maxEvents: Int) {
@@ -308,6 +416,64 @@ final class HistoryStore: HistoryStoreProtocol {
             status: columnText(statement, 6), statusCode: optionalInt(statement, 7), durationMs: optionalInt(statement, 8),
             reason: optionalText(statement, 9), trigger: trigger, metadataLabel: optionalText(statement, 11), metadataValue: optionalText(statement, 12)
         )
+    }
+
+    private func querySQL(for query: HistoryQuery, additionalClause: String? = nil) -> (String, [SQLiteBinding]) {
+        var clauses: [String] = []
+        var bindings: [SQLiteBinding] = []
+
+        if let search = query.search, !search.isEmpty {
+            clauses.append("(LOWER(url) LIKE LOWER(?) OR LOWER(monitor_name) LIKE LOWER(?) OR LOWER(COALESCE(metadata_label, '')) LIKE LOWER(?) OR LOWER(COALESCE(metadata_value, '')) LIKE LOWER(?))")
+            let pattern = "%\(search)%"
+            bindings.append(contentsOf: [pattern, pattern, pattern, pattern].map { SQLiteBinding(text: $0) })
+        }
+        if let monitorID = query.monitorID {
+            clauses.append("monitor_id = ?")
+            bindings.append(SQLiteBinding(text: monitorID.uuidString))
+        }
+        if let monitorName = query.monitorName {
+            clauses.append("monitor_name = ?")
+            bindings.append(SQLiteBinding(text: monitorName))
+        }
+        switch query.status {
+        case .none:
+            break
+        case .up:
+            clauses.append("status = ?")
+            bindings.append(SQLiteBinding(text: "OK"))
+        case .down:
+            clauses.append("status != ?")
+            bindings.append(SQLiteBinding(text: "OK"))
+        }
+        if let since = query.since {
+            clauses.append("timestamp >= ?")
+            bindings.append(SQLiteBinding(number: since.timeIntervalSince1970))
+        }
+        if let until = query.until {
+            clauses.append("timestamp < ?")
+            bindings.append(SQLiteBinding(number: until.timeIntervalSince1970))
+        }
+        if let additionalClause {
+            clauses.append(additionalClause)
+        }
+
+        let whereSQL = clauses.isEmpty ? "" : "WHERE \(clauses.joined(separator: " AND "))"
+        return (whereSQL, bindings)
+    }
+
+    private func bind(_ bindings: [SQLiteBinding], to statement: OpaquePointer) -> Bool {
+        var index: Int32 = 1
+        for binding in bindings {
+            if let text = binding.text {
+                guard bindText(text, to: statement, at: index) else { return false }
+            } else if let number = binding.number {
+                guard sqlite3_bind_double(statement, index, number) == SQLITE_OK else { return false }
+            } else {
+                sqlite3_bind_null(statement, index)
+            }
+            index += 1
+        }
+        return true
     }
 
     private func prepare(_ sql: String, database: OpaquePointer) -> OpaquePointer? {
