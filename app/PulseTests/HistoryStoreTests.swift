@@ -130,12 +130,67 @@ final class HistoryStoreTests: XCTestCase {
             .appendingPathComponent("pulse-history-merge-\(UUID().uuidString).sqlite")
         let store = HistoryStore(fileURL: tempURL)
         let event = HistoryEvent(
-            timestamp: Date(), monitorID: UUID(), monitorName: "A", url: "https://a.com", method: "GET",
+            timestamp: Date(timeIntervalSince1970: 1_700_000_000), monitorID: UUID(), monitorName: "A", url: "https://a.com", method: "GET",
             status: "OK", statusCode: 200, durationMs: 10, reason: nil, trigger: .automatic
         )
 
         store.merge([event, event], retentionPolicy: .unlimited, maxEvents: 100)
 
         XCTAssertEqual(store.loadEvents(), [event])
+    }
+
+    func testQueryFiltersSearchesOrdersAndLimitsEvents() {
+        let tempURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("pulse-history-query-\(UUID().uuidString).sqlite")
+        let store = HistoryStore(fileURL: tempURL)
+        let monitorID = UUID()
+        let events = [
+            HistoryEvent(
+                timestamp: Date(timeIntervalSince1970: 1_700_000_100), monitorID: monitorID,
+                monitorName: "Example", url: "https://example.com/ok", method: "GET", status: "OK",
+                statusCode: 200, durationMs: 20, reason: nil, trigger: .automatic
+            ),
+            HistoryEvent(
+                timestamp: Date(timeIntervalSince1970: 1_700_000_200), monitorID: monitorID,
+                monitorName: "Example", url: "https://example.com/outage", method: "GET", status: "Down",
+                statusCode: 503, durationMs: nil, reason: "timeout", trigger: .automatic,
+                metadataLabel: "Region", metadataValue: "EU"
+            ),
+            HistoryEvent(
+                timestamp: Date(timeIntervalSince1970: 1_700_000_300), monitorID: UUID(),
+                monitorName: "Other", url: "https://other.dev", method: "GET", status: "OK",
+                statusCode: 200, durationMs: 30, reason: nil, trigger: .manual
+            )
+        ]
+        store.merge(events, retentionPolicy: .unlimited, maxEvents: 100)
+
+        let query = HistoryQuery(
+            search: "eu",
+            monitorID: monitorID,
+            monitorName: "Example",
+            status: .down,
+            since: Date(timeIntervalSince1970: 1_700_000_150)
+        )
+
+        XCTAssertEqual(store.queryEvents(matching: query, order: .ascending, limit: 1), [events[1]])
+    }
+
+    func testQueryReturnsCompleteHistoryWithoutApplyingUIFilters() {
+        let tempURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("pulse-history-query-all-\(UUID().uuidString).sqlite")
+        let store = HistoryStore(fileURL: tempURL)
+        let events = (0..<3).map { index in
+            HistoryEvent(
+                timestamp: Date(timeIntervalSince1970: 1_700_000_000 + Double(index)), monitorID: UUID(),
+                monitorName: "Site \(index)", url: "https://example.com/\(index)", method: "GET", status: "OK",
+                statusCode: 200, durationMs: index, reason: nil, trigger: .automatic
+            )
+        }
+        store.merge(events, retentionPolicy: .unlimited, maxEvents: 100)
+
+        XCTAssertEqual(
+            store.queryEvents(matching: .all, order: .descending, limit: nil),
+            events.reversed()
+        )
     }
 }

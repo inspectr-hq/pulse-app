@@ -1,13 +1,86 @@
 import Foundation
 import SQLite3
 
+struct HistoryQuery {
+    enum Status {
+        case up
+        case down
+    }
+
+    enum Order {
+        case ascending
+        case descending
+
+        var sql: String {
+            switch self {
+            case .ascending: return "ASC"
+            case .descending: return "DESC"
+            }
+        }
+    }
+
+    static let all = HistoryQuery()
+
+    var search: String?
+    var monitorID: UUID?
+    var monitorName: String?
+    var status: Status?
+    var since: Date?
+
+    init(
+        search: String? = nil,
+        monitorID: UUID? = nil,
+        monitorName: String? = nil,
+        status: Status? = nil,
+        since: Date? = nil
+    ) {
+        self.search = search
+        self.monitorID = monitorID
+        self.monitorName = monitorName
+        self.status = status
+        self.since = since
+    }
+}
+
 protocol HistoryStoreProtocol {
     func loadEvents() -> [HistoryEvent]
+    func queryEvents(matching query: HistoryQuery, order: HistoryQuery.Order, limit: Int?) -> [HistoryEvent]
     func append(_ event: HistoryEvent, retentionPolicy: HistoryRetentionPolicy, maxEvents: Int)
     func merge(_ events: [HistoryEvent], retentionPolicy: HistoryRetentionPolicy, maxEvents: Int)
     func replaceAll(with events: [HistoryEvent])
     func delete(eventID: UUID)
     func clear()
+}
+
+extension HistoryStoreProtocol {
+    func queryEvents(matching query: HistoryQuery, order: HistoryQuery.Order, limit: Int?) -> [HistoryEvent] {
+        let search = query.search?.localizedLowercase
+        return loadEvents()
+            .filter { event in
+                let searchable = [event.url, event.monitorName, event.metadataLabel ?? "", event.metadataValue ?? ""]
+                    .joined(separator: "\n")
+                    .localizedLowercase
+                let matchesSearch = search.map { searchable.contains($0) } ?? true
+                let matchesMonitorID = query.monitorID.map { event.monitorID == $0 } ?? true
+                let matchesName = query.monitorName.map { event.monitorName == $0 } ?? true
+                let matchesStatus: Bool
+                switch query.status {
+                case .none: matchesStatus = true
+                case .up: matchesStatus = event.status == "OK"
+                case .down: matchesStatus = event.status != "OK"
+                }
+                let matchesSince = query.since.map { event.timestamp >= $0 } ?? true
+                return matchesSearch && matchesMonitorID && matchesName && matchesStatus && matchesSince
+            }
+            .sorted { lhs, rhs in
+                switch order {
+                case .ascending: return lhs.timestamp == rhs.timestamp ? lhs.id.uuidString < rhs.id.uuidString : lhs.timestamp < rhs.timestamp
+                case .descending: return lhs.timestamp == rhs.timestamp ? lhs.id.uuidString > rhs.id.uuidString : lhs.timestamp > rhs.timestamp
+                }
+            }
+            .prefix(limit ?? .max)
+            .map { $0 }
+    }
 }
 
 private let sqliteTransient = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
@@ -48,6 +121,70 @@ final class HistoryStore: HistoryStoreProtocol {
                 FROM events ORDER BY timestamp DESC;
                 """, database: database) else { return [] }
         defer { sqlite3_finalize(statement) }
+
+        var events: [HistoryEvent] = []
+        while sqlite3_step(statement) == SQLITE_ROW {
+            if let event = decodeEvent(statement) { events.append(event) }
+        }
+        return events
+    }
+
+    func queryEvents(matching query: HistoryQuery, order: HistoryQuery.Order, limit: Int?) -> [HistoryEvent] {
+        guard let database else { return [] }
+
+        var clauses: [String] = []
+        var bindings: [(text: String?, number: Double?)] = []
+
+        if let search = query.search, !search.isEmpty {
+            clauses.append("(LOWER(url) LIKE LOWER(?) OR LOWER(monitor_name) LIKE LOWER(?) OR LOWER(COALESCE(metadata_label, '')) LIKE LOWER(?) OR LOWER(COALESCE(metadata_value, '')) LIKE LOWER(?))")
+            let pattern = "%\(search)%"
+            bindings.append(contentsOf: [pattern, pattern, pattern, pattern].map { ($0, nil) })
+        }
+        if let monitorID = query.monitorID {
+            clauses.append("monitor_id = ?")
+            bindings.append((monitorID.uuidString, nil))
+        }
+        if let monitorName = query.monitorName {
+            clauses.append("monitor_name = ?")
+            bindings.append((monitorName, nil))
+        }
+        switch query.status {
+        case .none:
+            break
+        case .up:
+            clauses.append("status = ?")
+            bindings.append(("OK", nil))
+        case .down:
+            clauses.append("status != ?")
+            bindings.append(("OK", nil))
+        }
+        if let since = query.since {
+            clauses.append("timestamp >= ?")
+            bindings.append((nil, since.timeIntervalSince1970))
+        }
+
+        let whereSQL = clauses.isEmpty ? "" : "WHERE \(clauses.joined(separator: " AND "))"
+        let limitSQL = limit.map { " LIMIT \(max(0, $0))" } ?? ""
+        let sql = """
+        SELECT id, timestamp, monitor_id, monitor_name, url, method, status,
+               status_code, duration_ms, reason, trigger, metadata_label, metadata_value
+        FROM events \(whereSQL)
+        ORDER BY timestamp \(order.sql), id \(order.sql)\(limitSQL);
+        """
+        guard let statement = prepare(sql, database: database) else { return [] }
+        defer { sqlite3_finalize(statement) }
+
+        var index: Int32 = 1
+        for binding in bindings {
+            if let text = binding.text {
+                guard bindText(text, to: statement, at: index) else { return [] }
+            } else if let number = binding.number {
+                guard sqlite3_bind_double(statement, index, number) == SQLITE_OK else { return [] }
+            } else {
+                sqlite3_bind_null(statement, index)
+            }
+            index += 1
+        }
 
         var events: [HistoryEvent] = []
         while sqlite3_step(statement) == SQLITE_ROW {

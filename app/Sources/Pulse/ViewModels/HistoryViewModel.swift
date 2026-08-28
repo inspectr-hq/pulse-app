@@ -185,30 +185,30 @@ final class HistoryViewModel: ObservableObject {
     }
 
     var filteredEvents: [HistoryEvent] {
-        let now = Date()
-        return events.filter { event in
-            let metadataLabel = event.metadataLabel ?? ""
-            let metadataValue = event.metadataValue ?? ""
-            let bySearch = search.isEmpty ||
-                event.url.localizedCaseInsensitiveContains(search) ||
-                event.monitorName.localizedCaseInsensitiveContains(search) ||
-                metadataLabel.localizedCaseInsensitiveContains(search) ||
-                metadataValue.localizedCaseInsensitiveContains(search)
-            let byMonitor = selectedMonitor == nil || event.monitorID == selectedMonitor
-            let byName = selectedName == "All Names" || event.monitorName == selectedName
-            let byStatus: Bool
-            switch statusFilter {
-            case .all: byStatus = true
-            case .up: byStatus = event.status == "OK"
-            case .down: byStatus = event.status != "OK"
-            }
-            let byTime: Bool
-            switch timeFilter {
-            case .allTime: byTime = true
-            default: byTime = event.timestamp >= now.addingTimeInterval(-(timeFilter.duration ?? 0))
-            }
-            return bySearch && byMonitor && byName && byStatus && byTime
+        store.queryEvents(matching: currentHistoryQuery, order: .descending, limit: nil)
+    }
+
+    private var currentHistoryQuery: HistoryQuery {
+        let status: HistoryQuery.Status?
+        switch statusFilter {
+        case .all: status = nil
+        case .up: status = .up
+        case .down: status = .down
         }
+
+        let since: Date?
+        switch timeFilter {
+        case .allTime: since = nil
+        default: since = Date().addingTimeInterval(-(timeFilter.duration ?? 0))
+        }
+
+        return HistoryQuery(
+            search: search.isEmpty ? nil : search,
+            monitorID: selectedMonitor,
+            monitorName: selectedName == "All Names" ? nil : selectedName,
+            status: status,
+            since: since
+        )
     }
 
     var availableNames: [String] {
