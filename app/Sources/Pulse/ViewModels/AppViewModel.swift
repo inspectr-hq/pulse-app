@@ -344,6 +344,40 @@ final class AppViewModel: ObservableObject {
         }
     }
 
+    func historyEventsForBackup() -> [HistoryEvent] {
+        historyStore.loadEvents()
+    }
+
+    func mergeHistoryEventsFromBackup(_ events: [HistoryEvent], using retentionSettings: AppSettings? = nil) {
+        let retentionSettings = retentionSettings ?? settings
+        historyStore.merge(
+            events,
+            retentionPolicy: retentionSettings.historyRetentionPolicy,
+            maxEvents: retentionSettings.historyRetentionMaxEvents
+        )
+    }
+
+    func restoreConfiguration(from backup: PulseBackup, replaceConfiguration: Bool) {
+        if replaceConfiguration {
+            monitors = backup.monitors
+            settings = backup.settings
+        } else {
+            let importedIDs = Set(backup.monitors.map(\.id))
+            monitors = backup.monitors + monitors.filter { !importedIDs.contains($0.id) }
+        }
+
+        statuses = Dictionary(uniqueKeysWithValues: monitors.map { monitor in
+            (monitor.id, monitor.isEnabled ? SiteStatus.unknown : .paused)
+        })
+        previousStatuses.removeAll()
+        consecutiveFailures.removeAll()
+        monitorsInAlertingState.removeAll()
+        persistMonitors()
+        monitorStore.saveSettings(settings)
+        launchAtLogin.setEnabled(settings.launchAtLogin)
+        updateDockBadge()
+    }
+
     private func persistMonitors() {
         monitorStore.saveMonitors(monitors)
     }

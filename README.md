@@ -242,6 +242,15 @@ This section documents each setting and whether it currently has active runtime 
   
      - Behavior: Export all history data as CSV file
 
+- `Full Backup` (Settings)
+     - Behavior: Export or restore monitors, settings, and complete history as a versioned JSON file.
+     - Restore behavior: History is merged and deduplicated by event ID; configuration can be replaced or merged after confirmation.
+
+- `History storage`
+     - Behavior: History is stored in SQLite at `~/Library/Application Support/Pulse/history.sqlite`.
+     - Migration: Existing `history.json` data is migrated automatically on first launch and retained as a timestamped migration backup.
+     - External access: The database can be opened with SQLite-compatible tools while Pulse is closed. The `events` table stores one row per check and is indexed by timestamp, monitor ID, monitor name, and status.
+
 ## Runtime Rules (Current)
 
 - `HEAD` checks fall back to `GET` when `405` or `501` is returned.

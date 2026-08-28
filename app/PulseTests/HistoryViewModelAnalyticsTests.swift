@@ -570,6 +570,10 @@ private final class StubHistoryStore: HistoryStoreProtocol {
         events.append(event)
     }
 
+    func merge(_ events: [HistoryEvent], retentionPolicy: HistoryRetentionPolicy, maxEvents: Int) {
+        self.events.append(contentsOf: events)
+    }
+
     func replaceAll(with events: [HistoryEvent]) {
         self.events = events
     }
@@ -596,6 +600,10 @@ private final class RecordingHistoryStore: HistoryStoreProtocol {
 
     func append(_ event: HistoryEvent, retentionPolicy: HistoryRetentionPolicy, maxEvents: Int) {
         events.append(event)
+    }
+
+    func merge(_ events: [HistoryEvent], retentionPolicy: HistoryRetentionPolicy, maxEvents: Int) {
+        self.events.append(contentsOf: events)
     }
 
     func replaceAll(with events: [HistoryEvent]) {

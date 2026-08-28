@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import UniformTypeIdentifiers
 
 struct SettingsView: View {
     enum Tab: String, CaseIterable, Identifiable {
@@ -160,6 +161,14 @@ struct SettingsView: View {
                         .foregroundStyle(.secondary)
                 }
                 .help("Keeps the newest events when the history reaches this total limit.")
+            }
+
+            alignedRow("Full Backup:") {
+                HStack(spacing: 10) {
+                    Button("Export Full Backup…") { exportFullBackup() }
+                    Button("Import Full Backup…") { importFullBackup() }
+                }
+                .help("Exports or restores monitors, settings, and complete history.")
             }
 
             Divider()
@@ -621,6 +630,62 @@ struct SettingsView: View {
             return
         }
         config.wrappedValue.payloadTemplate = output
+    }
+
+    private func exportFullBackup() {
+        let panel = NSSavePanel()
+        panel.nameFieldStringValue = "pulse-full-backup-\(Date().formatted(.iso8601.year().month().day())).json"
+        panel.allowedContentTypes = [.json]
+        panel.canCreateDirectories = true
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+
+        do {
+            let backup = PulseBackup(
+                monitors: vm.monitors,
+                settings: vm.settings,
+                history: vm.historyEventsForBackup()
+            )
+            try backup.encodedData().write(to: url, options: .atomic)
+            showBackupMessage("Full backup exported successfully.")
+        } catch {
+            showBackupMessage("The full backup could not be exported: \(error.localizedDescription)")
+        }
+    }
+
+    private func importFullBackup() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.json]
+        panel.allowsMultipleSelection = false
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+
+        do {
+            let backup = try PulseBackup.decode(Data(contentsOf: url))
+            let alert = NSAlert()
+            alert.messageText = "Restore Full Backup"
+            alert.informativeText = "History will be merged and deduplicated. Choose how to restore monitors and settings."
+            alert.addButton(withTitle: "Replace Configuration")
+            alert.addButton(withTitle: "Merge Monitors")
+            alert.addButton(withTitle: "Cancel")
+            let response = alert.runModal()
+            guard response != .alertThirdButtonReturn else { return }
+
+            let replaceConfiguration = response == .alertFirstButtonReturn
+            vm.mergeHistoryEventsFromBackup(
+                backup.history,
+                using: replaceConfiguration ? backup.settings : nil
+            )
+            vm.restoreConfiguration(from: backup, replaceConfiguration: replaceConfiguration)
+            showBackupMessage("Full backup imported successfully.")
+        } catch {
+            showBackupMessage("The full backup could not be imported: \(error.localizedDescription)")
+        }
+    }
+
+    private func showBackupMessage(_ message: String) {
+        let alert = NSAlert()
+        alert.messageText = "Pulse Backup"
+        alert.informativeText = message
+        alert.runModal()
     }
 
     @ViewBuilder

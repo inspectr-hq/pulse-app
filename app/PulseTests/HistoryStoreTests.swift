@@ -4,7 +4,7 @@ import XCTest
 final class HistoryStoreTests: XCTestCase {
     func testMetadataFieldsPersistWhenPresent() {
         let tempURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent("pulse-history-metadata-\(UUID().uuidString).json")
+            .appendingPathComponent("pulse-history-metadata-\(UUID().uuidString).sqlite")
         let store = HistoryStore(fileURL: tempURL)
 
         let event = HistoryEvent(
@@ -32,7 +32,8 @@ final class HistoryStoreTests: XCTestCase {
 
     func testOlderHistoryJSONDecodesWithoutMetadataFields() throws {
         let tempURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent("pulse-history-legacy-\(UUID().uuidString).json")
+            .appendingPathComponent("pulse-history-legacy-\(UUID().uuidString).sqlite")
+        let legacyURL = tempURL.deletingPathExtension().appendingPathExtension("json")
         let raw = """
         [
           {
@@ -50,7 +51,7 @@ final class HistoryStoreTests: XCTestCase {
           }
         ]
         """
-        try raw.write(to: tempURL, atomically: true, encoding: .utf8)
+        try raw.write(to: legacyURL, atomically: true, encoding: .utf8)
 
         let store = HistoryStore(fileURL: tempURL)
         let events = store.loadEvents()
@@ -58,11 +59,12 @@ final class HistoryStoreTests: XCTestCase {
         XCTAssertEqual(events.count, 1)
         XCTAssertNil(events.first?.metadataLabel)
         XCTAssertNil(events.first?.metadataValue)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: legacyURL.path))
     }
 
     func testRetentionIsBounded() {
         let tempURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent("pulse-history-\(UUID().uuidString).json")
+            .appendingPathComponent("pulse-history-\(UUID().uuidString).sqlite")
         let store = HistoryStore(fileURL: tempURL)
 
         for index in 0..<6 {
@@ -89,7 +91,7 @@ final class HistoryStoreTests: XCTestCase {
 
     func testPersistsISO8601DateStrings() throws {
         let tempURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent("pulse-history-iso-\(UUID().uuidString).json")
+            .appendingPathComponent("pulse-history-iso-\(UUID().uuidString).sqlite")
         let store = HistoryStore(fileURL: tempURL)
 
         store.append(
@@ -109,18 +111,31 @@ final class HistoryStoreTests: XCTestCase {
             maxEvents: 10
         )
 
-        let raw = try String(contentsOf: tempURL, encoding: .utf8)
-        XCTAssertTrue(raw.contains("timestamp"))
-        XCTAssertTrue(raw.contains("T"))
-        XCTAssertTrue(raw.contains("Z"))
+        let reloaded = store.loadEvents()
+        XCTAssertEqual(reloaded.count, 1)
+        XCTAssertEqual(reloaded.first?.timestamp, Date(timeIntervalSince1970: 1_700_000_000))
     }
 
     func testCorruptFileFallsBackToEmpty() throws {
         let tempURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent("pulse-history-corrupt-\(UUID().uuidString).json")
-        try "not-json".write(to: tempURL, atomically: true, encoding: .utf8)
+            .appendingPathComponent("pulse-history-corrupt-\(UUID().uuidString).sqlite")
+        try "not-json".write(to: tempURL.deletingPathExtension().appendingPathExtension("json"), atomically: true, encoding: .utf8)
 
         let store = HistoryStore(fileURL: tempURL)
         XCTAssertEqual(store.loadEvents(), [])
+    }
+
+    func testMergeDeduplicatesByEventID() {
+        let tempURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("pulse-history-merge-\(UUID().uuidString).sqlite")
+        let store = HistoryStore(fileURL: tempURL)
+        let event = HistoryEvent(
+            timestamp: Date(), monitorID: UUID(), monitorName: "A", url: "https://a.com", method: "GET",
+            status: "OK", statusCode: 200, durationMs: 10, reason: nil, trigger: .automatic
+        )
+
+        store.merge([event, event], retentionPolicy: .unlimited, maxEvents: 100)
+
+        XCTAssertEqual(store.loadEvents(), [event])
     }
 }
