@@ -259,4 +259,20 @@ final class HistoryStoreTests: XCTestCase {
             ]
         )
     }
+
+    func testMonitorNamesAreReturnedDistinctAndSortedFromSQLite() {
+        let tempURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("pulse-history-names-\(UUID().uuidString).sqlite")
+        let store = HistoryStore(fileURL: tempURL)
+        let events = ["Zulu", "Alpha", "Zulu"].enumerated().map { index, name in
+            HistoryEvent(
+                timestamp: Date(timeIntervalSince1970: 1_700_000_000 + Double(index)), monitorID: UUID(),
+                monitorName: name, url: "https://example.com/\(index)", method: "GET", status: "OK",
+                statusCode: 200, durationMs: 100, reason: nil, trigger: .automatic
+            )
+        }
+        store.merge(events, retentionPolicy: .unlimited, maxEvents: 100)
+
+        XCTAssertEqual(store.monitorNames(), ["Alpha", "Zulu"])
+    }
 }

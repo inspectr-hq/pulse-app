@@ -163,15 +163,16 @@ final class HistoryViewModel: ObservableObject {
     }
 
     func reload() {
-        events = store.loadEvents().sorted(by: { $0.timestamp > $1.timestamp })
+        // The list, graphs, and analytics query SQLite on demand. Keep this compatibility
+        // snapshot empty during normal reloads so opening History does not load the database.
+        events = []
     }
 
     func clear() {
         if hasActiveFilters {
             let filteredIDs = Set(filteredEvents.map(\.id))
-            events.removeAll { filteredIDs.contains($0.id) }
+            events = store.loadEvents().filter { !filteredIDs.contains($0.id) }
             persistCurrentEvents()
-            reload()
             return
         }
 
@@ -212,8 +213,7 @@ final class HistoryViewModel: ObservableObject {
     }
 
     var availableNames: [String] {
-        let names = Set(events.map(\.monitorName))
-        return ["All Names"] + names.sorted()
+        ["All Names"] + store.monitorNames()
     }
 
     private var hasActiveFilters: Bool {
@@ -230,8 +230,7 @@ final class HistoryViewModel: ObservableObject {
     }
 
     var availableGraphSites: [String] {
-        let names = Set(events.map(\.monitorName))
-        return ["All Sites"] + names.sorted()
+        ["All Sites"] + store.monitorNames()
     }
 
     var graphEvents: [HistoryEvent] {

@@ -65,6 +65,7 @@ protocol HistoryStoreProtocol {
     func aggregate(matching query: HistoryQuery) -> HistoryAggregate
     func percentileLatency(_ percentile: Double, matching query: HistoryQuery) -> Int?
     func trackingValues(for monitorName: String) -> [HistoryTrackingValue]
+    func monitorNames() -> [String]
     func append(_ event: HistoryEvent, retentionPolicy: HistoryRetentionPolicy, maxEvents: Int)
     func merge(_ events: [HistoryEvent], retentionPolicy: HistoryRetentionPolicy, maxEvents: Int)
     func replaceAll(with events: [HistoryEvent])
@@ -136,6 +137,10 @@ extension HistoryStoreProtocol {
             guard components.count == 2, let first = events.min(by: { $0.timestamp < $1.timestamp }) else { return nil }
             return HistoryTrackingValue(label: components[0], value: components[1], firstDetectedAt: first.timestamp)
         }.sorted { $0.firstDetectedAt > $1.firstDetectedAt }
+    }
+
+    func monitorNames() -> [String] {
+        Set(loadEvents().map(\.monitorName)).sorted()
     }
 }
 
@@ -299,6 +304,18 @@ final class HistoryStore: HistoryStoreProtocol {
             )
         }
         return values
+    }
+
+    func monitorNames() -> [String] {
+        guard let database,
+              let statement = prepare("SELECT DISTINCT monitor_name FROM events ORDER BY monitor_name ASC;", database: database) else { return [] }
+        defer { sqlite3_finalize(statement) }
+
+        var names: [String] = []
+        while sqlite3_step(statement) == SQLITE_ROW {
+            names.append(columnText(statement, 0))
+        }
+        return names
     }
 
     func append(_ event: HistoryEvent, retentionPolicy: HistoryRetentionPolicy, maxEvents: Int) {
