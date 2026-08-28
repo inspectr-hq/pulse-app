@@ -215,8 +215,8 @@ struct HistoryReportsView: View {
                                 rangeStartLabel: rangeStartLabel,
                                 upColor: appVM.settings.statusColorUp.color,
                                 downColor: appVM.settings.statusColorFailure.color,
-                                warningColor: .orange,
-                                degradedColor: appVM.settings.statusColorSlow.color,
+                                warningColor: appVM.settings.statusColorSlow.color,
+                                degradedColor: appVM.settings.statusColorDegraded.color,
                                 noDataColor: appVM.settings.statusColorOffline.color.opacity(0.35)
                             ) {
                                 WindowManager.shared.showHistory(

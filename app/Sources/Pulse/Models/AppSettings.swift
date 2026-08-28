@@ -125,6 +125,7 @@ struct AppSettings: Codable, Equatable {
     var defaultMethod: HTTPMethod = .head
     var statusColorUp = CodableColor(red: 0.2, green: 0.75, blue: 0.26, alpha: 1.0)
     var statusColorSlow = CodableColor(red: 0.95, green: 0.77, blue: 0.05, alpha: 1.0)
+    var statusColorDegraded = CodableColor(red: 1.0, green: 0.5, blue: 0.0, alpha: 1.0)
     var statusColorFailure = CodableColor(red: 0.96, green: 0.24, blue: 0.2, alpha: 1.0)
     var statusColorOffline = CodableColor(red: 0.57, green: 0.59, blue: 0.62, alpha: 1.0)
     var menuMaxItems: Int = 20
@@ -172,6 +173,7 @@ struct AppSettings: Codable, Equatable {
         case defaultMethod
         case statusColorUp
         case statusColorSlow
+        case statusColorDegraded
         case statusColorFailure
         case statusColorOffline
         case menuMaxItems
@@ -209,6 +211,7 @@ struct AppSettings: Codable, Equatable {
         defaultMethod = try container.decodeIfPresent(HTTPMethod.self, forKey: .defaultMethod) ?? defaultMethod
         statusColorUp = try container.decodeIfPresent(CodableColor.self, forKey: .statusColorUp) ?? statusColorUp
         statusColorSlow = try container.decodeIfPresent(CodableColor.self, forKey: .statusColorSlow) ?? statusColorSlow
+        statusColorDegraded = try container.decodeIfPresent(CodableColor.self, forKey: .statusColorDegraded) ?? statusColorDegraded
         statusColorFailure = try container.decodeIfPresent(CodableColor.self, forKey: .statusColorFailure) ?? statusColorFailure
         statusColorOffline = try container.decodeIfPresent(CodableColor.self, forKey: .statusColorOffline) ?? statusColorOffline
         menuMaxItems = try container.decodeIfPresent(Int.self, forKey: .menuMaxItems) ?? menuMaxItems

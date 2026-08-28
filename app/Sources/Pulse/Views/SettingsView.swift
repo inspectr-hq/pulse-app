@@ -267,9 +267,13 @@ struct SettingsView: View {
                         get: { vm.settings.statusColorUp.color },
                         set: { vm.settings.statusColorUp = codableColor(from: $0, fallback: vm.settings.statusColorUp) }
                     ))
-                    statusColorPickerRow("Slow", color: Binding(
+                    statusColorPickerRow("Warning", color: Binding(
                         get: { vm.settings.statusColorSlow.color },
                         set: { vm.settings.statusColorSlow = codableColor(from: $0, fallback: vm.settings.statusColorSlow) }
+                    ))
+                    statusColorPickerRow("Degraded", color: Binding(
+                        get: { vm.settings.statusColorDegraded.color },
+                        set: { vm.settings.statusColorDegraded = codableColor(from: $0, fallback: vm.settings.statusColorDegraded) }
                     ))
                     statusColorPickerRow("Failure", color: Binding(
                         get: { vm.settings.statusColorFailure.color },
