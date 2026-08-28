@@ -7,6 +7,12 @@ struct HistoryReportsView: View {
         case monthDay
     }
 
+    enum UptimeBucketLabelStyle: Equatable {
+        case time
+        case dateTime
+        case date
+    }
+
     static let metadataMarkersEnabledByDefault = true
     static let metadataMarkerAnnotationYOffset: CGFloat = 32
     static let metadataMarkerBackgroundOpacity: Double = 0.78
@@ -421,6 +427,17 @@ struct HistoryReportsView: View {
         }
     }
 
+    static func uptimeBucketLabelStyle(for range: HistoryViewModel.GraphRange) -> UptimeBucketLabelStyle {
+        switch range {
+        case .last1h, .last2h, .last6h, .last12h, .last24h:
+            return .time
+        case .last48h, .last3d, .last5d, .last7d:
+            return .dateTime
+        case .last14d, .last30d, .last60d, .last90d:
+            return .date
+        }
+    }
+
     static func metadataMarkerTitle(for marker: HistoryViewModel.MetadataMarker) -> String {
         "\(marker.label) \(marker.value)"
     }
@@ -606,14 +623,14 @@ private struct UptimeTimelineRow: View {
 
     private func bucketPeriodLabel(_ bucket: HistoryViewModel.UptimeBucket, range: HistoryViewModel.GraphRange) -> String {
         let formatter = DateFormatter()
-        switch HistoryViewModel.uptimeTimelineGranularity(for: range) {
-        case .fiveMinutes, .tenMinutes, .thirtyMinutes, .hour:
+        switch HistoryReportsView.uptimeBucketLabelStyle(for: range) {
+        case .time:
             formatter.dateStyle = .none
             formatter.timeStyle = .short
-        case .threeHours, .sixHours:
+        case .dateTime:
             formatter.dateStyle = .medium
             formatter.timeStyle = .short
-        case .day:
+        case .date:
             formatter.dateStyle = .medium
             formatter.timeStyle = .none
         }

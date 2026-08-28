@@ -126,6 +126,17 @@ final class HistoryReportsViewTests: XCTestCase {
         )
     }
 
+    func testUptimeBucketLabelsIncludeDateAndTimeFor48Hours() {
+        XCTAssertEqual(
+            HistoryReportsView.uptimeBucketLabelStyle(for: .last48h),
+            .dateTime
+        )
+        XCTAssertEqual(
+            HistoryReportsView.uptimeBucketLabelStyle(for: .last24h),
+            .time
+        )
+    }
+
     func testChartXAxisLabelStyleUsesDateForLongerRanges() {
         XCTAssertEqual(
             HistoryReportsView.chartXAxisLabelStyle(for: .last7d),
