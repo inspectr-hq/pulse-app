@@ -85,12 +85,18 @@ final class HistoryViewModel: ObservableObject {
     }
 
     enum UptimeTimelineGranularity: Equatable {
+        case fiveMinutes
+        case tenMinutes
+        case thirtyMinutes
         case hour
         case sixHours
         case day
 
         var duration: TimeInterval {
             switch self {
+            case .fiveMinutes: return 300
+            case .tenMinutes: return 600
+            case .thirtyMinutes: return 1_800
             case .hour: return 3_600
             case .sixHours: return 21_600
             case .day: return 86_400
@@ -100,7 +106,13 @@ final class HistoryViewModel: ObservableObject {
 
     static func uptimeTimelineGranularity(for range: GraphRange) -> UptimeTimelineGranularity {
         switch range {
-        case .last1h, .last2h, .last6h, .last12h, .last24h:
+        case .last1h:
+            return .fiveMinutes
+        case .last2h:
+            return .tenMinutes
+        case .last6h:
+            return .thirtyMinutes
+        case .last12h, .last24h:
             return .hour
         case .last48h, .last3d, .last5d, .last7d:
             return .sixHours

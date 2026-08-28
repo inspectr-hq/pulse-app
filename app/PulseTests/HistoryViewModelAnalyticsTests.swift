@@ -22,6 +22,10 @@ final class HistoryViewModelAnalyticsTests: XCTestCase {
     }
 
     func testUptimeTimelineUsesPredictableBucketGranularity() {
+        XCTAssertEqual(HistoryViewModel.uptimeTimelineGranularity(for: .last1h), .fiveMinutes)
+        XCTAssertEqual(HistoryViewModel.uptimeTimelineGranularity(for: .last2h), .tenMinutes)
+        XCTAssertEqual(HistoryViewModel.uptimeTimelineGranularity(for: .last6h), .thirtyMinutes)
+        XCTAssertEqual(HistoryViewModel.uptimeTimelineGranularity(for: .last12h), .hour)
         XCTAssertEqual(HistoryViewModel.uptimeTimelineGranularity(for: .last24h), .hour)
         XCTAssertEqual(HistoryViewModel.uptimeTimelineGranularity(for: .last48h), .sixHours)
         XCTAssertEqual(HistoryViewModel.uptimeTimelineGranularity(for: .last3d), .sixHours)
@@ -31,6 +35,10 @@ final class HistoryViewModelAnalyticsTests: XCTestCase {
     }
 
     func testUptimeTimelineUsesExpectedNumberOfBuckets() {
+        XCTAssertEqual(HistoryViewModel.uptimeTimelineBucketCount(for: .last1h), 12)
+        XCTAssertEqual(HistoryViewModel.uptimeTimelineBucketCount(for: .last2h), 12)
+        XCTAssertEqual(HistoryViewModel.uptimeTimelineBucketCount(for: .last6h), 12)
+        XCTAssertEqual(HistoryViewModel.uptimeTimelineBucketCount(for: .last12h), 12)
         XCTAssertEqual(HistoryViewModel.uptimeTimelineBucketCount(for: .last24h), 24)
         XCTAssertEqual(HistoryViewModel.uptimeTimelineBucketCount(for: .last48h), 8)
         XCTAssertEqual(HistoryViewModel.uptimeTimelineBucketCount(for: .last3d), 12)

@@ -605,7 +605,7 @@ private struct UptimeTimelineRow: View {
     private func bucketPeriodLabel(_ bucket: HistoryViewModel.UptimeBucket, range: HistoryViewModel.GraphRange) -> String {
         let formatter = DateFormatter()
         switch HistoryViewModel.uptimeTimelineGranularity(for: range) {
-        case .hour:
+        case .fiveMinutes, .tenMinutes, .thirtyMinutes, .hour:
             formatter.dateStyle = .none
             formatter.timeStyle = .short
         case .sixHours:
